@@ -35,23 +35,31 @@ class CVAE(Model):
         enc_cfg = self.cfg['encoder']
         x = x_in
         
-        # We collect the GAP output of *every* layer if Skip-GAP is enabled
         pooled_features = []
+        use_gap = enc_cfg.get('use_global_pooling', True) # Default to True (GAP)
 
         for i, (f, k, s) in enumerate(zip(enc_cfg['filters'], enc_cfg['kernels'], enc_cfg['strides'])):
             x = layers.Conv1D(f, k, strides=s, padding="same", activation="relu", name=f"enc_conv_{i}")(x)
             x = layers.BatchNormalization(name=f"enc_bn_{i}")(x)
             
-            if enc_cfg.get('use_skip_gap', True):
+            # Only collect intermediate features if we are using GAP
+            if use_gap and enc_cfg.get('use_skip_gap', True):
                 pooled_features.append(layers.GlobalAveragePooling1D()(x))
         
-        # Aggregation: Concatenate all scales OR just flatten the last one
-        if enc_cfg.get('use_skip_gap', True):
-            features = layers.Concatenate(name="multi_scale_concat")(pooled_features)
+        # --- Aggregation Logic ---
+        if use_gap:
+            # OPTION A: Global Average Pooling (Shift Invariant)
+            if enc_cfg.get('use_skip_gap', True):
+                features = layers.Concatenate(name="multi_scale_concat")(pooled_features)
+            else:
+                features = layers.GlobalAveragePooling1D()(x)
         else:
-            features = layers.GlobalAveragePooling1D()(x)
+            # OPTION B: Flatten (Position Aware) [Your proposed fix]
+            # We flatten the FINAL feature map only (standard CNN approach)
+            # This preserves spatial indices (e.g., peak at index 5 vs index 50)
+            features = layers.Flatten(name="spatial_flatten")(x)
         
-        # Latent Space
+        # Latent Space (Z)
         z_mean = layers.Dense(self.latent_dim, name="z_mean")(features)
         z_log_var = layers.Dense(self.latent_dim, name="z_log_var")(features)
         
@@ -75,15 +83,26 @@ class CVAE(Model):
         
         combined = layers.Concatenate()([z_in, label_in])
         
-        # Dynamic Size Calculation: Input / Product(Strides)
+        # Dynamic Size Calculation
         total_stride = np.prod(self.cfg['encoder']['strides'])
         start_len = int(np.ceil(self.input_shape_[0] / total_stride))
         start_filters = self.cfg['decoder']['initial_filters']
         
-        x = layers.Dense(start_len * start_filters, activation="relu")(combined)
-        x = layers.Reshape((start_len, start_filters))(x)
-        
         dec_cfg = self.cfg['decoder']
+        
+        # --- TOGGLE: Dense vs. Spatial Broadcast ---
+        if dec_cfg.get('use_dense_projection', True):
+            # OPTION A: Dense Layer
+            # Good for absolute peak positions. High parameter count.
+            x = layers.Dense(start_len * start_filters, activation="relu")(combined)
+            x = layers.Reshape((start_len, start_filters))(x)
+        else:
+            # OPTION B: Spatial Broadcast (Lightweight)
+            # Good for parameter efficiency. Relies on padding for position.
+            x = layers.RepeatVector(start_len)(combined)
+            x = layers.Conv1D(start_filters, kernel_size=1, padding="same", activation="relu")(x)
+            x = layers.BatchNormalization()(x)
+        
         for i, (f, k, s) in enumerate(zip(dec_cfg['filters'], dec_cfg['kernels'], dec_cfg['strides'])):
             x = layers.Conv1DTranspose(f, k, strides=s, padding="same", activation="relu", name=f"dec_convT_{i}")(x)
             x = layers.BatchNormalization(name=f"dec_bn_{i}")(x)

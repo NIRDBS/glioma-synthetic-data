@@ -19,7 +19,8 @@ class ExperimentConfig:
                 "filters": [32, 64, 128],
                 "kernels": [7, 7, 5],
                 "strides": [2, 2, 2],
-                "use_skip_gap": True  # Toggle your specific multi-scale architecture
+                "use_skip_gap": True,       # Used only if use_global_pooling=True
+                "use_global_pooling": True  # <--- ADD THIS (Toggle for GAP vs Flatten)
             },
             
             # Decoder Architecture
@@ -27,7 +28,8 @@ class ExperimentConfig:
                 "initial_filters": 128,
                 "filters": [64, 32, 16],
                 "kernels": [5, 7, 7],
-                "strides": [2, 2, 2]
+                "strides": [2, 2, 2],
+                "use_dense_projection": True  # <--- ADD THIS (Default to True for your case)
             },
             
             # Loss Weights

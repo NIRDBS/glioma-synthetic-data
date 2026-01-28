@@ -1,0 +1,272 @@
+\documentclass[aspectratio=169, 10pt]{beamer}
+
+% --- Theme & Colors ---
+\usetheme{Madrid}
+\usecolortheme{beaver} 
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}[numbered]
+
+% --- Packages ---
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning}
+\usepackage{hyperref}
+
+% --- Metadata ---
+\title[Generative Glioma Grading]{Manifold Learning for Glioma Grading}
+\subtitle{Generating Synthetic Raman Spectra via Conditional VAEs}
+\author[Andrei Iușan, Iulian Vasile]{Andrei Iușan, Iulian Vasile \\ \scriptsize{Advisors: Ion Petre, Bogdan Oancea, Alexandru Amărioarei}}
+\institute[INCDSB]{National Institute of Research and Development in Biological Sciences}
+\date{\today}
+
+\begin{document}
+
+% -----------------------------------------------------------------------------
+% SLIDE 1: Title
+% -----------------------------------------------------------------------------
+\begin{frame}
+    \titlepage
+    \begin{center}
+        \scriptsize{Project: Synthetic Data Augmentation for Intraoperative Spectroscopy}
+    \end{center}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECTION 1: Context
+% -----------------------------------------------------------------------------
+\section{The Clinical Context}
+
+\begin{frame}{The Problem: In-Vivo Glioma Grading}
+    \begin{columns}
+        \begin{column}{0.6\textwidth}
+            \textbf{The Clinical Need:}
+            \begin{itemize}
+                \item Gliomas are the most common primary brain tumors.
+                \item \textbf{Grading} (LGG vs. HGG) determines surgical strategy.
+                \item Current Standard: Biopsy $\to$ Pathology ($\approx$ 30 mins - days).
+                \item \textbf{Goal:} Instant, intraoperative feedback.
+            \end{itemize}
+            
+            \vspace{1em}
+            \textbf{The Solution: Raman Spectroscopy}
+            \begin{itemize}
+                \item Inelastic light scattering measures molecular fingerprints (Lipids, Proteins, DNA).
+                \item Non-destructive, label-free, instant.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.4\textwidth}
+            \begin{alertblock}{The Challenge}
+                Biological heterogeneity is high, but dataset sizes are tiny ($N < 60$ patients).
+            \end{alertblock}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{The Mathematical Formulation}
+    We treat each patient spectrum $x \in \mathbb{R}^{1738}$ as a sample from a high-dimensional distribution.
+    \vspace{1em}
+    \textbf{The Classification Task:}
+    $$ f: \mathbb{R}^{1738} \to \{0, \dots, 6\} $$
+    Distinguish \textbf{Normal Tissue} (Class 0) from \textbf{6 Molecular Subtypes} (LGm1--LGm6).
+    \vspace{1em}
+    \begin{block}{The "Small Data" Curse}
+        \begin{itemize}
+            \item The "Patient Effect" dominates the signal: $Var(\text{Patient}) \gg Var(\text{Tumor})$.
+            \item Standard classifiers (SVM, RF) overfit to the patient manifold, failing to generalize.
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECTION 2: The Baseline
+% -----------------------------------------------------------------------------
+\section{The Baseline "Villain"}
+
+\begin{frame}{Establishing the Baseline}
+    To quantify the difficulty, we trained a standard \textbf{Random Forest + SVM pipeline}.
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \textbf{Experiment:}
+            \begin{itemize}
+                \item 5-Fold Patient-Wise Cross Validation.
+                \item \textbf{Strict Splitting:} No patient appears in both Train and Test.
+            \end{itemize}
+            
+            \vspace{1em}
+            \textbf{Result:}
+            \begin{itemize}
+                \item Accuracy: $\approx \mathbf{30\%}$ (Random chance $\approx 14\%$).
+                \item The model fails to separate fine-grained molecular subtypes.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{figure}
+                \centering
+                % Ensure FigA_Villain_ConfusionMatrix.pdf exists in folder
+                \includegraphics[width=0.9\textwidth]{FigA_Villain_ConfusionMatrix.pdf}
+                \caption{Confusion Matrix of the Baseline Model.}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECTION 3: Method (CVAE)
+% -----------------------------------------------------------------------------
+\section{Generative Solution}
+
+\begin{frame}{Concept: The Variational Autoencoder (VAE)}
+    \centering
+    The VAE imposes a probabilistic bottleneck to learn a continuous latent manifold $\mathcal{Z}$.
+    
+    \vspace{1em}
+    
+    % TikZ Diagram for Standard VAE
+    \begin{tikzpicture}[node distance=1.2cm, auto, >=latex, thick, scale=0.92]
+        % Styles (using Beamer beaver theme colors)
+        \tikzstyle{block} = [rectangle, draw, fill=structure!15, text width=1.8cm, text centered, rounded corners, minimum height=1.05cm, font=\small]
+        \tikzstyle{circle_node} = [circle, draw, fill=structure!25, text centered, minimum size=1.35cm, font=\small]
+        
+        % Nodes
+        \node (input) {\small $x$};
+        \node [block, right=of input] (encoder) {Encoder\\[-0.05cm]{\small $q_\phi(z|x)$}};
+        \node [circle_node, right=of encoder, xshift=0.4cm] (latent) {{\scriptsize $z \sim \mathcal{N}(0, I)$}};
+        \node [block, right=of latent, xshift=0.4cm] (decoder) {Decoder\\[-0.05cm]{\small $p_\theta(x|z)$}};
+        \node [right=of decoder] (output) {\small $\hat{x}$};
+        
+        % Edges
+        \draw[->] (input) -- (encoder);
+        \draw[->] (encoder) -- node[above, font=\small] {$\mu, \sigma$} (latent);
+        \draw[->] (latent) -- node[above, font=\small] {Sample} (decoder);
+        \draw[->] (decoder) -- (output);
+        
+        % Annotation
+        \node[below=0.25cm of latent, font=\small, text=gray] {$\mathbb{R}^{16}$};
+    \end{tikzpicture}
+    
+    \vspace{1em}
+    \begin{itemize}
+        \item Unlike standard Autoencoders, VAEs learn a \textbf{distribution}, not just a compression.
+        \item This allows us to sample \textit{new} data points from the latent space.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Architecture: Conditional VAE (CVAE)}
+    We modify the architecture to inject the class label $y$ \textbf{only} into the Decoder.
+    
+    \vspace{1em}
+    \centering
+    % TikZ Diagram for CVAE
+    \begin{tikzpicture}[node distance=1.1cm, auto, >=latex, thick, scale=0.9]
+        % Styles (using Beamer beaver theme colors)
+        \tikzstyle{block} = [rectangle, draw, fill=structure!15, text width=1.7cm, text centered, rounded corners, minimum height=0.95cm, font=\small]
+        \tikzstyle{input} = [rectangle, draw=none, fill=none, font=\small]
+        \tikzstyle{latent} = [circle, draw, fill=structure!25, text centered, minimum size=0.95cm, font=\small]
+        \tikzstyle{label} = [rectangle, draw, fill=structure!20, text centered, minimum height=0.7cm, font=\small]
+        
+        % Nodes
+        \node [input] (x) {$x$};
+        \node [block, right=0.7cm of x] (encoder) {Encoder\\[-0.05cm]{\small 1D CNN}};
+        \node [latent, right=0.85cm of encoder] (z) {$z$};
+        \node [label, below=0.7cm of z] (y) {$y$};
+        
+        \node [block, right=0.85cm of z] (decoder) {Decoder\\[-0.05cm]{\small 1D T}};
+        \node [input, right=0.7cm of decoder] (x_hat) {$\hat{x}$};
+        
+        % Aux Head
+        \node [block, above=0.7cm of z, fill=structure!10, text width=1.3cm, minimum height=0.7cm] (classifier) {Aux Head};
+        \node [input, right=0.45cm of classifier] (y_pred) {$\hat{y}$};
+
+        % Edges
+        \draw[->] (x) -- (encoder);
+        \draw[->] (encoder) -- (z);
+        \draw[->] (encoder) -- (classifier);
+        \draw[->] (classifier) -- (y_pred);
+        
+        % Conditioning Arrows
+        \draw[->] (z) -- (decoder);
+        \draw[->, color=red] (y) -| node[near start, below, font=\small, color=red] {Concat} (decoder);
+        \draw[->] (decoder) -- (x_hat);
+        
+    \end{tikzpicture}
+    
+    \vspace{1em}
+    \begin{itemize}
+        \item \textbf{Teacher Forcing:} We feed the Ground Truth $y$ to the decoder during training.
+        \item \textbf{Disentanglement:} The Encoder does \textit{not} see $y$, forcing $z$ to learn structural features independently.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{The Loss Function}
+    The total objective maximizes the Evidence Lower Bound (ELBO) while minimizing classification error.
+    
+    $$ \mathcal{L}_{Total} = \mathcal{L}_{Recon} + \beta \mathcal{L}_{KL} + \alpha \mathcal{L}_{Class} $$
+    
+    \vspace{1em}
+    \begin{enumerate}
+        \item \textbf{Reconstruction Loss (MSE):} Ensures physical fidelity.
+        $$ \mathcal{L}_{Recon} = \sum_{i=1}^{1738} || x_i - \hat{x}_i ||^2 $$
+        
+        \item \textbf{KL Divergence:} Regularizes latent space to be $\mathcal{N}(0, I)$.
+        $$ \mathcal{L}_{KL} = -\frac{1}{2} \sum_{j=1}^{16} (1 + \log(\sigma_j^2) - \mu_j^2 - \sigma_j^2) $$
+        
+        \item \textbf{Classification Loss:} Cross-Entropy on the auxiliary head.
+        $$ \mathcal{L}_{Class} = - \sum_{k=0}^{6} y_k \log(\hat{y}_k) $$
+    \end{enumerate}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECTION 4: Results
+% -----------------------------------------------------------------------------
+\section{Results}
+
+\begin{frame}{Reconstruction Analysis}
+    Does the model learn the physics?
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{FigC_Reconstruction_Mirror.pdf}
+        \caption{\textbf{Mirror Plot:} Top (Black) is Real input. Bottom (Red) is CVAE Reconstruction. Note the preservation of key spectral peaks.}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Generative Interpolation}
+    Traversing the manifold from \textbf{Normal} to \textbf{Glioblastoma}.
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{FigD_Generative_Waterfall.pdf}
+        \caption{Spectral Evolution. We interpolate $z_{normal} \to z_{GBM}$ and decode. The model smoothly synthesizes the emergence of tumor-specific markers.}
+    \end{figure}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECTION 5: Conclusion
+% -----------------------------------------------------------------------------
+\section{Conclusion}
+
+\begin{frame}{Summary \& Impact}
+    \begin{block}{Summary}
+        We successfully trained a CVAE to model the high-dimensional manifold of Raman spectra for 7 distinct brain tissue classes.
+    \end{block}
+    
+    \vspace{1em}
+    \textbf{Key Findings:}
+    \begin{itemize}
+        \item The baseline (30\%) proves the difficulty of the "Patient Effect."
+        \item CVAE learns a structured latent space ($\mathbb{R}^{16}$) that separates molecular subtypes.
+        \item Synthetic generation allows us to interpolate and augment data, potentially solving the small-sample bottleneck.
+    \end{itemize}
+    
+    \vspace{1em}
+    \textbf{Next Steps:} Train a Transformer classifier on 10,000 synthetic samples (TSTR).
+\end{frame}
+
+\begin{frame}
+    \centering
+    \Huge \textbf{Thank You} \\
+    \vspace{1em}
+    \large Questions?
+\end{frame}
+
+\end{document}

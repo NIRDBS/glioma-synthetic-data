@@ -15,8 +15,7 @@
 \usepackage{hyperref}
 
 % --- Metadata ---
-\title[Generative Glioma Grading]{Manifold Learning for Glioma Grading}
-\subtitle{Generating Synthetic Raman Spectra via Conditional VAEs}
+\title{Generating Synthetic Raman Spectra via Conditional VAEs}
 \author[Andrei Iușan, Iulian Vasile]{Andrei Iușan, Iulian Vasile \texorpdfstring{\\}{ } \scriptsize{Advisors: Ion Petre, Bogdan Oancea, Alexandru Amărioarei}}
 \institute[INCDSB]{National Institute of Research and Development in Biological Sciences}
 \date{\today}
@@ -45,7 +44,7 @@
             \begin{itemize}
                 \item Gliomas are the most common primary brain tumors.
                 \item \textbf{Grading} (LGG vs. HGG) determines surgical strategy.
-                \item Current Standard: Biopsy $\to$ Pathology ($\approx$ 30 mins - days).
+                \item Current Standard: Biopsy $\to$ Pathology (days).
                 \item \textbf{Goal:} Instant, intraoperative feedback.
             \end{itemize}
             
@@ -68,8 +67,8 @@
     We treat each patient spectrum $x \in \mathbb{R}^{1738}$ as a sample from a high-dimensional distribution.
     \vspace{1em}
     \textbf{The Classification Task:}
-    $$ f: \mathbb{R}^{1738} \to \{0, \dots, 6\} $$
-    Distinguish \textbf{Normal Tissue} (Class 0) from \textbf{6 Molecular Subtypes} (LGm1--LGm6).
+    $$ f: \mathbb{R}^{1738} \to \{0, \dots, 5\} $$
+    Distinguish between \textbf{6 Molecular Subtypes} (LGm1--LGm6).
     \vspace{1em}
     \begin{block}{The "Small Data" Curse}
         \begin{itemize}
@@ -82,33 +81,55 @@
 % -----------------------------------------------------------------------------
 % SECTION 2: The Baseline
 % -----------------------------------------------------------------------------
-\section{The Baseline "Villain"}
+\section{Baseline Analysis}
 
-\begin{frame}{Establishing the Baseline}
-    To quantify the difficulty, we trained a standard \textbf{Random Forest + SVM pipeline}.
-    \begin{columns}
-        \begin{column}{0.5\textwidth}
-            \textbf{Experiment:}
-            \begin{itemize}
-                \item 5-Fold Patient-Wise Cross Validation.
-                \item \textbf{Strict Splitting:} No patient appears in both Train and Test.
-            \end{itemize}
-            
-            \vspace{1em}
-            \textbf{Result:}
-            \begin{itemize}
-                \item Accuracy: $\approx \mathbf{30\%}$ (Random chance $\approx 14\%$).
-                \item The model fails to separate fine-grained molecular subtypes.
-            \end{itemize}
-        \end{column}
-        \begin{column}{0.5\textwidth}
-            \begin{figure}
-                \centering
-                % Ensure FigA_Villain_ConfusionMatrix.pdf exists in folder
-                \includegraphics[width=0.9\textwidth]{FigA_Villain_ConfusionMatrix.pdf}
-                \caption{Confusion Matrix of the Baseline Model.}
-            \end{figure}
-        \end{column}
+\begin{frame}{Establishing the Baseline (APOLLO paper)}
+    To quantify the difficulty, we use the APOLLO paper's approach with a \textbf{Random Forest + SVM pipeline}.
+    
+    \vspace{1em}
+    \textbf{Methodology:}
+    \begin{itemize}
+        \item \textbf{Input:} Raw Raman Spectra ($1738$ features).
+        \item \textbf{Validation Scheme:} 5-Fold \textit{Patient-Wise} Cross Validation.
+        \item \textbf{Constraint:} Strict splitting ensures no patient appears in both Train and Test sets.
+    \end{itemize}
+    
+    \vspace{1em}
+    \begin{alertblock}{Preliminary Observation}
+        Initial experiments indicate that standard classifiers struggle to separate the fine-grained molecular subtypes when tested on unseen patients. This confirms the need for \textbf{manifold learning} and data augmentation to bridge the gap between training and testing distributions.
+    \end{alertblock}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% NEW SLIDE: Evaluation Methodology
+% -----------------------------------------------------------------------------
+\begin{frame}{Evaluation Methodology: Dual Objectives}
+    Since our architecture serves two purposes, we define two distinct evaluation protocols to benchmark against the baseline.
+    
+    \vspace{1em}
+    \begin{columns}[t]
+        \column{0.5\textwidth}
+        \textbf{1. Classification Objective}
+        \begin{itemize}
+            \item \textbf{Goal:} Improve direct diagnosis.
+            \item \textbf{Mechanism:} The CVAE Encoder has an \textit{Auxiliary Classification Head}.
+            \item \textbf{Metric:} Compare the validation accuracy of the \textbf{CVAE Encoder} directly against the \textbf{RF/SVM Baseline}.
+            \item \textit{Hypothesis:} The regularization from the generative task might improve feature robustness.
+        \end{itemize}
+
+        \column{0.5\textwidth}
+        \textbf{2. Synthesis Objective (TSTR)}
+        \begin{itemize}
+            \item \textbf{Goal:} Prove synthetic data utility.
+            \item \textbf{Metric:} \textbf{T}rain on \textbf{S}ynthetic, \textbf{T}est on \textbf{R}eal.
+            \begin{enumerate}
+                \item Train CVAE on Real Data.
+                \item Generate 10k Synthetic Samples.
+                \item Train a \textit{fresh} classifier on Synthetic.
+                \item Test on Real Patients.
+            \end{enumerate}
+            \item \textit{Success:} If $Acc_{TSTR} \approx Acc_{TRTR}$, the synthetic data is biologically valid.
+        \end{itemize}
     \end{columns}
 \end{frame}
 
@@ -116,6 +137,9 @@
 % SECTION 3: Method (CVAE)
 % -----------------------------------------------------------------------------
 \section{Generative Solution}
+%---------------------------------------------------------
+
+\section{Proposed Solution}
 
 \begin{frame}{Concept: The Variational Autoencoder (VAE)}
     \centering
@@ -124,26 +148,26 @@
     \vspace{1em}
     
     % TikZ Diagram for Standard VAE
-    \begin{tikzpicture}[node distance=1.2cm, auto, >=latex, thick, scale=0.92]
-        % Styles (using Beamer beaver theme colors)
-        \tikzstyle{block} = [rectangle, draw, fill=structure!15, text width=1.8cm, text centered, rounded corners, minimum height=1.05cm, font=\small]
-        \tikzstyle{circle_node} = [circle, draw, fill=structure!25, text centered, minimum size=1.35cm, font=\small]
+    \begin{tikzpicture}[node distance=1.5cm, auto, >=latex, thick, scale=0.9, transform shape]
+        % Styles
+        \tikzstyle{block} = [rectangle, draw, fill=blue!10, text width=2cm, text centered, rounded corners, minimum height=1.2cm]
+        \tikzstyle{circle_node} = [circle, draw, fill=green!10, text centered, minimum size=1cm]
         
         % Nodes
-        \node (input) {\small $x$};
-        \node [block, right=of input] (encoder) {Encoder\\[-0.05cm]{\small $q_\phi(z|x)$}};
-        \node [circle_node, right=of encoder, xshift=0.4cm] (latent) {{\scriptsize $z \sim \mathcal{N}(0, I)$}};
-        \node [block, right=of latent, xshift=0.4cm] (decoder) {Decoder\\[-0.05cm]{\small $p_\theta(x|z)$}};
-        \node [right=of decoder] (output) {\small $\hat{x}$};
+        \node (input) {$x \in \mathbb{R}^{1738}$};
+        \node [block, right=of input] (encoder) {Encoder\\$q_\phi(z|x)$};
+        \node [circle_node, right=of encoder, xshift=0.5cm] (latent) {$z \sim \mathcal{N}(\mu, \sigma)$};
+        \node [block, right=of latent, xshift=0.5cm] (decoder) {Decoder\\$p_\theta(x|z)$};
+        \node [right=of decoder] (output) {$\hat{x}$};
         
         % Edges
         \draw[->] (input) -- (encoder);
-        \draw[->] (encoder) -- node[above, font=\small] {$\mu, \sigma$} (latent);
-        \draw[->] (latent) -- node[above, font=\small] {Sample} (decoder);
+        \draw[->] (encoder) -- node[above, font=\footnotesize] {$\mu, \sigma$} (latent);
+        \draw[->] (latent) -- node[above, font=\footnotesize] {Sample} (decoder);
         \draw[->] (decoder) -- (output);
         
         % Annotation
-        \node[below=0.25cm of latent, font=\small, text=gray] {$\mathbb{R}^{16}$};
+        \node[below=0.2cm of latent, font=\footnotesize, text=gray] {Bottleneck ($\mathbb{R}^{16}$)};
     \end{tikzpicture}
     
     \vspace{1em}
@@ -153,49 +177,109 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Architecture: Conditional VAE (CVAE)}
-    We modify the architecture to inject the class label $y$ \textbf{only} into the Decoder.
+\begin{frame}{Architecture I: Conditional Mechanism}
+    We modify the VAE to include an \textbf{Auxiliary Classifier} and \textbf{Conditional Decoder}.
     
-    \vspace{1em}
+    \vspace{0.5em}
     \centering
-    % TikZ Diagram for CVAE
-    \begin{tikzpicture}[node distance=1.1cm, auto, >=latex, thick, scale=0.9]
-        % Styles (using Beamer beaver theme colors)
-        \tikzstyle{block} = [rectangle, draw, fill=structure!15, text width=1.7cm, text centered, rounded corners, minimum height=0.95cm, font=\small]
-        \tikzstyle{input} = [rectangle, draw=none, fill=none, font=\small]
-        \tikzstyle{latent} = [circle, draw, fill=structure!25, text centered, minimum size=0.95cm, font=\small]
-        \tikzstyle{label} = [rectangle, draw, fill=structure!20, text centered, minimum height=0.7cm, font=\small]
+    % TikZ Diagram for CVAE High Level
+    \begin{tikzpicture}[node distance=1.5cm, auto, >=latex, thick, scale=0.8, transform shape]
+        % Styles
+        \tikzstyle{block} = [rectangle, draw, fill=blue!10, text width=2.2cm, text centered, rounded corners, minimum height=1.2cm]
+        \tikzstyle{input} = [rectangle, draw=none, fill=none]
+        \tikzstyle{latent} = [circle, draw, fill=green!10, text centered, minimum size=1.2cm]
+        \tikzstyle{label} = [rectangle, draw, fill=red!10, text centered, minimum height=0.8cm]
+        \tikzstyle{head} = [rectangle, draw, fill=yellow!10, text width=2cm, text centered, rounded corners, minimum height=1cm]
         
         % Nodes
-        \node [input] (x) {$x$};
-        \node [block, right=0.7cm of x] (encoder) {Encoder\\[-0.05cm]{\small 1D CNN}};
-        \node [latent, right=0.85cm of encoder] (z) {$z$};
-        \node [label, below=0.7cm of z] (y) {$y$};
+        \node [input] (x) {$x$ (Spectrum)};
+        \node [block, right=0.8cm of x] (encoder) {Encoder\\(1D CNN)};
+        \node [latent, right=1.2cm of encoder] (z) {$z$};
+        \node [label, below=0.8cm of z] (y) {$y$ (True Label)};
         
-        \node [block, right=0.85cm of z] (decoder) {Decoder\\[-0.05cm]{\small 1D T}};
-        \node [input, right=0.7cm of decoder] (x_hat) {$\hat{x}$};
+        \node [block, right=1.2cm of z] (decoder) {Decoder\\(1D Transpose)};
+        \node [input, right=0.8cm of decoder] (x_hat) {$\hat{x}$ (Recon)};
         
-        % Aux Head
-        \node [block, above=0.7cm of z, fill=structure!10, text width=1.3cm, minimum height=0.7cm] (classifier) {Aux Head};
-        \node [input, right=0.45cm of classifier] (y_pred) {$\hat{y}$};
+        % Aux Head (Branching off Encoder)
+        \node [head, above=0.8cm of z] (classifier) {Classifier Head};
+        \node [input, right=0.5cm of classifier] (y_pred) {$\hat{y}$ (Pred)};
 
         % Edges
         \draw[->] (x) -- (encoder);
         \draw[->] (encoder) -- (z);
-        \draw[->] (encoder) -- (classifier);
+        \draw[->] (encoder) |- (classifier);
         \draw[->] (classifier) -- (y_pred);
         
         % Conditioning Arrows
         \draw[->] (z) -- (decoder);
-        \draw[->, color=red] (y) -| node[near start, below, font=\small, color=red] {Concat} (decoder);
+        \draw[->, color=red] (y) -| node[near start, below, font=\footnotesize, color=red] {Concatenate} (decoder);
         \draw[->] (decoder) -- (x_hat);
+    \end{tikzpicture}
+    
+    \vspace{0.5em}
+    \begin{itemize}
+        \item \textbf{Disentanglement:} The Encoder learns spectral features unsupervised.
+        \item \textbf{Conditioning:} Class label $y$ is injected \textbf{only} at the Decoder.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Architecture II: Asymmetric Topology}
+    We propose an asymmetric design with \textbf{Skip Connections} in the Encoder to preserve multi-scale spectral features.
+    
+    \vspace{1em}
+    \centering
+    % TikZ Diagram for Asymmetric Topology
+    \begin{tikzpicture}[node distance=1.2cm, auto, >=latex, thick, scale=0.75, transform shape]
+        % Styles
+        \tikzstyle{layer} = [rectangle, draw, fill=blue!10, text width=1.5cm, text centered, minimum height=0.8cm]
+        \tikzstyle{latent} = [circle, draw, fill=green!10, text centered, minimum size=1cm]
+        \tikzstyle{concat} = [rectangle, draw, fill=orange!10, text centered, minimum height=2.5cm, text width=0.5cm]
+        
+        % ENCODER SIDE
+        \node (input) {Input $x$};
+        \node [layer, right=0.5cm of input] (conv1) {Conv1};
+        \node [layer, right=0.5cm of conv1] (conv2) {Conv2};
+        \node [layer, right=0.5cm of conv2] (conv3) {Conv3};
+        
+        % Concat Block
+        \node [concat, right=1cm of conv3] (cat) {C\\a\\t};
+        
+        % Skip connections arrows
+        \draw[->] (input) -- (conv1);
+        \draw[->] (conv1) -- (conv2);
+        \draw[->] (conv2) -- (conv3);
+        
+        % Skips to Concat
+        \draw[->, dashed] (conv1.south) -- ++(0,-0.5) -| (cat.south);
+        \draw[->, dashed] (conv2.south) -- ++(0,-0.3) -| (cat.south);
+        \draw[->] (conv3) -- (cat);
+        
+        % Latent
+        \node [latent, right=0.5cm of cat] (z) {$z$};
+        \draw[->] (cat) -- (z);
+        
+        % DECODER SIDE (Linear/No Skips)
+        \node [layer, right=0.5cm of z] (tconv1) {T-Conv1};
+        \node [layer, right=0.5cm of tconv1] (tconv2) {T-Conv2};
+        \node [layer, right=0.5cm of tconv2] (tconv3) {T-Conv3};
+        \node [right=0.5cm of tconv3] (out) {$\hat{x}$};
+        
+        \draw[->] (z) -- (tconv1);
+        \draw[->] (tconv1) -- (tconv2);
+        \draw[->] (tconv2) -- (tconv3);
+        \draw[->] (tconv3) -- (out);
+        
+        % Labels
+        \node[above=0.2cm of conv2] {\textbf{Encoder (with Skips)}};
+        \node[above=0.2cm of tconv2] {\textbf{Decoder (Linear)}};
         
     \end{tikzpicture}
     
     \vspace{1em}
     \begin{itemize}
-        \item \textbf{Teacher Forcing:} We feed the Ground Truth $y$ to the decoder during training.
-        \item \textbf{Disentanglement:} The Encoder does \textit{not} see $y$, forcing $z$ to learn structural features independently.
+        \item \textbf{Encoder:} $x \to \text{Conv}_1 \to \text{Conv}_2 \to \text{Conv}_3$. Output is Concat($c_1, c_2, c_3$).
+        \item \textbf{Decoder:} Standard sequential Transposed Convolutions (No skips).
+        \item \textbf{Rationale:} Skip connections help the encoder preserve high-frequency spectral peaks that might vanish in deep layers.
     \end{itemize}
 \end{frame}
 
@@ -216,14 +300,13 @@
         $$ \mathcal{L}_{Class} = - \sum_{k=0}^{6} y_k \log(\hat{y}_k) $$
     \end{enumerate}
 \end{frame}
-
 % -----------------------------------------------------------------------------
 % SECTION 4: Results
 % -----------------------------------------------------------------------------
 \section{Results}
 
 \begin{frame}{Reconstruction Analysis}
-    Does the model learn the physics?
+    Does the model learn the physics? (Example from our tests with the CVAE architecture)
     \begin{figure}
         \centering
         \includegraphics[width=0.8\textwidth]{FigC_Reconstruction_Mirror.pdf}
@@ -231,13 +314,32 @@
     \end{figure}
 \end{frame}
 
-\begin{frame}{Generative Interpolation}
-    Traversing the manifold from \textbf{Normal} to \textbf{Glioblastoma}.
-    \begin{figure}
-        \centering
-        \includegraphics[width=0.6\textwidth]{FigD_Generative_Waterfall.pdf}
-        \caption{Spectral Evolution. We interpolate $z_{normal} \to z_{GBM}$ and decode. The model smoothly synthesizes the emergence of tumor-specific markers.}
-    \end{figure}
+
+
+% -----------------------------------------------------------------------------
+% SECTION 4: Planned Evaluation
+% -----------------------------------------------------------------------------
+\section{Planned Evaluation}
+
+\begin{frame}{Evaluation Strategy}
+    As this is an ongoing project, we propose the following validation metrics:
+    
+    \vspace{1em}
+    \begin{enumerate}
+        \item \textbf{Manifold Quality (Visual):}
+        \begin{itemize}
+            \item \textbf{t-SNE Projection:} Do the 6 molecular subtypes form distinct clusters in the latent space $\mathcal{Z}$?
+            \item \textbf{Generative Traversal:} Can we smoothly interpolate between subtypes (e.g., $z_{LGm1} \to z_{LGm6}$) to model the "tumor gradient"?
+        \end{itemize}
+        
+        \vspace{1em}
+        \item \textbf{Data Utility (TSTR):}
+        \begin{itemize}
+            \item \textbf{T}rain on \textbf{S}ynthetic, \textbf{T}est on \textbf{R}eal.
+            \item We will generate 10,000 synthetic spectra and train a classifier.
+            \item \textbf{Success Metric:} If Accuracy(Synthetic) $\approx$ Accuracy(Baseline), the CVAE has successfully captured the invariant biological features.
+        \end{itemize}
+    \end{enumerate}
 \end{frame}
 
 % -----------------------------------------------------------------------------
@@ -245,21 +347,32 @@
 % -----------------------------------------------------------------------------
 \section{Conclusion}
 
-\begin{frame}{Summary \& Impact}
-    \begin{block}{Summary}
-        We successfully trained a CVAE to model the high-dimensional manifold of Raman spectra for 7 distinct brain tissue classes.
+\begin{frame}{Status \& Future Work}
+    \begin{block}{Project Status:}
+        We have formulated the mathematical framework, established the baseline difficulty, and designed the CVAE architecture. We are now transitioning from architectural design to rigorous validation.
     \end{block}
     
-    \vspace{1em}
-    \textbf{Key Findings:}
-    \begin{itemize}
-        \item The baseline (30\%) proves the difficulty of the "Patient Effect."
-        \item CVAE learns a structured latent space ($\mathbb{R}^{16}$) that separates molecular subtypes.
-        \item Synthetic generation allows us to interpolate and augment data, potentially solving the small-sample bottleneck.
-    \end{itemize}
-    
-    \vspace{1em}
-    \textbf{Next Steps:} Train a Transformer classifier on 10,000 synthetic samples (TSTR).
+    \vspace{0.5em}
+    \textbf{Roadmap (Next 2 Months):}
+    \begin{enumerate}
+        \item \textbf{Track 1: Classification (Direct Diagnosis)}
+        \begin{itemize}
+            \item Optimize the Encoder's auxiliary head for 6-class subtyping.
+            \item Benchmark Encoder accuracy against the Random Forest/SVM baseline.
+        \end{itemize}
+        
+        \item \textbf{Track 2: Data Synthesis (Augmentation)}
+        \begin{itemize}
+            \item Generate high-fidelity synthetic cohorts for rare subtypes.
+            \item Execute TSTR (Train on Synthetic, Test on Real) protocol.
+        \end{itemize}
+        
+        \item \textbf{Analysis \& Dissemination}
+        \begin{itemize}
+            \item Comparative analysis of Generative vs. Discriminative performance.
+            \item Final reporting on manifold topology and discovered spectral biomarkers.
+        \end{itemize}
+    \end{enumerate}
 \end{frame}
 
 \begin{frame}

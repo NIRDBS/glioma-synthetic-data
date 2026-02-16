@@ -19,7 +19,7 @@ class RamanPreprocessor:
     
     # Configuration
     IGNORE_SAMPLES = ["HF-1887_via-t_2_1.h5_3"]
-    AIRPLS_LAMBDA = 100 # 10^4 is standard, but you had 4. Confirm this value! Usually it's 100-10000.
+    AIRPLS_LAMBDA = 100 
     AIRPLS_PORDER = 1
     SIGNAL_LENGTH = 1738
     

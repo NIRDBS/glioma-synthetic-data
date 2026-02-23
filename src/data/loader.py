@@ -58,7 +58,7 @@ class GliomaDataLoader:
                 print("🔬 'tumor_only=True': Filtering out healthy tissue...")
                 # Convert to numpy array in case it's an HDF5 dataset ref
                 y_t = self.y_tumor[:] 
-                mask = (y_t == 0)
+                mask = (y_t == 1)
                 
                 # Apply mask to all arrays
                 self.X = self.X[mask]

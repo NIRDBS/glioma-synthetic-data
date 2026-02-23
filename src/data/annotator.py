@@ -38,7 +38,7 @@ class ClinicalAnnotator:
         print(f"🚀 Starting Spatio-Spectral Annotation (Algorithm: {self.algorithm.upper()})...")
 
         with h5py.File(self.data_path, 'r+') as f:
-            X = f['spectra'][:]
+            X = f['spectra_smoothed'][:]
             if 'coords' not in f:
                 raise KeyError("❌ 'coords' not found in HDF5. Did you run the spatial preprocessor?")
             coords = f['coords'][:]

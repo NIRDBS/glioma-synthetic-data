@@ -26,7 +26,7 @@ class RamanPreprocessor:
 
     def __init__(self, raw_data_dir, output_file, 
                  mask_strategy="bio_mask",
-                 strict_mask=False, # <--- NEW TOGGLE
+                 strict_mask=False,
                  tumor_maps_path=None, 
                  calibration_path=None):
         
@@ -179,6 +179,7 @@ class RamanPreprocessor:
             h5f.create_dataset("wavenumbers", data=self.wavenumbers)
             
             dset_spectra = h5f.create_dataset("spectra", shape=(0, 1738), maxshape=(None, 1738), dtype='float32', compression="gzip")
+            dset_spectra_smoothed = h5f.create_dataset("spectra_smoothed", shape=(0, 1738), maxshape=(None, 1738), dtype='float32', compression="gzip")
             dset_class = h5f.create_dataset("y_class", shape=(0,), maxshape=(None,), dtype='int32')
             dset_patient = h5f.create_dataset("patient_ids", shape=(0,), maxshape=(None,), dtype='int32')
             dset_samples = h5f.create_dataset("sample_ids", shape=(0,), maxshape=(None,), dtype=h5py.string_dtype(encoding='utf-8'))
@@ -213,24 +214,29 @@ class RamanPreprocessor:
                 
                 # Extract coordinates and data
                 y_coords, x_coords = np.where(valid_mask)
-                flat_data = smoothed_cube[valid_mask]
+                flat_data_pure = raw_cube[valid_mask]          # For ML/AI
+                flat_data_smoothed = smoothed_cube[valid_mask] # For Annotation
                 
-                batch_spectra = [self._preprocess_spectrum(s) for s in flat_data]
-                batch_spectra = np.array(batch_spectra, dtype='float32')
-                n_new = batch_spectra.shape[0]
-
+                batch_spectra_pure = [self._preprocess_spectrum(s) for s in flat_data_pure]
+                batch_spectra_pure = np.array(batch_spectra_pure, dtype='float32')
+                batch_spectra_smoothed = [self._preprocess_spectrum(s) for s in flat_data_smoothed]
+                batch_spectra_smoothed = np.array(batch_spectra_smoothed, dtype='float32')
+                n_new = batch_spectra_pure.shape[0]
+                
                 if n_new == 0: continue
 
                 current_size = dset_spectra.shape[0]
                 new_size = current_size + n_new
                 
                 dset_spectra.resize(new_size, axis=0)
+                dset_spectra_smoothed.resize(new_size, axis=0)
                 dset_class.resize(new_size, axis=0)
                 dset_patient.resize(new_size, axis=0)
                 dset_samples.resize(new_size, axis=0)
                 dset_coords.resize(new_size, axis=0)
                 
-                dset_spectra[current_size:] = batch_spectra
+                dset_spectra[current_size:] = batch_spectra_pure
+                dset_spectra_smoothed[current_size:] = batch_spectra_smoothed
                 dset_class[current_size:] = np.full(n_new, class_id, dtype='int32')
                 dset_patient[current_size:] = np.full(n_new, patient_id, dtype='int32')
                 dset_samples[current_size:] = np.full(n_new, sample_name)

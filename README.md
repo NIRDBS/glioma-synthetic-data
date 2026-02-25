@@ -102,32 +102,33 @@ python -m src.models.baselines
 
 ```
 
-## 📅 Roadmap
+## 🗺️ Project Roadmap
 
-* [x] **Phase 1:** Data Pipeline & Integrity Checks
-* [ ] **Phase 2:** Baseline Reproduction (RF + SVM)
-* [ ] **Phase 3:** Generative Model Development (CVAE & RBM)
-* [ ] **Phase 4:** TSTR Evaluation (Train Synthetic, Test Real)
+### ✅ Phase 1: Data Engineering & Baseline (TRTR)
+- [x] **Ingestion & Cleaning:** airPLS baseline correction and normalization.
+- [x] **Spatio-Spectral Annotation:** Implemented spatial MRF filters and GMMs to isolate 88k pure tumor spectra from healthy tissue.
+- [x] **TRTR Benchmarking (Train Real, Test Real):** Replicated the Apollo Nature paper baseline (RF Feature Selection + SVM) and a 1D-CNN using a strict 5-Fold patient-level split. 
+- [x] *Finding:* Established the ~30% generalization ceiling for the 6-class task, justifying the generative approach.
 
-## Detailed Roadmap:
+### 🚧 Phase 2: Generative Modeling (Current Stage)
+- [x] **Architecture:** Built a dynamic TensorFlow $\beta$-CVAE conditioned on the 6 LGm tumor grades.
+- [ ] **Training:** Train the CVAE inside the 5-Fold CV loop (to prevent data leakage) and generate isolated synthetic datasets per fold.
+- [ ] **Latent Space Analysis:** Visualize the CVAE's ability to cluster the 6 glioma subtypes using t-SNE/PCA.
 
-## 📊 Project Status Dashboard
+### ⏳ Phase 3: The "TSTR" Evaluation (The Turing Test)
+- [ ] **Experiment:** Train the baseline Apollo SVM and 1D-CNN *exclusively* on the CVAE-generated synthetic data.
+- [ ] **Validation:** Test these synthetic-trained models on the held-out *Real* patient folds.
+- [ ] **Success Criteria:** If the TSTR accuracy matches or exceeds the TRTR ~30% baseline, we prove the CVAE successfully captured the biology while discarding the batch-effect noise.
 
-**Current Phase:** Phase 1 (Foundation & Benchmarking)
-**Status:** 🟡 **In Progress** (Data Processing)
-
-| Component | Status | Notes |
-| --- | --- | --- |
-| **Data Pipeline** | 🟢 **Ready** | `preprocessing.py` fixed (alignment logic corrected). Running/Ready to run. |
-| **Data Integrity** | 🟢 **Verified** | `test_data_integrity.py` passed. Files and maps align perfectly. |
-| **Data Loader** | 🟢 **Ready** | `loader.py` implements Group-Aware splitting to prevent leakage. |
-| **Baseline Model** | 🔴 **Pending** | `src/models/baselines.py` needs creation. |
-| **Benchmark** | 🔴 **Pending** | `01_Apollo_Baseline.ipynb` needs to be run to get target accuracy. |
-
+### 📝 Phase 4: Thesis Writing
+- [ ] **Chapter 1-2:** Introduction, Literature Review (Hyperspectral imaging, Generalization gaps).
+- [ ] **Chapter 3:** Methodology (MRF, GMM Annotation, $\beta$-CVAE).
+- [ ] **Chapter 4:** Results (TRTR vs TSTR benchmarks).
+- [ ] **Chapter 5:** Conclusion (Synthetic data utility in clinical pipelines).
 ---
 
 
-### **Phase 1: Foundation & Benchmarking (We are here)**
+### **Phase 1: Foundation & Benchmarking **
 
 *Goal: Build the data engine and establish the "Gold Standard" accuracy to beat.*
 

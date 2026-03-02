@@ -20,7 +20,7 @@ class ExperimentConfig:
                 "kernels": [7, 7, 5],
                 "strides": [2, 2, 2],
                 "use_skip_gap": True,       # Used only if use_global_pooling=True
-                "use_global_pooling": True  # <--- ADD THIS (Toggle for GAP vs Flatten)
+                "use_global_pooling": True  # (Toggle for GAP vs Flatten)
             },
             
             # Decoder Architecture
@@ -29,7 +29,7 @@ class ExperimentConfig:
                 "filters": [64, 32, 16],
                 "kernels": [5, 7, 7],
                 "strides": [2, 2, 2],
-                "use_dense_projection": True  # <--- ADD THIS (Default to True for your case)
+                "use_dense_projection": True  # (Default to True for better reconstructions)
             },
             
             # Loss Weights

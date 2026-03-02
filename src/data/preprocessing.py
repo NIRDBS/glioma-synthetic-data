@@ -10,6 +10,8 @@ from scipy.sparse import csc_matrix, eye, diags
 from scipy.sparse.linalg import spsolve
 from tqdm import tqdm
 import natsort
+import ramanspy as rp
+
 
 class RamanPreprocessor:
     """
@@ -26,13 +28,16 @@ class RamanPreprocessor:
     def __init__(self, raw_data_dir, output_file, 
                  mask_strategy="tumor_map", 
                  tumor_maps_path=None, 
-                 calibration_path=None):
+                 calibration_path=None,
+                 use_ramanspy=False):
         
         self.raw_data_dir = Path(raw_data_dir)
         self.output_file = Path(output_file)
         self.mask_strategy = mask_strategy
         self.tumor_maps_path = Path(tumor_maps_path) if tumor_maps_path else None
         self.calibration_path = Path(calibration_path) if calibration_path else None
+        self.use_ramanspy = use_ramanspy
+        self.CROP_REGION = (700, 1800)
 
         self.filename_regex = re.compile(r"LGm-(?P<class_id>\d)[/\\]HF-(?P<patient_id>\d+)_")
         
@@ -148,78 +153,173 @@ class RamanPreprocessor:
             return np.zeros_like(corrected)
             
         return (corrected - min_val) / (max_val - min_val)
+    
+    def _preprocess_batch_ramanspy(self, spectra_batch, wavenumbers_axis):
+        """
+        Applies Crop -> Denoise -> Baseline (IARPLS) -> Normalize using RamanSPy.
+        """
+        # 1. Wrap in Container
+        container = rp.SpectralContainer(spectra_batch, wavenumbers_axis)
+        
+        # 2. Define Pipeline
+        pipeline = rp.preprocessing.Pipeline([
+            rp.preprocessing.misc.Cropper(region=self.CROP_REGION),
+            rp.preprocessing.denoise.SavGol(window_length=7, polyorder=3),
+            rp.preprocessing.baseline.IARPLS(lam=10000, p=0.001), 
+            rp.preprocessing.normalise.MinMax(pixelwise=True)
+        ])
+        
+        # 3. Apply
+        processed_container = pipeline.apply(container)
+        return processed_container.spectral_data, processed_container.spectral_axis
 
     def run(self):
-        # --- [Identical run logic, just copy the loop from previous file] ---
-        # ... (Same file finding & HDF5 writing logic) ...
-        # Ensure you include the "files_to_process = ..." and "with h5py..." block
+        """
+        Executes the full preprocessing pipeline.
         
-        # [Abbreviated for clarity - insert the run() method from your previous upload here]
-        # Just ensure 'self._preprocess_spectrum' is called.
-        
-        # ...
-        
-        # Find Files
+        MODES:
+        1. Legacy Mode (use_ramanspy=False):
+           - Keeps original 1738 spectral points.
+           - Uses manual AirPLS and slow row-by-row processing.
+           - Saves 'spectra' and 'spectra_smoothed'.
+           
+        2. RamanSPy Mode (use_ramanspy=True):
+           - CROPS data to Fingerprint region (700-1800 cm-1).
+           - Uses fast batch processing (IARPLS + SavGol).
+           - Saves 'spectra' only (optimized size).
+        """
         files_to_process = []
         for class_dir in glob.glob(str(self.raw_data_dir / "LGm-*")):
             files_to_process.extend(glob.glob(os.path.join(class_dir, "*.npy")))
         files_to_process = natsort.natsorted(files_to_process)
         print(f"🔍 Found {len(files_to_process)} scan files.")
+        
+        # --- 1. Load Tumor Maps (If needed) ---
+        file_to_map = {}
+        if self.mask_strategy == "tumor_map":
+            print(f"📂 Loading Tumor Maps from {self.tumor_maps_path}...")
+            try:
+                tumor_maps_data = np.load(self.tumor_maps_path, allow_pickle=True)
+                if isinstance(tumor_maps_data, np.ndarray) and tumor_maps_data.dtype == object:
+                     if tumor_maps_data.size == 1: tumor_maps_array = tumor_maps_data.item()
+                     else: tumor_maps_array = tumor_maps_data
+                else: tumor_maps_array = tumor_maps_data
 
+                if isinstance(tumor_maps_array, (list, np.ndarray)):
+                    file_to_map = self._build_file_to_map_correspondence(files_to_process, tumor_maps_array)
+                else:
+                    file_to_map = {f: tumor_maps_array.get(os.path.basename(f)) for f in files_to_process}
+            except Exception as e:
+                print(f"❌ Error loading maps: {e}")
+                return
+
+        # --- 2. Determine Output Shape (Legacy vs RamanSPy) ---
+        if self.use_ramanspy:
+            # Create dummy to find new cropped length
+            dummy_container = rp.SpectralContainer(np.zeros((1, len(self.wavenumbers))), self.wavenumbers)
+            cropper = rp.preprocessing.misc.Cropper(region=self.CROP_REGION)
+            dummy_out = cropper.apply(dummy_container)
+            final_wavenumbers = dummy_out.spectral_axis
+            n_features = len(final_wavenumbers)
+            print(f"📏 RamanSPy Mode: Output shape is {n_features} features (Cropped).")
+        else:
+            # Legacy Mode: Keep original full size
+            final_wavenumbers = self.wavenumbers
+            n_features = len(self.wavenumbers)
+            print(f"🐢 Legacy Mode: Output shape is {n_features} features (Full).")
+
+        # --- 3. Create H5 File ---
         with h5py.File(self.output_file, "w") as h5f:
-            h5f.create_dataset("wavenumbers", data=self.wavenumbers)
+            h5f.create_dataset("wavenumbers", data=final_wavenumbers)
             
-            dset_spectra = h5f.create_dataset("spectra", shape=(0, 1738), maxshape=(None, 1738), dtype='float32', compression="gzip")
+            # Dynamic shape based on mode
+            dset_spectra = h5f.create_dataset("spectra", shape=(0, n_features), 
+                                              maxshape=(None, n_features), 
+                                              dtype='float32', compression="gzip")
+            
+            # Only create 'spectra_smoothed' if in Legacy mode (RamanSPy pipeline doesn't need it)
+            if not self.use_ramanspy:
+                dset_spectra_smoothed = h5f.create_dataset("spectra_smoothed", shape=(0, n_features), 
+                                                           maxshape=(None, n_features), 
+                                                           dtype='float32', compression="gzip")
+
             dset_class = h5f.create_dataset("y_class", shape=(0,), maxshape=(None,), dtype='int32')
             dset_patient = h5f.create_dataset("patient_ids", shape=(0,), maxshape=(None,), dtype='int32')
             dset_samples = h5f.create_dataset("sample_ids", shape=(0,), maxshape=(None,), dtype=h5py.string_dtype(encoding='utf-8'))
+            dset_coords = h5f.create_dataset("coords", shape=(0, 2), maxshape=(None, 2), dtype='int32')
 
-            for filepath in tqdm(files_to_process, desc="Processing"):
+            # --- 4. Processing Loop ---
+            for file_num, filepath in enumerate(tqdm(files_to_process, desc="Processing")):
                 filename = os.path.basename(filepath)
                 if any(ignored in filename for ignored in self.IGNORE_SAMPLES): continue
                 
                 match = self.filename_regex.search(filepath)
                 if not match: continue
-                
-                class_id = int(match.group("class_id")) - 1
-                patient_id = int(match.group("patient_id"))
+                class_id, patient_id = int(match.group("class_id")) - 1, int(match.group("patient_id"))
                 sample_name = filename.replace(".npy", "")
 
                 try:
                     raw_cube = np.load(filepath)
-                    if isinstance(raw_cube, np.ndarray) and raw_cube.dtype == 'O':
-                         raw_cube = raw_cube.item().get('data', raw_cube)
-                    
-                    # Create Mask
-                    if self.mask_strategy == "bio_mask":
-                        mask = self._create_bio_mask(raw_cube)
-                        flat_data = raw_cube[mask]
-                    else:
-                        # Fallback for now if you switch strategies
-                        continue
-                        
-                    if flat_data.shape[0] == 0: continue
-                    
-                    # BATCH PROCESSING LOOP
-                    batch_spectra = []
-                    # Pre-allocating list is faster than numpy append loop
-                    batch_spectra = [self._preprocess_spectrum(s) for s in flat_data]
-                    
-                    batch_spectra = np.array(batch_spectra, dtype='float32')
-                    n_new = batch_spectra.shape[0]
+                    if isinstance(raw_cube, np.ndarray) and raw_cube.dtype == 'O': 
+                        raw_cube = raw_cube.item().get('data', raw_cube)
+                except: continue
 
-                    current_size = dset_spectra.shape[0]
-                    new_size = current_size + n_new
-                    
-                    dset_spectra.resize(new_size, axis=0)
-                    dset_class.resize(new_size, axis=0)
-                    dset_patient.resize(new_size, axis=0)
-                    dset_samples.resize(new_size, axis=0)
-                    
-                    dset_spectra[current_size:] = batch_spectra
-                    dset_class[current_size:] = np.full(n_new, class_id, dtype='int32')
-                    dset_patient[current_size:] = np.full(n_new, patient_id, dtype='int32')
-                    dset_samples[current_size:] = np.full(n_new, sample_name)
+                # A. Spatial Smoothing (Always done for mask generation)
+                smoothed_cube = gaussian_filter(raw_cube, sigma=(1.0, 1.0, 0))
 
-                except Exception as e:
-                    print(f"⚠️ Error {filename}: {e}")
+                # B. Mask Selection
+                if self.mask_strategy == "tumor_map":
+                    t_map = file_to_map.get(filepath)
+                    valid_mask = (t_map == 1) if t_map is not None else None
+                else:
+                    valid_mask = self._create_bio_mask(smoothed_cube)
+                
+                if valid_mask is None or np.sum(valid_mask) == 0: continue
+                
+                # C. Extract Data
+                y_coords, x_coords = np.where(valid_mask)
+                flat_data_pure = raw_cube[valid_mask]          
+
+                # --- D. Branching Preprocessing Logic ---
+                if self.use_ramanspy:
+                    # OPTION A: New Fast Way (RamanSPy)
+                    # Returns cropped data automatically
+                    batch_spectra_pure, _ = self._preprocess_batch_ramanspy(flat_data_pure, self.wavenumbers)
+                    # We reuse pure data because RamanSPy handles smoothing internally if configured
+                else:
+                    # OPTION B: Old Legacy Way (Original Logic)
+                    flat_data_smoothed = smoothed_cube[valid_mask]
+                    
+                    batch_spectra_pure = [self._preprocess_spectrum(s) for s in flat_data_pure]
+                    batch_spectra_pure = np.array(batch_spectra_pure, dtype='float32')
+                    
+                    batch_spectra_smoothed = [self._preprocess_spectrum(s) for s in flat_data_smoothed]
+                    batch_spectra_smoothed = np.array(batch_spectra_smoothed, dtype='float32')
+
+                n_new = batch_spectra_pure.shape[0]
+                if n_new == 0: continue
+
+                # --- E. Save to H5 ---
+                current_size = dset_spectra.shape[0]
+                new_size = current_size + n_new
+                
+                # Resize datasets
+                dset_spectra.resize(new_size, axis=0)
+                dset_class.resize(new_size, axis=0)
+                dset_patient.resize(new_size, axis=0)
+                dset_samples.resize(new_size, axis=0)
+                dset_coords.resize(new_size, axis=0)
+                
+                # Write data
+                dset_spectra[current_size:] = batch_spectra_pure
+                dset_class[current_size:] = np.full(n_new, class_id, dtype='int32')
+                dset_patient[current_size:] = np.full(n_new, patient_id, dtype='int32')
+                dset_samples[current_size:] = np.full(n_new, sample_name)
+                dset_coords[current_size:] = np.column_stack((x_coords, y_coords))
+                
+                # Only save smoothed data if in Legacy mode
+                if not self.use_ramanspy:
+                    dset_spectra_smoothed.resize(new_size, axis=0)
+                    dset_spectra_smoothed[current_size:] = batch_spectra_smoothed
+
+        print(f"✅ Processing complete. Saved to {self.output_file}")

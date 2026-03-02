@@ -73,24 +73,29 @@ class GliomaDataLoader:
 
     def __iter__(self):
         if self.split_file and self.split_file.exists():
-            print(f"🔄 Using Manual Splits from: {self.split_file}")
             with open(self.split_file, 'r') as f:
                 splits = json.load(f)
-            
-            for i, (fold_name, split_data) in enumerate(splits.items()):
-                train_samples = split_data['train']
-                test_samples = split_data['test']
                 
-                train_mask = np.isin(self.groups, train_samples)
-                test_mask  = np.isin(self.groups, test_samples)
+                # ---> NEW: Check if using the strict_splits format with holdout
+                if "cv_folds" in splits:
+                    cv_splits = splits["cv_folds"]
+                else:
+                    cv_splits = splits # Fallback to old format
                 
-                yield {
-                    'fold': i,
-                    'fold_name': fold_name,
-                    'train': (self.X[train_mask], self.y_class[train_mask]),
-                    'val':   (self.X[test_mask],  self.y_class[test_mask]),
-                    'val_sample_ids': np.unique(self.groups[test_mask])
-                }
+                for i, (fold_name, split_data) in enumerate(cv_splits.items()):
+                    train_samples = split_data['train']
+                    test_samples = split_data['test'] # This is the validation set for the fold
+                    
+                    train_mask = np.isin(self.groups, train_samples)
+                    test_mask  = np.isin(self.groups, test_samples)
+                    
+                    yield {
+                        'fold': i,
+                        'fold_name': fold_name,
+                        'train': (self.X[train_mask], self.y_class[train_mask]),
+                        'val':   (self.X[test_mask],  self.y_class[test_mask]),
+                        'val_sample_ids': np.unique(self.groups[test_mask])
+                    }
         else:
             print("🔄 Using StratifiedGroupKFold(n=5).")
             sgkf = StratifiedGroupKFold(n_splits=5)

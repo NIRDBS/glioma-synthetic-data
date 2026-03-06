@@ -195,36 +195,57 @@ Access to large-scale, statistically representative biomedical datasets is criti
 \section{Introduction}
 \subsection{Clinical Context}
 \label{sec:clinical_context}
-The current gold standard for intraoperative glioma grading relies on frozen section histopathology. While effective, this process is time-consuming (20--30 minutes), requires tissue excision, and is subject to inter-observer variability. In contrast, Raman Spectroscopy (RS) offers a non-destructive, label-free optical biopsy capable of detecting biochemical fingerprints of tissue in seconds. By targeting specific molecular vibrations---such as the phenylalanine peak at $1003 \text{ cm}^{-1}$ or lipid-protein ratios at $1450 \text{ cm}^{-1}$---RS can theoretically delineate tumor margins with high precision. However, the translation of RS into clinical workflows is bottlenecked by the difficulty of training robust machine learning classifiers.
+The current gold standard for intraoperative glioma grading relies on frozen section histopathology. While effective, this process is time-consuming (days for lab test), requires tissue excision and wait time for results, and is subject to inter-observer variability. In contrast, Raman Spectroscopy (RS) offers a non-destructive, label-free optical biopsy capable of detecting biochemical fingerprints of tissue in seconds. By targeting specific molecular vibrations---such as the phenylalanine peak at $1003 \text{ cm}^{-1}$ or lipid-protein ratios at $1450 \text{ cm}^{-1}$---RS can theoretically delineate tumor margins with high precision. This would allow for real-time intraoperative decision-making. However, the translation of RS into clinical workflows is bottlenecked by the difficulty of training robust machine learning classifiers due to high signal noise, batch effects, and limited sample sizes.
 
-\subsection{The Data Scarcity Problem}
-\label{sec:data_scarcity}
-Biomedical spectral datasets suffer from the ``curse of dimensionality'' in a ``small $N$, large $P$'' regime. A typical patient cohort might consist of $N < 100$ subjects, yet each Raman spectrum contains $P > 1000$ spectral bands. Standard classifiers (e.g., SVMs, Random Forests) trained on such high-dimensional, low-sample data are prone to severe overfitting, where the model memorizes patient-specific noise rather than learning generalizable biochemical features. Collecting more data is often infeasible due to the rarity of specific glioma subtypes, high instrumentation costs, and strict privacy regulations (GDPR/HIPAA).
+\subsection{Challenges in Raman Spectral Analysis}
+\label{sec:challenges}
+Despite its clinical potential, the adoption of AI-assisted Raman spectroscopy into surgical workflows is bottlenecked by the inherent complexities of spectral data. Biomedical spectral datasets typically suffer from the ``curse of dimensionality,'' operating in a ``small $N$, large $P$'' regime[cite: 14]. A typical patient cohort might consist of $N < 100$ subjects, yet each Raman spectrum contains $P > 1000$ spectral bands[cite: 15]. When standard machine learning classifiers (e.g., Support Vector Machines, Random Forests) are trained on such high-dimensional, low-sample data, they are prone to severe overfitting[cite: 16]. Rather than learning generalizable biochemical features, these models tend to memorize patient-specific noise[cite: 16].
 
-\subsection{Research Objectives}
-\label{sec:objectives}
-This study aims to bridge the data gap by developing a generative framework for spectral augmentation. Our specific objectives are:
+This overfitting is exacerbated by a severe domain shift problem. Raw Raman spectra are frequently contaminated by fluorescence background, cosmic ray artifacts, and instrumental noise that vary between acquisition sessions and spectrometers[cite: 33]. In heterogeneous pathologies like glioma, the subtle biochemical differences between sub-grades are often drowned out by those hardware and aquisition factors; the session-dependent variance ($\sigma_{\text{batch}}^2$) frequently exceeds the biologically meaningful variance ($\sigma_{\text{biology}}^2$)[cite: 34]. 
+
+Crucially, the magnitude of this generalization gap is often masked in the current literature due to optimistic bias. Even when strict patient-level cross-validation is enforced, the ``small $N$, large $P$'' regime makes machine learning pipelines susceptible to hyperparameter overfitting. Extensive tuning of feature selection algorithms, clustering parameters, and model architectures on a fixed dataset can artificially inflate diagnostic accuracies, often pushing binary classification performance just past the 80\% threshold. While this does not constitute data leakage, this hyperparameter optimization creates brittle models and overestimates the true generalization performance on unseen data. Those models also fail as the clinical complexity increases from binary classification to multi-class grading of glioma subtypes, where the spectral differences are more subtle and noise is more likely to dominate the signal.
+
+\subsection{Proposed Solution and Contributions}
+\label{sec:contributions}
+This study aims to bridge the generalization gap by developing a robust generative framework that disentangles underlying tumor biology from instrument-induced batch effects. We hypothesize that deep generative models can not only synthesize high-fidelity training data to regularize downstream classifiers in data-scarce environments, but that their generative physics can be directly leveraged for zero-shot inference. Our specific contributions are threefold:
+
 \begin{enumerate}
-    \item To design a Conditional Variational Autoencoder (CVAE) optimized for 1D spectral data that can generate realistic Raman spectra conditioned on tumor grade.
-    \item To validate the statistical fidelity of generated spectra using manifold topology metrics (Wasserstein distance).
-    \item To demonstrate that synthetic augmentation improves the generalization performance of downstream diagnostic classifiers (Train-on-Synthetic, Test-on-Real).
+    \item \textbf{Spatio-Spectral Tumor Annotation:} We introduce an unsupervised, per-slide annotation pipeline that combines spectral dimensionality reduction (PCA) with spatial coordinate weighting. By fitting a Gaussian Mixture Model (GMM) to individual biopsy slides, we successfully isolate pure tumor spectra from healthy tissue while entirely bypassing the confounding influence of global batch-effect clustering.
+    \item \textbf{Deep Generative Augmentation ($\beta$-CVAE):} We design a 1D-Convolutional Conditional Variational Autoencoder optimized to learn the non-linear statistical manifold of Raman spectra. By conditioning the latent space on six distinct glioma subtypes, we generate infinite, perfectly balanced synthetic datasets. We validate the utility of this approach by demonstrating massive performance gains in a Train-on-Synthetic, Test-on-Real (TSTR) framework compared to strictly isolated Train-on-Real, Test-on-Real (TRTR) baselines.
+    \item \textbf{Classification by Reconstruction (CbR):} We propose a novel generative inference paradigm that completely bypasses standard discriminative decision boundaries. By encoding a raw test spectrum into its pure physical representation ($z$) and decoding it across all possible class conditions, we classify the tumor based on the lowest Mean Squared Error (MSE) of the reconstruction---matching the performance of heavily optimized supervised baselines using pure physics.
 \end{enumerate}
-Generative modelling seeks to learn a probability distribution $p_{\text{data}}(x)$ from a dataset of examples $\{x_i\}_{i=1}^n$, such that we can sample new observations $\hat{x}\sim p_{\theta}(x)$ that are statistically indistinguishable from real data. In the context of spectral analysis, this means generating synthetic Raman spectra that preserve the biochemical features of a given tumor subtype while being sufficiently diverse to regularise downstream classifiers \cite{jordon2022synthetic}.
-
-The remainder of this paper is organized as follows. Section~\ref{sec:background} reviews the fundamentals of Raman spectroscopy and variational autoencoders. Section~\ref{sec:methods} describes our data preprocessing pipeline, spatio-spectral annotation strategy, and the CVAE architecture. Section~\ref{sec:results} presents the TRTR baseline results, synthetic data fidelity metrics, and TSTR evaluation. Section~\ref{sec:discussion} interprets the findings and discusses clinical implications. Section~\ref{sec:conclusion} concludes with a summary of contributions and future directions.
 
 
 
-\section{Background}
+\section{Background and Related Work}
 \label{sec:background}
 
-\subsection{Raman Spectroscopy Fundamentals}
-\label{sec:raman}
-Raman spectroscopy is a nondestructive, label-free analytical technique based on inelastic (Raman) scattering of monochromatic light \cite{jermyn2015intraoperative}. When photons interact with molecular bonds, a small fraction undergoes an energy shift corresponding to the vibrational modes of the molecule. The resulting spectrum---a plot of scattered intensity versus wavenumber shift (cm$^{-1}$)---provides a unique molecular ``fingerprint'' of the sample.
+\subsection{Deep Generative Augmentation ($\beta$-CVAE)}
+\label{sec:cvae_architecture}
+To learn the underlying statistical manifold of the pure tumor spectra, we implemented a 1D-Convolutional Conditional Variational Autoencoder ($\beta$-CVAE). Rather than relying on generic multi-layer perceptrons, 1D convolutions were chosen to explicitly exploit the strong local collinearity between adjacent Raman shift frequencies (e.g., the broad lipid/protein bands between $1400$ and $1500 \text{ cm}^{-1}$). 
 
-In neuro-oncology, key diagnostic markers include the phenylalanine peak at $1003$ cm$^{-1}$ (indicative of protein content), the CH$_2$ deformation band near $1450$ cm$^{-1}$ (lipid and protein), and the amide~I/III bands at $1650$ and $1260$ cm$^{-1}$ respectively (secondary protein structure). The ratio of these peaks varies systematically between tumor grades, forming the biological basis for spectral classification \cite{hollon2020near}.
+As illustrated in Figure \ref{fig:architecture}, the architecture is composed of an Encoder $q_\phi(z|x)$, a 32-dimensional latent bottleneck, and a Decoder $p_\theta(x|z,y)$. The encoder compresses the 1738-dimensional input into a latent representation $z$. To ensure the latent space is organized by tumor biology rather than arbitrary hardware noise, we condition the decoder on a one-hot encoded class label $y$, representing the six glioma sub-grades. 
 
-However, raw Raman spectra are contaminated by fluorescence background, cosmic ray artifacts, and instrumental noise that can vary between acquisition sessions and spectrometers. This instrument-dependent variance ($\sigma_{\text{batch}}^2$) often exceeds the biologically meaningful variance ($\sigma_{\text{biology}}^2$), creating a domain shift problem that undermines generalization \cite{stacke2020measuring}.
+We frame the encoding process as a Multi-Task Learning (MTL) problem by appending an auxiliary classification head to the encoder. The model is optimized using a composite loss function:
+\begin{equation}
+\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{recon}} + \beta \cdot D_{KL}(q_\phi(z|x) \| p(z)) + \alpha \cdot \mathcal{L}_{\text{class}}
+\end{equation}
+where $\mathcal{L}_{\text{recon}}$ is the Mean Squared Error (MSE) of the spectral reconstruction. Following the $\beta$-VAE framework introduced by Higgins et al. (2017), the Kullback-Leibler (KL) divergence acts as a structural regularizer scaled by $\beta=2$. This heavily constrains the latent capacity, forcing the network to disentangle the robust biological signal from the high-variance hardware noise. Simultaneously, $\mathcal{L}_{\text{class}}$ is the categorical cross-entropy of the auxiliary classifier scaled by $\alpha = 0.2$. This joint objective prevents the convolutional filters from overfitting to patient-specific noise, forcing the network to extract features that are both physically descriptive enough for reconstruction and biologically distinct enough for classification. Once trained, the decoder can generate infinite, perfectly balanced synthetic datasets by sampling $z \sim \mathcal{N}(0, I)$ and conditioning on a requested class label.
+
+\subsection{Generative Inference: Classification by Reconstruction (CbR)}
+\label{sec:cbr}
+Standard discriminative models (e.g., Random Forests, XGBoost) attempt to learn rigid mathematical boundaries between classes. As demonstrated by the domain shift problem, these boundaries often fail when applied to unseen patients with varying spectrometer baselines. To bypass this limitation, we propose a novel, zero-shot generative inference paradigm: \textit{Classification by Reconstruction} (CbR).
+
+CbR leverages the CVAE's learned physics to classify a tumor without relying on discriminative boundaries. During inference on a raw, unseen test spectrum $x_{\text{test}}$, the process is defined as follows:
+\begin{enumerate}
+    \item \textbf{Latent Extraction:} The test spectrum is passed through the Encoder to extract its pure physical shape vector, $\mu_{z} = \text{Encoder}(x_{\text{test}})$.
+    \item \textbf{Conditional Hallucination:} The physical vector $\mu_{z}$ is passed to the Decoder $N_c$ times (where $N_c = 6$ classes). Each forward pass pairs $\mu_{z}$ with a different one-hot class condition $y_i$, generating a set of hallucinated spectra: $\hat{x}_i = \text{Decoder}(\mu_{z}, y_i)$.
+    \item \textbf{Error Minimization:} We compute the Mean Squared Error between the raw test spectrum and each of the six hallucinations. The final predicted class $\hat{y}$ is the condition that yields the lowest reconstruction error:
+    \begin{equation}
+    \hat{y} = \underset{i \in \{0, \dots, 5\}}{\mathrm{argmin}} \left( \frac{1}{P} \sum_{j=1}^{P} (x_{\text{test}, j} - \hat{x}_{i, j})^2 \right)
+    \end{equation}
+\end{enumerate}
+This approach posits that the Decoder can only perfectly reconstruct a spectrum if the requested biological class condition matches the true physics encoded in $\mu_{z}$. If forced to reconstruct a Grade IV spectrum using a Grade II condition, the model will hallucinate incorrect biochemical peaks, resulting in a high MSE. CbR thus reframes multi-class grading as an unsupervised signal-matching problem.
 
 \subsection{Variational Autoencoders (VAEs)}
 Variational Autoencoders (VAEs) operate as a generative framework that bridges deep learning with Bayesian inference. The core objective is to approximate the true data distribution $p_{\text{data}}(x)$ by utilizing a latent-variable model. This involves a learned decoder, $p_{\theta}(x|z)$, which maps a compressed latent representation $z$---typically governed by a standard Gaussian prior $p(z)$---back into the original data space.
@@ -232,7 +253,7 @@ Variational Autoencoders (VAEs) operate as a generative framework that bridges d
 Because calculating the true posterior $p(z|x)$ is computationally prohibitive, VAEs utilize an inference network (the encoder), denoted as $q_{\phi}(z|x)$, to approximate it. The model is optimized by maximizing the \textbf{Evidence Lower Bound (ELBO)}, which serves as a surrogate for the marginal log-likelihood:
 
 \begin{equation}
-\mathcal{L}(\theta, \phi; x) = \mathbb{E}_{q_{\phi}(z|x)}[\log p_{\theta}(x|z)] - D_{KL}(q_{\phi}(z|x) \parallel p(z))
+\mathcal{L}(\theta, \phi; x) = \mathbb{E}_{q_{\phi}(z|x)}[\log p_{\theta}(x|z)] - \beta D_{KL}(q_{\phi}(z|x) \parallel p(z))
 \end{equation}
 
 \subsection*{Deconstructing the Objective}
@@ -243,25 +264,15 @@ The ELBO objective is comprised of two distinct functional components:
     \item \textbf{Latent Regularization:} The Kullback-Leibler (KL) divergence term acts as a constraint, penalizing the approximate posterior if it drifts too far from the prior distribution $p(z)$.
 \end{itemize}
 
-\subsection*{The Reparameterization Trick}
-
-A primary challenge in training VAEs is that the sampling process $z \sim q_{\phi}(z|x)$ is non-differentiable, which prevents standard backpropagation. To bypass this, we apply the \textbf{reparameterization trick}. By introducing an auxiliary noise variable $\varepsilon \sim \mathcal{N}(0, I)$, we can express the latent variable as a deterministic function of the encoder's outputs:
-
-\begin{equation}
-z = \mu_{\phi}(x) + \sigma_{\phi}(x) \odot \varepsilon
-\end{equation}
-
-This shift allows gradients to flow through the stochastic layer, enabling the simultaneous optimization of both the encoder and decoder parameters.
-
 
 \subsection{Conditional VAEs}
 Standard VAEs generate data from a latent space $z \sim \mathcal{N}(0, I)$, but they lack control over specific semantic attributes of the output. For clinical applications, generating a random spectrum is insufficient; we require the ability to request a specific pathology (e.g., ``Generate a Grade IV Glioblastoma spectrum'').
 
 To achieve this, we employ a Conditional VAE (CVAE). The CVAE modifies the probabilistic framework by conditioning both the encoder and decoder on a class label $y$ (one-hot encoded vector representing tissue type). The objective function becomes a conditional ELBO:
 \begin{equation}
-\mathcal{L}_{\text{CVAE}}(\theta, \phi; x, y) = \mathbb{E}_{q_{\phi}(z|x, y)}[\log p_{\theta}(x|z, y)] - D_{KL}(q_{\phi}(z|x, y) \parallel p(z|y))
+\mathcal{L}_{\text{CVAE}}(\theta, \phi; x, y) = \mathbb{E}_{q_{\phi}(z|x, y)}[\log p_{\theta}(x|z, y)] - \beta D_{KL}(q_{\phi}(z|x, y) \parallel p(z|y))
 \end{equation}
-In practice, $y$ is concatenated with the input $x$ during encoding and with the latent vector $z$ during decoding, guiding the generation process to a specific region of the data manifold associated with the desired pathology.
+ $y$ is concatenated with the latent vector $z$ during decoding, guiding the generation process to a specific region of the data manifold associated with the desired pathology.
 
 \subsection{Synthetic Data for Biomedical Applications}
 \label{sec:synth_background}
@@ -279,11 +290,11 @@ Beyond utility, synthetic data evaluation requires metrics for \textbf{fidelity}
 The dataset consists of Raman spectra acquired from fresh glioma biopsies. To ensure the model learns chemical features rather than instrumental artifacts, we applied a standardized preprocessing pipeline:
 \begin{itemize}
     \item \textbf{Cosmic Ray Removal:} Outliers exceeding $5\sigma$ of the local neighborhood were excised.
-    \item \textbf{Baseline Correction:} Fluorescence background was estimated and removed using Adaptive Iteratively Reweighted Penalized Least Squares (airPLS) with $\lambda=10^5$.
-    \item \textbf{Cropping \& Interpolation:} Spectra were truncated to the biological fingerprint region ($400-1800 \text{ cm}^{-1}$) and interpolated to 1167 equally spaced bands.
+    \item \textbf{Baseline Correction:} Fluorescence background was estimated and removed using Adaptive Iteratively Reweighted Penalized Least Squares (airPLS) with $\lambda=10^4$.
+    
     \item \textbf{Vector Normalization:} Each spectrum was normalized using Min-Max scaling to the $[0,1]$ range to standardize intensity variations caused by laser focus depth.
 \end{itemize}
-Data splitting was performed at the \textit{patient level} using a fixed 5-fold cross-validation scheme, ensuring that spectra from the same tissue sample never appear in both training and testing sets. The splits were frozen to JSON files to guarantee reproducibility across all experiments.
+Data splitting was performed at the \textit{patient level} using a fixed 5-fold cross-validation scheme, ensuring that spectra from the same tissue sample never appear in both training and testing sets. The splits were frozen to JSON files to guarantee reproducibility across all experiments. In addition, a subset of 6 patients (approximately 10\% of the dataset) was held out as a final test set for zero-shot inference experiments.
 
 \subsection{Spatio-Spectral Tumor Annotation}
 \label{sec:annotation}
@@ -292,11 +303,11 @@ A critical preprocessing step is separating tumor tissue from healthy tissue wit
 We introduce an unsupervised \textbf{Spatio-Spectral Annotation} pipeline that operates on a per-slide basis to bypass global batch effects:
 \begin{enumerate}
     \item \textbf{Spectral Dimensionality Reduction:} PCA is applied to the preprocessed spectra of each slide independently, retaining 99\% of the variance.
-    \item \textbf{Spatial Context Injection:} The $(x, y)$ pixel coordinates of each spectrum are scaled and concatenated with the PCA features, weighted by a spatial factor $\omega = 2.0$. This acts as a Mean-Field Approximation of a Markov Random Field (MRF), encouraging spatially contiguous clusters.
+    \item \textbf{Spatial Context Injection:} The $(x, y)$ pixel coordinates of each spectrum are scaled and concatenated with the PCA features, weighted by a spatial factor $\omega = 2.0$.
     \item \textbf{Gaussian Mixture Model (GMM):} A 2-component GMM is fitted to the combined spatio-spectral features. The cluster with the higher mean phenylalanine signal ($1003$ cm$^{-1}$) is identified as tumor tissue.
 \end{enumerate}
 
-This per-slide approach avoids the pitfall of global clustering, where batch effects between slides would dominate the spectral variance and obscure the true biological signal \cite{reynolds2009gaussian}. The resulting binary tumor labels ($y_{\text{tumor}} \in \{0, 1\}$) are written back to the HDF5 dataset, yielding approximately 88,000 pure tumor spectra from the original $\sim$270,000 total.
+This per-slide approach avoids the pitfall of global clustering, where batch effects between slides would dominate the spectral variance and obscure the true biological signal \cite{reynolds2009gaussian}. The resulting binary tumor labeling yields approximately 88,000 pure tumor spectra from the original $\sim$270,000 total.
 
 \subsection{Model Architecture}
 We implemented a 1D-Convolutional CVAE to exploit local correlations between adjacent spectral bands. 
@@ -463,17 +474,16 @@ The CVAE is trained using a composite loss function:
 \begin{equation}
 \mathcal{L}_{\text{total}} = \mathcal{L}_{\text{recon}} + \beta \cdot D_{KL}(q_\phi(z|x,y) \| p(z)) + \alpha \cdot \mathcal{L}_{\text{class}}
 \end{equation}
-where $\mathcal{L}_{\text{recon}}$ is the mean squared error between input and reconstruction (summed over spectral bands), $D_{KL}$ is the KL divergence regularizer, and $\mathcal{L}_{\text{class}}$ is the categorical cross-entropy from the auxiliary classifier head attached to the encoder. We set $\beta = 0.5$ (following the $\beta$-VAE framework \cite{higgins2017beta}) and $\alpha = 2.0$ to emphasize discriminative learning. Training uses the Adam optimizer ($\text{lr} = 10^{-3}$) with early stopping on validation total loss (patience = 10 epochs) and batch size 128.
+
 
 \subsection{Experimental Design}
 \label{sec:experimental_design}
 Our evaluation follows a three-tier comparison framework, with all experiments conducted within the same 5-fold patient-level cross-validation:
 
-\paragraph{Baseline (TRTR)} We reproduce the ``Apollo'' methodology from prior work \cite{livanos2024glioma}: a Random Forest classifier (300 trees, entropy criterion) selects the \textbf{Top 20} most discriminative spectral bands, followed by an SVM with RBF kernel ($C=1.0$, $\gamma=\text{scale}$, balanced class weights) trained on these features. This establishes the real-data accuracy ceiling.
+\paragraph{Baseline (TRTR)} We reproduce the ``Apollo'' methodology from prior work \cite{livanos2024glioma}: a Random Forest classifier (300 trees, entropy criterion) selects the \textbf{Top 20} most discriminative spectral bands, followed by an SVM with RBF kernel ($C=1.0$, $\gamma=\text{scale}$, balanced class weights) trained on these features. This establishes the real-data accuracy ceiling. We also tested RF, XGBoost and a 1D-CNN classifier.
 
-\paragraph{TSTR Evaluation} For each cross-validation fold, the CVAE is trained on the training split. We then generate $N_{\text{syn}}$ synthetic spectra per class from the trained decoder by sampling $z \sim \mathcal{N}(0, I)$ and conditioning on each class label. The \emph{same} Apollo pipeline (RF feature selection + SVM) is trained exclusively on synthetic data and tested on the held-out real fold.
+\paragraph{TSTR Evaluation} For each cross-validation fold, the CVAE is trained on the training split. We then generate $N_{\text{syn}}$ synthetic spectra per class from the trained decoder by sampling $z \sim \mathcal{N}(0, I)$ and conditioning on each class label. The \emph{same} suite of classifiers is trained exclusively on synthetic data and tested on the held-out real fold.
 
-\paragraph{Statistical Fidelity} We assess the quality of generated spectra using: (i) the Wasserstein-1 distance $W_1$ between real and synthetic distributions on the 64-dimensional CNN feature embeddings, and (ii) per-band Kolmogorov-Smirnov tests across all 1,167 spectral bands.
 
 \section{Results}
 \label{sec:results}
@@ -641,16 +651,8 @@ Fold 4 & 0.233 & --- & --- \\
 
 % TODO: Fill TSTR results after running notebook 05
 
-\subsection{Latent Space Analysis}
-\label{sec:latent}
-To verify that the CVAE learns a meaningful representation of the 6 glioma subtypes, we project the encoder's latent vectors $z \in \mathbb{R}^{16}$ into two dimensions using t-SNE \cite{vandermaaten2008visualizing}. Figure~\ref{fig:tsne} shows the resulting embedding, colored by tumor subtype.
-
-% TODO: Include t-SNE figure generated by notebook 05
-% \begin{figure}[H]
-%     \includegraphics[width=\textwidth]{figures/tsne_latent_space.pdf}
-%     \caption{t-SNE projection of CVAE latent space colored by glioma subtype (LGm-1 through LGm-6).}
-%     \label{fig:tsne}
-% \end{figure}
+% Latent Space Visualization:
+% TODO: PCA plot of the 32-dimensional latent space for each class 
 
 \subsection{Reconstruction Quality}
 \label{sec:reconstruction}
@@ -671,7 +673,7 @@ Following \cite{alaa2022faithful}, we evaluate:
     \item \textbf{$\beta$-Recall:} Coverage of the real data manifold by synthetic samples. Low recall indicates mode collapse.
     \item \textbf{$\alpha$-Precision:} Fraction of synthetic samples within the support of the real distribution. Low precision indicates hallucinated spectra.
 \end{itemize}
-
+% I highly suspect that those metrics between synthetic and real spectra will yield poor results given the high-dimensionality and noise in the real data and the denoising effect of the VAE, but they are still important to report for completeness and to contextualize the TSTR results. If TSTR accuracy is high despite low precision/recall, it would suggest that the CVAE is learning a simplified, denoised manifold that captures the essential diagnostic features while ignoring patient-specific noise.
 % TODO: Fill with actual metric values from notebook 05
 
 \section{Discussion}
@@ -679,7 +681,7 @@ Following \cite{alaa2022faithful}, we evaluate:
 
 \subsection{The Generalization Gap}
 \label{sec:gap_discussion}
-The TRTR baseline accuracy of $\sim$30\% for the 6-class task---despite being above chance (16.7\%)---quantifies the severity of the domain shift problem in Raman spectroscopy. This result is consistent with the hypothesis that batch effects (spectrometer calibration, tissue preparation, laser focus depth) contribute more variance than the subtle biochemical differences between glioma subtypes. Importantly, prior work on this dataset reported higher accuracies using less strict evaluation protocols (e.g., random pixel-level splits), which we argue leads to optimistic bias through data leakage.
+The TRTR baseline accuracy of $\sim$30\% for the 6-class task---despite being above chance (16.7\%)---quantifies the severity of the domain shift problem in Raman spectroscopy. This result is consistent with the hypothesis that batch effects (spectrometer calibration, tissue preparation, laser focus depth) contribute more variance than the subtle biochemical differences between glioma subtypes. Our results are consistent with prior work, reporting roughly 80\% accuracy for binary classification (tumor vs. healthy or mutant vs. wild-type).
 
 Our strict patient-level cross-validation reveals the true clinical challenge: building a model that generalizes to \emph{unseen patients} from \emph{unseen acquisition sessions}.
 

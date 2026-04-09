@@ -1,0 +1,24 @@
+{
+  "_metadata": {
+    "description": "Experiment registry for glioma-synthetic-data project",
+    "version": "1.0",
+    "created": "2026-03-29",
+    "notes": "Tracks all experiments with metadata for reproducibility"
+  },
+  "exp_101": {
+    "created_date": "2026-03-29T14:04:24.637477",
+    "description": "Complete pipeline: Real data (TRTR) + synthetic (CVAE) + test on synthetic (TSTR) + statistical evaluation",
+    "status": "running",
+    "last_run_date": "2026-04-08T10:49:03.703500",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-03-29 14:04:24"
+  },
+  "exp_102": {
+    "created_date": "2026-04-07T22:44:57.062657",
+    "description": "Enhanced preprocessing: 3x3 spatial median filter + pre-computed patient tumor_masks",
+    "status": "running",
+    "last_run_date": "2026-04-08T15:15:56.352807",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-04-07 22:44:57"
+  }
+}

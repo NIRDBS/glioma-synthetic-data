@@ -1,0 +1,707 @@
+\documentclass[12pt]{article}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage{amsmath, amssymb}
+\usepackage{amsmath, amssymb}
+\usetikzlibrary{shapes, backgrounds, calc, positioning, decorations.pathreplacing, shadows, arrows.meta}
+
+% --- Colors ---
+\definecolor{realColor}{RGB}{0, 100, 200}    % Deep Blue
+\definecolor{synColor}{RGB}{220, 50, 50}     % Deep Red
+\definecolor{transportColor}{RGB}{230, 140, 0} % Orange for Wasserstein
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, backgrounds, fit, shadows}
+\usepackage{amsmath, amssymb}
+\usetikzlibrary{shapes, backgrounds, calc, positioning, decorations.pathreplacing, shadows}
+
+% --- Colors ---
+\definecolor{realColor}{RGB}{0, 100, 200}    % Deep Blue
+\definecolor{synColor}{RGB}{220, 50, 50}     % Deep Red
+\definecolor{overlapColor}{RGB}{100, 0, 100} % Purple (Overlap)
+
+% --- Professional Colors ---
+\definecolor{encoderColor}{RGB}{230, 240, 250} % Light Blue
+\definecolor{decoderColor}{RGB}{250, 230, 230} % Light Red
+\definecolor{tensorColor}{RGB}{255, 255, 255}  % White
+\definecolor{lineColor}{RGB}{50, 50, 50}       % Dark Grey
+\definecolor{highlight}{RGB}{0, 100, 180}      % Deep Blue
+% ---- Select text fonts ----
+\input{glyphtounicode}
+\pdfgentounicode=1
+\usepackage[T1]{fontenc}
+\usepackage{sourceserifpro}
+\usepackage{sourcecodepro}
+\usepackage[hyphens]{url}
+
+% ---- Select math fonts ----
+\usepackage{MnSymbol}
+\usepackage[cal=euler,bb=fourier]{mathalpha}
+\newcommand{\hmmax}{0}
+\newcommand{\bmmax}{0}
+\usepackage{bm}
+\usepackage[italic,eulergreek,nolessnomore,noparenthesis,noplusnominus,noequal,nohbar]{mathastext}
+\MTsetmathskips{f}{3mu}{0mu}
+\MTsetmathskips{y}{2mu}{0mu}
+\MTsetmathskips{p}{2mu}{0mu}
+\MTsetmathskips{j}{2mu}{0mu}
+
+% ---- Page layout ----
+\usepackage{geometry}
+\geometry{top=1in, bottom=1.2in, left=1.3in, right=1.3in, footskip=0.7in}
+
+% ---- Spacing ----
+\usepackage[onehalfspacing]{setspace}
+\usepackage{microtype}
+\AtBeginDocument{\frenchspacing}
+
+% ---- Colors ----
+\usepackage[x11names]{xcolor}
+
+% ---- Headers and footers ----
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\renewcommand{\headrule}{}
+\fancyhf{}
+\fancypagestyle{plain}{\fancyhf{}}
+\fancyfoot[C]{\thepage}
+
+% ---- Title page ----
+\usepackage{titling}
+\usepackage{xparse}
+\pretitle{\begin{center}\bfseries\Huge}
+\renewcommand{\tamark}{}
+\setlength{\thanksmarkwidth}{0em}
+\setlength{\thanksmargin}{0em}
+
+\NewDocumentCommand{\available}{o g}{%
+\fancypagestyle{plain}{\fancyfoot[C]{\color{gray}\footnotesize%
+\IfValueT{#1}{Published in \emph{#1}\;\textbullet\;}%
+Available at \url{#2}}}}
+
+\usepackage{etoolbox}
+\AtBeginEnvironment{titlepage}{\pagestyle{empty}\setlength{\parindent}{0pt}}
+
+% ---- Section headings ----
+\usepackage{titlesec}
+\titleformat*{\section}{\centering\large\bfseries}
+\titleformat*{\subsection}{\bfseries}
+\titleformat{\paragraph}[runin]{\itshape}{}{}{}[\@addpunct{.}]
+\titlelabel{\thetitle.\quad}
+
+% ---- Theorems and proofs ----
+\usepackage{amsthm}
+\newtheoremstyle{paper}{}{}{\itshape}{}{\scshape}{.}{0.5em}{}
+\theoremstyle{paper}
+\newtheorem{theorem}{theorem}
+\newtheorem{proposition}{proposition}
+\newtheorem{lemma}{lemma}
+\newtheorem{corollary}{corollary}
+\newtheorem{definition}{definition}
+\newtheorem{assumption}{assumption}
+\newtheorem{remark}{remark}
+\renewcommand{\proofname}{\upshape\scshape proof}
+
+% ---- Figures and tables ----
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{rotating}
+\usepackage{multirow}
+\renewcommand{\floatpagefraction}{0}
+\makeatletter\g@addto@macro\@floatboxreset\centering\makeatother
+\renewcommand{\arraystretch}{1.1}
+\BeforeBeginEnvironment{tabular*}{\footnotesize}
+\renewcommand{\tablename}{\textsc{table}}
+\renewcommand{\figurename}{\textsc{figure}}
+
+\usepackage{caption,subcaption}
+\captionsetup{labelsep=period}
+\captionsetup[table]{position=top}
+\captionsetup[sub]{labelformat=simple,labelsep=period,size=small}
+\renewcommand{\thesubfigure}{\Alph{subfigure}}
+
+\NewDocumentCommand{\note}{o g}{%
+\parbox{\textwidth}{\footnotesize\vspace*{10pt}%
+\IfValueT{#1}{\textit{#1}:\quad}%
+#2}}
+
+% ---- Equations ----
+\usepackage{amsmath}
+\AtBeginDocument{\allowdisplaybreaks[1]}
+
+% ---- Lists ----
+\usepackage{enumitem}
+\setlist[itemize,1]{leftmargin=\parindent,label=\color{gray}{\upshape\textbullet}}
+\setlist[itemize,2]{leftmargin=2\parindent,label=\color{gray}{\upshape\textendash}}
+\setlist[enumerate,1]{leftmargin=\parindent,label=\color{gray}{\upshape\alph*.}}
+\setlist[enumerate,2]{leftmargin=2\parindent,label=\color{gray}{\upshape\roman*.}}
+\setlist{nosep}
+
+% ---- Bibliography ----
+\usepackage{natbib}
+\setcitestyle{aysep={}}
+\renewcommand{\bibfont}{\small}
+\setlength{\bibsep}{0pt}
+\setlength{\bibhang}{\parindent}
+
+% ---- Appendix formatting ----
+\AfterEndEnvironment{thebibliography}{
+\setcounter{theorem}{0}
+\setcounter{proposition}{0}
+\setcounter{lemma}{0}
+\setcounter{corollary}{0}
+\setcounter{definition}{0}
+\setcounter{assumption}{0}
+\setcounter{remark}{0}
+\setcounter{table}{0}
+\setcounter{figure}{0}
+\setcounter{equation}{0}
+\renewcommand{\thetheorem}{A\arabic{theorem}}
+\renewcommand{\theproposition}{A\arabic{proposition}}
+\renewcommand{\thelemma}{A\arabic{lemma}}
+\renewcommand{\thecorollary}{A\arabic{corollary}}
+\renewcommand{\thedefinition}{A\arabic{definition}}
+\renewcommand{\theassumption}{A\arabic{assumption}}
+\renewcommand{\theremark}{A\arabic{remark}}
+\renewcommand{\thetable}{A\arabic{table}}
+\renewcommand{\thefigure}{A\arabic{figure}}
+\renewcommand{\theequation}{A\arabic{equation}}
+\titleformat{\section}{\centering\large\bfseries}{Appendix~\thesection.}{1em}{}}
+
+% ---- Hyperlinks ----
+\usepackage[pdftex,hidelinks,hypertexnames=false,pdfpagemode=UseNone,pdfdisplaydoctitle=true]{hyperref}
+
+% =========================================================================
+% DOCUMENT METADATA
+% =========================================================================
+
+\title{Synthetic Data Generation and Classification by Reconstruction in Spectral Diagnostics}
+\author{Andrei Iușan, Iulian Vasile}
+\date{\today}
+
+% Optional: Add publication info to footer
+% \available[Journal Name]{https://yourdomain.com/paper}
+
+% =========================================================================
+% DOCUMENT CONTENT
+% =========================================================================
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Access to large-scale, statistically representative biomedical datasets is essential for facilitating the progress of AI-driven medical diagnostics. This is particularly evident in the context of Raman Spectroscopy (RS) for glioma grading, where AI models are needed in order to identify varying degrees of malignancy. However, two limitations persist, i.e. the scarcity of patient derived data and high instrument-induced intra-sample correlations, which cause standard classifiers to overfit to hardware noise rather than underlying biological signals. To quantify and bridge this generalization gap, we establish a rigorous 5-fold patient-isolated evaluation framework. We demonstrate that while standard models can differentiate IDH-Mutant from Wildtype tumors (71.4\% accuracy) due to high metabolic shifts, they collapse to $\sim$30\% accuracy on the subtle 6-class grading task. To overcome this, we first use a spatial median filter and implement label unmixing using NMF and GMM in order to keep only high-quality spectra, then train a 1D-Convolutional Conditional Variational Autoencoder ($\beta$-CVAE) to generate high-fidelity, denoised synthetic spectra. We demonstrate that training strictly on synthetic data (TSTR) achieves similar results to training on real data. Finally, we propose a zero-shot inference paradigm, \textit{Classification by Reconstruction} (CbR), which matches optimized supervised baselines using the generative model. These findings establish deep generative data augmentation as a viable pathway to overcome hardware-induced domain shifts, bringing label-free optical biopsies closer to intraoperative clinical deployment.
+\end{abstract}
+
+\section{Introduction}
+\subsection{Clinical Context}
+\label{sec:clinical_context}
+The current gold standard for intraoperative glioma grading relies on frozen section histopathology. While effective, this process is time-consuming (days for lab test), requires tissue excision and long wait time for results, and is subject to inter-observer variability. In contrast, Raman Spectroscopy (RS) offers a non-destructive, label-free optical biopsy capable of detecting biochemical fingerprints of tissue in seconds. By identifying specific molecular vibrations---such as the phenylalanine peak at $1003 \text{ cm}^{-1}$ or lipid-protein ratios at $1450 \text{ cm}^{-1}$---RS can theoretically delineate tumor margins with high precision. This would allow for real-time intraoperative decision-making. However, the translation of RS into clinical workflows is hindered by the difficulty of training robust machine learning classifiers due to high signal noise, batch effects, and limited sample sizes. 
+
+\subsection{Challenges in Raman Spectral Analysis}
+\label{sec:challenges}
+Despite its clinical potential, the adoption of AI-assisted Raman spectroscopy into surgical workflows is bottlenecked by the inherent complexities of spectral data. Biomedical spectral datasets typically suffer from the ``curse of dimensionality,'' operating in a ``small $N$, large $P$'' regime[cite: 14]. A typical patient cohort might consist of $N < 100$ subjects, yet each Raman spectrum contains $P > 1000$ spectral bands[cite: 15]. When standard machine learning classifiers (e.g., Support Vector Machines, Random Forests) are trained on such high-dimensional, low-sample data, they are prone to severe overfitting[cite: 16]. Rather than learning generalizable biochemical features, these models tend to memorize patient-specific noise[cite: 16].
+
+This overfitting is exacerbated by a severe domain shift problem. Raw Raman spectra are frequently contaminated by fluorescence background, cosmic ray artifacts, and instrumental noise that vary between acquisition sessions and spectrometers[cite: 33]. In heterogeneous pathologies like glioma, the subtle biochemical differences between sub-grades are often drowned out by those hardware and aquisition factors; the session-dependent variance ($\sigma_{\text{batch}}^2$) frequently exceeds the biologically meaningful variance ($\sigma_{\text{biology}}^2$)[cite: 34]. 
+
+Crucially, the magnitude of this generalization gap is often masked in the current literature due to optimistic bias. Even when strict patient-level cross-validation is enforced, the ``small $N$, large $P$'' regime makes machine learning pipelines susceptible to hyperparameter overfitting. Extensive tuning of feature selection algorithms, clustering parameters, and model architectures on a fixed dataset can artificially inflate diagnostic accuracies, often pushing binary classification performance just past the 80\% threshold. While this does not constitute data leakage, this hyperparameter optimization creates brittle models and overestimates the true generalization performance on unseen data. Those models also fail as the clinical complexity increases from binary classification to multi-class grading of glioma subtypes, where the spectral differences are more subtle and noise is more likely to dominate the signal.
+
+\subsection{Proposed Solution and Contributions}
+\label{sec:contributions}
+This study aims to bridge the generalization gap by developing a robust generative framework that disentangles underlying tumor biology from instrument-induced batch effects. We hypothesize that deep generative models can not only synthesize high-fidelity training data to regularize downstream classifiers in data-scarce environments, but that their generative physics can be directly leveraged for zero-shot inference. Our specific contributions are threefold:
+
+\begin{enumerate}
+    \item \textbf{Spatio-Spectral Tumor Annotation:} We introduce an unsupervised, per-slide annotation pipeline that combines spectral dimensionality reduction (PCA) with spatial coordinate weighting. By fitting a Gaussian Mixture Model (GMM) to individual biopsy slides, we successfully isolate pure tumor spectra from healthy tissue while entirely bypassing the confounding influence of global batch-effect clustering.
+    \item \textbf{Deep Generative Augmentation ($\beta$-CVAE):} We design a 1D-Convolutional Conditional Variational Autoencoder optimized to learn the non-linear statistical manifold of Raman spectra. By conditioning the latent space on six distinct glioma subtypes, we generate infinite, perfectly balanced synthetic datasets. We validate the utility of this approach by demonstrating massive performance gains in a Train-on-Synthetic, Test-on-Real (TSTR) framework compared to strictly isolated Train-on-Real, Test-on-Real (TRTR) baselines.
+    \item \textbf{Classification by Reconstruction (CbR):} We propose a novel generative inference paradigm that completely bypasses standard discriminative decision boundaries. By encoding a raw test spectrum into its pure physical representation ($z$) and decoding it across all possible class conditions, we classify the tumor based on the lowest Mean Squared Error (MSE) of the reconstruction---matching the performance of heavily optimized supervised baselines using pure physics.
+\end{enumerate}
+
+
+
+\section{Background and Related Work}
+\label{sec:background}
+
+\subsection{Synthetic Data for Biomedical Applications}
+\label{sec:synth_background}
+Synthetic data generation has emerged as a promising strategy for overcoming data scarcity in clinical machine learning \cite{jordon2022synthetic}. Unlike classical augmentation techniques (e.g., additive noise, SMOTE), deep generative models learn the underlying data manifold and can produce novel, diverse samples that respect the statistical structure of the original distribution.
+
+The standard evaluation framework for synthetic data utility is the \textbf{Train on Synthetic, Test on Real (TSTR)} paradigm \cite{esteban2017real}. In TSTR, a downstream classifier is trained \emph{exclusively} on generated data and evaluated on held-out real data. If the TSTR accuracy approaches the \textbf{Train on Real, Test on Real (TRTR)} baseline, it demonstrates that the generative model has captured the discriminative features of the real distribution without memorizing individual training examples.
+
+Beyond utility, synthetic data evaluation requires metrics for \textbf{fidelity} (do synthetic samples look realistic?), \textbf{diversity} (does the generator cover the full data manifold or suffer from mode collapse?), and \textbf{privacy} (are synthetic samples sufficiently distant from real training examples?) \cite{alaa2022faithful}.
+
+A more systematic evaluation was provided by Zhao et al.~\cite{zhao2024improving}
+in the context of in~vivo skin cancer detection, where 731 lesions were
+classified using 1D-CNNs alongside conventional chemometric baselines.
+To compensate for the limited number of training spectra ($n = 512$ after
+stratified split), the authors trained a one-dimensional conditional GAN
+(1D-cGAN) and used its generator to synthesise 10{,}000 additional spectra
+per class.
+The contribution of GAN synthesis was isolated through ablation: training on
+synthetic data alone improved the 1D-CNN ROC AUC from $0.886 \pm 0.022$
+(real data only) to $0.907 \pm 0.021$, with comparable gains for SVM
+($0.905 \pm 0.021$) and PLS-DA ($0.893 \pm 0.023$)~\cite{zhao2024improving}.
+Combining GAN synthesis with additive noise injection and spectral shifting
+yielded the best overall performance ($0.909 \pm 0.021$,
+$p < 0.0001$, Wilcoxon signed-rank test), and models trained on augmented
+data exhibited markedly higher robustness to spectral degradation at test time.
+These results confirm that GAN-generated spectra act as a regulariser against
+measurement variability, not merely as a data-volume inflator.
+ 
+However, both Wu et al.\ and Zhao et al.\ share a critical constraint:
+their generative models were trained and evaluated within a single-site,
+single-instrument dataset operating on a binary classification task.
+Neither study addresses the more clinically demanding problem of subtle
+multi-class grading under severe inter-session batch effects, nor does either
+work investigate whether the generator itself can be repurposed directly as
+an inference engine.
+The present work addresses these gaps in three ways: (i)~we extend the TSTR
+framework to a six-class intraoperative glioma grading task under a strict
+patient-isolated evaluation protocol designed to prevent hyperparameter
+overfitting; (ii)~we replace the adversarial GAN objective with a
+$\beta$-regularised Conditional Variational Autoencoder
+($\beta$-CVAE)~\cite{higgins2017beta}, whose information bottleneck more
+aggressively strips instrument-induced batch effects while preserving
+diagnostically relevant biological peaks; and (iii)~we propose
+Classification by Reconstruction (CbR), a zero-shot inference paradigm that
+leverages the CVAE's generative physics directly, requiring no discriminative
+decision boundary.
+
+\section{Methodology}
+\label{sec:methodology}
+
+
+\subsection{Data and Preprocessing}
+\label{sec:preprocessing}
+The dataset consists of Raman spectra acquired from intraoperatively harvested glioma tissue. To ensure the model learns chemical features rather than instrumental artifacts, we applied a standardized preprocessing pipeline:
+\begin{itemize}
+    \item \textbf{Cosmic Ray Removal:} Outliers exceeding $5\sigma$ of the local neighborhood were replaced by their neighbors mean.
+    \item \textbf{Baseline Correction:} Fluorescence background was estimated and removed using Adaptive Iteratively Reweighted Penalized Least Squares (airPLS) with $\lambda=10^2$.
+    
+    \item \textbf{Vector Normalization:} Each spectrum was normalized using Min-Max scaling to the $[0,1]$ range to standardize intensity variations caused by laser focus depth.
+\end{itemize}
+Data splitting was performed at the \textit{patient level} using a fixed 5-fold cross-validation scheme, ensuring that spectra from the same tissue sample never appear in both training and testing sets. In addition, a subset of 6 patients (approximately 10\% of the dataset) was held out as a test set for zero-shot inference experiments.
+
+\subsection{Spatio-Spectral Tumor Annotation}
+\label{sec:annotation}
+A fundamental preprocessing step is separating tumor tissue from healthy tissue within each biopsy scan. We can assume that each spectrum contains a mixture of both tissue types, healthy and tumor, and training generative models on mixed data would dilute the learned class-specific distributions. Therefore we propose an unsupervised \textbf{Spatio-Spectral Annotation} pipeline that operates on a per-slide basis to bypass global batch effects:
+\begin{enumerate}
+    \item \textbf{Spectral Dimensionality Reduction:} PCA is applied to the preprocessed spectra of each slide independently, retaining 99\% of the variance.
+    \item \textbf{Spatial Context Injection:} The $(x, y)$ pixel coordinates of each spectrum are scaled and concatenated with the PCA features, weighted by a spatial factor $\omega = 2.0$.
+    \item \textbf{Gaussian Mixture Model (GMM):} A 2-component GMM is fitted to the combined spatio-spectral features. The cluster with the higher mean phenylalanine signal ($1003$ cm$^{-1}$) is identified as tumor tissue.
+\end{enumerate}
+
+This approach ensures that each slide is processed independently, avoiding global clustering, where batch effects between slides would dominate the spectral variance and obscure the true biological signal \cite{reynolds2009gaussian}. The resulting binary tumor labeling yields approximately 88,000 pure tumor spectra from the original $\sim$270,000 total.
+
+\subsection{Deep Generative Augmentation ($\beta$-CVAE)}
+\label{sec:cvae_architecture}
+To learn the underlying statistical manifold of the pure tumor spectra, we implemented a 1D-Convolutional Conditional Variational Autoencoder ($\beta$-CVAE). 1D convolutions were chosen to explicitly exploit the strong local collinearity between adjacent Raman shift frequencies (e.g., the broad lipid/protein bands between $1400$ and $1500 \text{ cm}^{-1}$). 
+
+As illustrated in Figure \ref{fig:architecture}, the architecture is composed of an Encoder $q_\phi(z|x)$, a 32-dimensional latent bottleneck, and a Decoder $p_\theta(x|z,y)$. The encoder compresses the 1738-dimensional input into a latent representation $z$. To enable class-conditioned generation, we condition the decoder on a one-hot encoded class label $y$, representing the six glioma sub-grades. 
+
+We frame the encoding process as a Multi-Task Learning (MTL) problem by appending an auxiliary classification head to the encoder. The model is optimized using a composite loss function:
+\begin{equation}
+\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{recon}} + \beta \cdot D_{KL}(q_\phi(z|x) \| p(z)) + \alpha \cdot \mathcal{L}_{\text{class}}
+\end{equation}
+where $\mathcal{L}_{\text{recon}}$ is the Mean Squared Error (MSE) of the spectral reconstruction. Following the $\beta$-VAE framework introduced by Higgins et al. (2017), the Kullback-Leibler (KL) divergence acts as a structural regularizer scaled by $\beta=2$. This heavily constrains the latent capacity, forcing the network to disentangle the robust biological signal from the high-variance hardware noise. Simultaneously, $\mathcal{L}_{\text{class}}$ is the categorical cross-entropy of the auxiliary classifier scaled by $\alpha = 0.2$. This joint objective prevents the convolutional filters from overfitting to patient-specific noise, forcing the network to extract features that are both physically descriptive enough for reconstruction and biologically distinct enough for classification. Once trained, the decoder can generate arbitrarly many, perfectly balanced synthetic datasets by sampling $z \sim \mathcal{N}(0, I)$ and conditioning on a requested class label.
+
+
+\begin{tikzpicture}[
+    scale=1.05,
+    transform shape,
+    node distance=1.1cm,
+    >={Latex[width=1.5mm,length=1.5mm]},
+    font=\sffamily\footnotesize,
+    thick,
+    tensor/.style={
+        draw=lineColor,
+        fill=tensorColor,
+        rectangle,
+        rounded corners=1.5pt,
+        minimum height=1.5cm,
+        minimum width=0.45cm
+    },
+    shorttensor/.style={
+        draw=lineColor,
+        fill=tensorColor,
+        rectangle,
+        rounded corners=1.5pt,
+        minimum height=1.0cm,
+        minimum width=0.45cm
+    },
+    block/.style={
+        draw=lineColor,
+        rectangle,
+        rounded corners=3pt,
+        minimum width=2.1cm,
+        minimum height=2.8cm,
+        align=center
+    },
+    op/.style={
+        draw=lineColor,
+        circle,
+        fill=white,
+        inner sep=0pt,
+        minimum size=0.45cm
+    },
+    head/.style={
+        draw=lineColor,
+        rectangle,
+        fill=yellow!10,
+        rounded corners=3pt,
+        minimum width=2.0cm,
+        minimum height=1.0cm,
+        align=center
+    }
+]
+
+% ==========================================================
+% 1. INPUT
+% ==========================================================
+\node[tensor, label=above:Input $x$] (x) at (0,0) {};
+\node[below=0.01cm of x, font=\tiny, color=gray] {$(1738,1)$};
+
+% ==========================================================
+% 2. ENCODER
+% ==========================================================
+\node[block, right=1.0cm of x, fill=encoderColor,
+      label={[yshift=-3.5cm]\textbf{Encoder} $q_\phi(z|x)$}] (encoder) {
+    \textbf{Conv1D}\\
+    $\downarrow$\\
+    Flatten\\
+    $\downarrow$\\
+    Dense
+};
+
+% ==========================================================
+% 3. LATENT SPACE
+% ==========================================================
+\node[shorttensor, right=1.1cm of encoder, yshift=0.4cm, label=above:$\mu$] (mu) {};
+\node[shorttensor, right=1.1cm of encoder, yshift=-0.8cm, label=below:$\log \sigma^2$] (sigma) {};
+
+\node[op, right=0.9cm of sigma] (mult) {$\otimes$};
+\node[below=0.5cm of mult, align=center, font=\scriptsize] (noiselabel)
+    {$\epsilon \sim \mathcal{N}(0,I)$};
+\draw[->, dashed] (noiselabel) -- (mult);
+
+\node[op] (add) at (mu -| mult) {$\oplus$};
+\node[shorttensor, right=0.6cm of add, fill=green!10, label=above:Latent $z$] (z) {};
+\node[below=0.1cm of z, font=\tiny, color=gray] {$(32)$};
+
+% ==========================================================
+% 4. CLASSIFIER HEAD (branching upward from encoder)
+% ==========================================================
+\node[head, above=1.2cm of encoder] (classifier) {Classifier\\Head};
+\node[tensor, right=1.0cm of classifier, fill=yellow!10, label=above:$\hat{y}$ (Pred)] (ypred) {};
+
+% ==========================================================
+% 5. LABEL y (below latent z, feeds into decoder)
+% ==========================================================
+\node[shorttensor, below=1.2cm of z, fill=red!10, label=below:Label $y$] (y) {};
+\node[below=0.45cm of y, font=\tiny, color=gray] {$(N_c)$};
+
+% ==========================================================
+% 6. DECODER
+% ==========================================================
+\node[op, right=0.7cm of z, yshift=-0.6cm] (concat2) {$\oplus$};
+
+\node[block, right=0.6cm of concat2, fill=decoderColor,
+      label={[yshift=-3.5cm]\textbf{Decoder} $p_\theta(x|z,y)$}] (decoder) {
+    Dense\\
+    $\downarrow$\\
+    Reshape\\
+    $\downarrow$\\
+    \textbf{Conv1D-T}
+};
+
+% ==========================================================
+% 7. OUTPUT
+% ==========================================================
+\node[tensor, right=1.0cm of decoder, label=above:$\hat{x}$] (xhat) {};
+\node[below=0.1cm of xhat, font=\tiny, color=gray] {$(1738,1)$};
+
+% ==========================================================
+% 8. CONNECTIONS
+% ==========================================================
+
+% Input -> Encoder
+\draw[->] (x) -- (encoder);
+
+% Encoder -> mu, sigma
+\draw[->] (encoder.east) -- (mu.west);
+\draw[->] (encoder.east) -- (sigma.west);
+
+% Reparameterisation
+\draw[->] (sigma) -- (mult);
+\draw[->] (mult) -- (add);
+\draw[->] (mu)   -- (add);
+\draw[->] (add)  -- (z);
+
+% Encoder -> Classifier Head (branch upward)
+\draw[->] (encoder.north) -- (classifier.south);
+\draw[->] (classifier)    -- (ypred);
+
+% z -> concat -> Decoder
+\draw[->] (z.east) -| (concat2.north);
+
+% y (label) -> concat (red, annotated)
+\draw[->, color=red] (y.east) -- ++(0.3,0)
+    node[midway, above, font=\scriptsize, color=red] {Concatenate}
+    |- (concat2.south);
+
+% Decoder -> output
+\draw[->] (concat2) -- (decoder);
+\draw[->] (decoder) -- (xhat);
+
+\end{tikzpicture}
+
+\subsection{Generative Inference: Classification by Reconstruction (CbR)}
+\label{sec:cbr}
+Standard discriminative models (e.g., Random Forests, XGBoost) attempt to learn rigid mathematical boundaries between classes. As demonstrated by the domain shift problem, these boundaries often fail when applied to unseen patients with varying spectrometer baselines. To bypass this limitation, we propose a novel, zero-shot generative inference paradigm: \textit{Classification by Reconstruction} (CbR).
+
+CbR leverages the CVAE's learned physics to classify a tumor without relying on discriminative boundaries. During inference on a raw, unseen test spectrum $x_{\text{test}}$, the process is defined as follows:
+\begin{enumerate}
+    \item \textbf{Latent Extraction:} The test spectrum is passed through the Encoder to extract its pure physical shape vector, $\mu_{z} = \text{Encoder}(x_{\text{test}})$.
+    \item \textbf{Conditional Reconstruction:} The physical vector $\mu_{z}$ is passed to the Decoder $N_c$ times (where $N_c = 6$ classes). Each forward pass pairs $\mu_{z}$ with a different one-hot class condition $y_i$, generating a set of reconstructed spectra: $\hat{x}_i = \text{Decoder}(\mu_{z}, y_i)$.
+    \item \textbf{Error Minimization:} We compute the Mean Squared Error between the raw test spectrum and each of the six reconstructions. The final predicted class $\hat{y}$ is the condition that yields the lowest reconstruction error:
+    \begin{equation}
+    \hat{y} = \underset{i \in \{0, \dots, 5\}}{\mathrm{argmin}} \left( \frac{1}{P} \sum_{j=1}^{P} (x_{\text{test}, j} - \hat{x}_{i, j})^2 \right)
+    \end{equation}
+\end{enumerate}
+This approach assumes that the Decoder can only reconstruct a spectrum if the requested biological class condition matches the true physics encoded in $\mu_{z}$. If forced to reconstruct a Grade IV spectrum using a Grade II condition, the model will hallucinate incorrect biochemical peaks, resulting in a high MSE. CbR thus reframes multi-class grading as an unsupervised signal-matching problem.
+
+
+
+\section{Experimental Design}
+\label{sec:experimental_design}
+
+To rigorously quantify the generalization gap and evaluate the efficacy of our generative pipeline, all experiments were conducted within a strict 5-fold patient-level cross-validation framework.
+
+\subsection{Clinical Task Definitions}
+To isolate the impact of biological signal strength versus hardware noise, all models were evaluated on two distinct clinical tasks:
+\begin{itemize}
+    \item \textbf{Binary Classification (IDH-Status):} Differentiating IDH-Mutant (Classes 0, 1, 2) from IDH-Wildtype (Classes 3, 4, 5). This represents a massive metabolic shift that is theoretically easier to detect above spectrometer noise.
+    \item \textbf{6-Class Grading:} Differentiating all six distinct glioma sub-grades. This represents a highly subtle biochemical variance that is easily obscured by batch effects.
+\end{itemize}
+
+\subsection{Baseline Evaluation (TRTR)}
+We establish the real-data performance ceiling using the \textit{Train on Real, Test on Real (TRTR)} paradigm. The training splits consisted of the raw, noisy spectra. We evaluated a suite of four models:
+\begin{enumerate}
+    \item \textbf{RF + SVM:} A reproduction of prior literature utilizing a Random Forest feature selector (Top 20 bands) followed by a Support Vector Machine (RBF kernel, balanced weights).
+    \item \textbf{Random Forest (RF):} A standard ensemble of 100 trees with balanced class weights.
+    \item \textbf{XGBoost:} A gradient-boosted tree ensemble utilizing histogram-based tree methods optimized for high-dimensional data.
+    \item \textbf{1D-CNN:} A deep convolutional classifier with early stopping.
+\end{enumerate}
+
+\subsection{Synthetic Evaluation (TSTR)}
+To test whether the CVAE successfully bridged the domain gap, we utilized the \textit{Train on Synthetic, Test on Real (TSTR)} framework. For each fold, the CVAE was trained exclusively on the real training split. We then discarded the real training data entirely. The trained decoder generated 90,000 perfectly balanced synthetic spectra (15,000 per class) by sampling the latent space $z \sim \mathcal{N}(0, I)$. The exact suite of baseline classifiers (RF+SVM, RF, XGBoost, 1D-CNN) was then trained purely on this synthetic dataset and evaluated on the noisy, held-out real validation fold.
+
+\subsection{Zero-Shot Evaluation (CbR)}
+Finally, the Classification by Reconstruction (CbR) inference method (as defined in Section \ref{sec:cbr}) was evaluated on the held-out real validation folds. Because CbR relies purely on the unsupervised generative physics of the fold-specific CVAE, it requires no discriminative model training. The resulting MSE-based classifications were compared directly against the TRTR and TSTR baselines.
+
+\subsection{Statistical Evaluation}
+\label{sec:statistical_eval}
+Due to the hierarchical nature of biomedical spectral data, individual spectra derived from the same physical biopsy are strongly correlated. Consequently, calculating statistical significance at the individual spectrum level violates the independent and identically distributed (I.I.D.) assumption, artificially shrinking confidence intervals. Conversely, evaluating variance strictly across the macroscopic cross-validation folds ($M=5$) yields very low statistical power.
+To rigorously compute 95\% Confidence Intervals (CIs) and perform significance testing, we implemented an inference-time \textbf{Stratified Cluster Bootstrap}. Across 1,000 iterations, we sampled \textit{patients} (clusters) with replacement, stratified by tumor class. This approach simulates the true clinical variance of drawing a new patient cohort while preserving the original class balance and preventing data leakage. 
+For pairwise model comparisons (TRTR vs. TSTR), we computed the distribution of accuracy differences ($\Delta = \text{Accuracy}_{\text{TSTR}} - \text{Accuracy}_{\text{TRTR}}$) across the bootstrap iterations. Statistical superiority ($H_1: \Delta > 0$) was evaluated using a binomial test on the bootstrap distribution. To strictly control the family-wise Type I error rate when testing our suite of four discriminative models simultaneously, we applied a \textbf{Bonferroni correction}, adjusting the threshold for significance to $\alpha = 0.0125$ (calculated as $0.05 / 4$). 
+Finally, \textbf{McNemar's test} with Yates' continuity correction was employed as an orthogonal, highly robust non-parametric test to evaluate the discordance of paired nominal predictions (correct vs. incorrect classifications) on the same test spectra.
+
+\section{Results}
+\label{sec:results}
+
+To isolate the impact of biological signal strength versus instrument-induced intra sample correlations, we evaluated all models across two distinct tasks: Binary Classification (IDH-Mutant vs. IDH-Wildtype) and 6-Class glioma sub-grading. The results are summarized in Tables \ref{tab:binary_results} and \ref{tab:6class_results}.
+
+\subsection{Binary Classification: Strong Biological Signal}
+\label{sec:results_binary}
+The Binary task represents a massive metabolic shift that provides a strong spectral signal. As shown in Table \ref{tab:binary_results}, standard discriminative models trained on raw data (TRTR) performed robustly, with XGBoost achieving $71.4\%$. Training on CVAE-generated synthetic data (TSTR) further improved the state-of-the-art, pushing Random Forest to $76.1\%$. Notably, our zero-shot Classification by Reconstruction (CbR) method achieved $70.7\%$, directly matching the heavily optimized TRTR baseline using purely unsupervised physics.
+
+\begin{table}[H]
+\centering
+\caption{Binary Classification Accuracy (IDH-Mutant vs. Wildtype)}
+\label{tab:binary_results}
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lccc}
+\toprule
+\textbf{Model} & \textbf{TRTR Accuracy} & \textbf{TSTR Accuracy} & \textbf{Absolute $\Delta$} \\
+\midrule
+RF+SVM & $0.667 \pm 0.063$ & --- & --- \\
+Random Forest   & $0.660 \pm 0.120$ & $\mathbf{0.761 \pm 0.099}$ & $+0.101$ \\
+XGBoost         & $\mathbf{0.714 \pm 0.126}$ & $0.749 \pm 0.093$ & $+0.035$ \\
+1D-CNN          & $0.438 \pm 0.097$ & --- & --- \\
+\midrule
+\textbf{CbR (Generative)} & \multicolumn{3}{c}{$0.707 \pm 0.087$} \\
+\bottomrule
+\end{tabular*}
+\note{TRTR represents training on raw data. TSTR represents training exclusively on synthetic data. CbR requires no training.}
+\end{table}
+
+\subsection{6-Class Grading: Bridging the Generalization Gap}
+\label{sec:results_6class}
+When evaluating the subtle biological differences of the 6-class grading task, standard TRTR models collapsed to $\sim30\%$ (Table \ref{tab:6class_results}), proving that classifiers memorize patient-specific batch effects when the biological variance is small. 
+
+Replacing the noisy training data with perfectly balanced synthetic spectra (TSTR) yielded massive improvements. XGBoost saw a $+17.7\%$ absolute increase, proving the $\beta$-CVAE successfully stripped the hardware noise and acted as an information bottleneck. The 1D-CNN experienced a domain shift crash, as it overfit to the mathematical smoothness of the synthetic training set and failed on the noisy validation data.
+
+\begin{table}[H]
+\centering
+\caption{6-Class Glioma Grading Accuracy}
+\label{tab:6class_results}
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lccc}
+\toprule
+\textbf{Model} & \textbf{TRTR Accuracy} & \textbf{TSTR Accuracy} & \textbf{Absolute $\Delta$} \\
+\midrule
+Apollo Pipeline & $0.295 \pm 0.051$ & $0.403 \pm 0.078$ & $+0.108$ \\
+Random Forest   & $0.301 \pm 0.023$ & $0.456 \pm 0.116$ & $+0.155$ \\
+XGBoost         & $0.297 \pm 0.036$ & $\mathbf{0.474 \pm 0.111}$ & $\mathbf{+0.177}$ \\
+1D-CNN          & $0.191 \pm 0.093$ & $0.117 \pm 0.076$ & $-0.074$ \\
+\midrule
+\textbf{CbR (Generative)} & \multicolumn{3}{c}{$0.469 \pm 0.144$} \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+Remarkably, the zero-shot CbR technique achieved $46.9\%$, statistically tying the best-performing TSTR model without drawing any supervised decision boundaries. 
+
+\subsection{Detailed Performance Metrics}
+\label{sec:detailed_metrics}
+To further analyze class-level performance and error distributions, we evaluated precision, recall, and F1-scores across all tasks. 
+
+\textit{[Placeholder: Insert Table summarizing Precision, Recall, and F1-Scores for the top-performing XGBoost TSTR model and CbR]}
+
+\textit{[Placeholder: Insert Figure with Side-by-Side Confusion Matrices (TRTR vs. TSTR) to visualize where the $+17\%$ accuracy gain occurred]}
+
+\textit{[Placeholder: Insert Figure with ROC Curves for the Binary classification task]}
+
+
+
+\subsection{Spectral Fidelity and the Denoised Manifold}
+\label{sec:fidelity}
+Evaluating the statistical fidelity of generated biomedical data presents a unique challenge. Standard distribution-matching metrics (e.g., Wasserstein distance, $\alpha$-precision) measure how perfectly the synthetic distribution overlaps with the real distribution. However, raw Raman spectra are heavily contaminated by high-frequency instrumental noise. Because the $\beta$-CVAE acts as an information bottleneck, it inherently smooths the generated spectra, effectively denoising the biological signal. 
+
+Consequently, the synthetic distribution exhibits significantly lower variance than the real data. While this divergence might result in suboptimal classical fidelity scores, our downstream TSTR results prove that this "denoised manifold" is functionally superior. The synthetic data perfectly preserves the diagnostically relevant low-frequency biological peaks (e.g., phenylalanine at $1003 \text{ cm}^{-1}$) while discarding the high-frequency batch effects that historically cause discriminative models to overfit.
+
+\textit{[Placeholder: Insert Figure comparing a noisy real spectrum vs. its smoothed CVAE reconstruction]}
+\begin{figure}[H]
+\begin{tikzpicture}[font=\sffamily, thick]
+    
+    % ==========================================================
+    % 1. REAL MANIFOLD (The Support)
+    % ==========================================================
+    \filldraw[
+        draw=realColor, 
+        fill=realColor, 
+        fill opacity=0.1, 
+        line width=1.5pt
+    ] plot[smooth cycle, tension=0.7] coordinates {
+        (-3, 0) (-2, 2.5) (1, 3) (3, 1) (2, -2) (-1, -3) (-3, -1.5)
+    };
+    
+    % Label for Real
+    \node[text=realColor, font=\bfseries] at (-4.5, 2.5) {Real Support ($\mathcal{S}_r$)};
+    
+    % ==========================================================
+    % 2. SYNTHETIC MANIFOLD
+    % ==========================================================
+    \filldraw[
+        draw=synColor, 
+        fill=synColor, 
+        fill opacity=0.1, 
+        line width=1.5pt
+    ] plot[smooth cycle, tension=0.7] coordinates {
+        (0, 0) (0.5, 2.5) (3.5, 2) (4.5, 0) (3, -2.5) (1, -1)
+    };
+    
+    % Label for Synthetic
+    \node[text=synColor, font=\bfseries] at (5.4, 2.2) {Synthetic Support ($\mathcal{S}_g$)};
+    
+    % ==========================================================
+    % 3. DATA POINTS
+    % ==========================================================
+    
+    % --- Real Points ---
+    \foreach \i in {1,...,35} {
+        \fill[realColor!60] 
+        ({rand*1.5 - 0.5}, {rand*1.5}) circle (1.5pt);
+    }
+    
+    % --- Good Synthetic Points (Overlap) ---
+    \foreach \point in {(1, 1), (1.5, 0.5), (2, -0.5), (0.5, 0.5), (1.2, 1.5), (2.2, 0)} {
+        \fill[synColor] \point circle (2pt);
+    }
+    \node[circle, draw=synColor, inner sep=2pt, thick] (goodpoint) at (1.5, 0.5) {};
+    
+    % --- Bad Synthetic Points (Hallucinations) ---
+    \foreach \point in {(3.5, 1), (3.8, 0), (3.2, -1.5), (4, -0.5), (3.5, 0.5)} {
+        \fill[synColor] \point circle (2pt);
+    }
+    \node[circle, draw=synColor, inner sep=2pt, thick] (badpoint) at (3.8, 0) {};
+    
+    % ==========================================================
+    % 4. WASSERSTEIN VISUALIZATION (New Addition)
+    % ==========================================================
+    % Draw "Transport" arrows from Bad Points to Real Manifold
+    % This implies "Moving" the probability mass
+    \draw[-{Stealth}, transportColor, line width=1pt, dashed, shorten >=2pt, shorten <=2pt] 
+        (3.5, 1) -- (2, 1.5);
+    \draw[-{Stealth}, transportColor, line width=1pt, dashed, shorten >=2pt, shorten <=2pt] 
+        (3.8, 0) -- (2.5, 0);
+    \draw[-{Stealth}, transportColor, line width=1pt, dashed, shorten >=2pt, shorten <=2pt] 
+        (3.2, -1.5) -- (1.8, -1.5);
+    
+    % Label for the arrows
+    \node[text=transportColor, font=\footnotesize\bfseries, rotate=15] at (2.93, 0.63) {Transport Cost($W_1$)};
+
+    % ==========================================================
+    % 5. ANNOTATIONS
+    % ==========================================================
+    
+    % Precision/Hallucination Labels
+    \node[align=left, font=\footnotesize, text=synColor!80!black] (goodlabel) at (1, -4) 
+    {\textbf{Realistic Sample}\\(In Support)};
+    \draw[->, synColor, dashed] (goodlabel) -- (goodpoint);
+    
+    \node[align=left, font=\footnotesize, text=synColor!80!black] (badlabel) at (5, -3) 
+    {\textbf{Hallucination}\\(Out of Support)};
+    \draw[->, synColor, dashed] (badlabel) -- (badpoint);
+    
+    % Precision Box (Top Right)
+    \node[align=center, fill=white, draw=gray, rounded corners, drop shadow, inner sep=5pt] at (5.2, 3.5) {
+        
+    };
+
+    % Wasserstein Box (Bottom Left - NEW)
+    \node[align=center, fill=white, draw=transportColor, rounded corners, drop shadow, inner sep=5pt] at (-3.5, -3.5) {
+        \textbf{Wasserstein Distance}\\
+        \textcolor{transportColor}{Cost to move $\mathcal{S}_g \rightarrow \mathcal{S}_r$}\\
+        \scriptsize $W_1 = \inf \mathbb{E}[\|x - y\|]$
+    };
+    
+    % Legend
+    \matrix [draw, fill=white, below left, row sep=2mm, column sep=2mm] at (7.5, -3.5) {
+        \fill[realColor!60] (0,0) circle (2pt); & \node[font=\scriptsize]{Real Data}; \\
+        \fill[synColor] (0,0) circle (2pt); & \node[font=\scriptsize]{Synthetic Data}; \\
+        \draw[-{Stealth}, transportColor, dashed, thick] (0,0) -- (0.5,0); & \node[font=\scriptsize]{Transport ($W_1$)}; \\
+    };
+    
+\end{tikzpicture}
+\caption{Manifold Validation (Wasserstein on Features)}
+\end{figure}
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Biology vs. Batch Effect: The Signal-to-Noise Ratio}
+\label{sec:gap_discussion}
+Our baseline TRTR evaluations explicitly quantify the limits of standard machine learning in spectral analysis. The robust binary classification performance ($\sim$71\%) proves that major metabolic differences, such as the production of 2-Hydroxyglutarate in IDH-Mutant tumors, create a spectral signal strong enough to overpower hardware variance. However, the catastrophic crash to $\sim$30\% on the 6-class task reveals that the subtle biochemical variations between glioma sub-grades are weaker than the instrument-induced batch effects. Standard models, optimized to find any mathematical boundary to minimize loss, inevitably memorize the hardware noise of the training patients, leading to severe failure on unseen validation cohorts.
+
+\subsection{The Power of Generative Regularization}
+The significant $+17.7\%$ TSTR accuracy increase for XGBoost validates our central hypothesis: deep generative models act as a necessary information bottleneck for spectral diagnostics. By training classifiers exclusively on the $\beta$-CVAE's denoised synthetic manifold, we forced the algorithms to learn idealized biological boundaries rather than arbitrary noise patterns. 
+
+This denoising effect also elegantly explains the severe domain shift failure of the 1D-CNN in the TSTR paradigm. Convolutional networks are highly sensitive to local textures. Having been trained on the mathematically smooth synthetic spectra, the CNN became hyper-specialized. When exposed to the raw, noisy validation spectra, the unexpected high-frequency jitter caused catastrophic misclassification, highlighting the necessity of pairing synthetic training data with robust, noise-tolerant classifiers like tree ensembles.
+
+\subsection{Zero-Shot Generative Inference}
+The Classification by Reconstruction (CbR) paradigm represents a fundamental shift in how spectral diagnostics can be approached. By classifying spectra based purely on the lowest generative Mean Squared Error across six conditional hallucinations, CbR completely bypasses the need to draw supervised decision boundaries. The fact that this zero-shot, unsupervised physics-matching technique ($46.9\%$) statistically tied the heavily optimized TSTR XGBoost model ($47.4\%$) proves that the CVAE's latent space successfully disentangled the core biological features of the six tumor sub-grades. 
+
+\subsection{Limitations and Future Work}
+While CbR demonstrates immense promise, the high variance across folds (e.g., $67.3\%$ on Fold 2 vs. $27.5\%$ on Fold 3) highlights a key limitation. The CVAE struggles to accurately reconstruct the spectra of highly anomalous patient presentations or extreme spectrometer deviations not well-represented in the latent prior. Future work could explore mapping the latent space to more complex multimodal priors or utilizing Diffusion Probabilistic Models to better capture rare spectral high-frequency features without sacrificing the denoising properties of the generation process.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

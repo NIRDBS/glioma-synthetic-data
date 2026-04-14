@@ -1,0 +1,112 @@
+# Patient-First TSAR Architecture: Fingerprint Cropping, Patient Balancing, and On-the-Fly Augmentation
+
+name: exp_103
+description: "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation"
+version: "1.0"
+
+# ============================================================================
+# DATA PATHS
+# ============================================================================
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/strict_splits.json"
+  
+  # Isolated output for this specific experiment
+  results_root: "results"
+  experiment_root: "results/exp_103"
+  data_output_dir: "results/exp_103/data"
+  processed_file: "results/exp_103/data/glioma_dataset.h5"
+
+# ============================================================================
+# PREPROCESSING CONFIGURATION
+# ============================================================================
+preprocessing:
+  # Spatial smoothing
+  spatial_median_filter: true           
+  spatial_median_filter_size: 3         
+  
+  # Baseline Correction
+  airpls_lambda: 100                    
+  airpls_porder: 1                      
+  
+  # Normalization
+  normalization: "minmax"               
+
+  # ========== EXP 103 NEW DATA SELECTION ==========
+  signal_length: 1738
+  crop_region: [700, 1800]              # Focus EXCLUSIVELY on the fingerprint region
+  patient_cap: 500                      # Max spectra per patient per class to prevent batch memorization
+  y_tumor: true                         
+  ignore_samples: ['HF-1887_via-t_2_1.h5_3']
+
+  # Tumor Mask Strategy
+  mask_strategy: "tumor_map"
+  tumor_maps_path: "results/exp_102/tumor_maps.npy"  # Reuse the masks from exp_102 to save time
+  use_precomputed_masks: true
+
+# ============================================================================
+# DYNAMIC AUGMENTATION (NEW FOR EXP 103)
+# ============================================================================
+augmentation:
+  enabled: true
+  max_shift: 3                          # Wavenumber shift for calibration drift simulation
+  mixup_alpha: 0.2                      # Beta distribution parameter for intra-class blending
+
+# ============================================================================
+# CROSS-VALIDATION STRATEGY
+# ============================================================================
+cv_strategy:
+  split_source: "data/splits/strict_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+
+# ============================================================================
+# MODEL HYPERPARAMETERS
+# ============================================================================
+models:
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+
+  xgboost:
+    objective: "multi:softprob"
+    num_class: 6
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+
+  cvae:
+    batch_size: 256
+    epochs: 70
+    learning_rate: 0.001
+    latent_dim: 32     
+    beta: 2.0
+    alpha: 0.2
+    gamma: 0.5 # mse weight
+    delta: 0.5 # cosine weight
+    validation_split: 0.1
+    random_state: 42
+    loss_function: "mse_cosine_combo"   # Upgraded loss function
+    
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [64, 32, 16]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+    
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"

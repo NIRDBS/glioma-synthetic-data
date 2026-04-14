@@ -17,7 +17,7 @@
     "created_date": "2026-04-07T22:44:57.062657",
     "description": "Enhanced preprocessing: 3x3 spatial median filter + pre-computed patient tumor_masks",
     "status": "running",
-    "last_run_date": "2026-04-08T15:15:56.352807",
+    "last_run_date": "2026-04-14T17:09:27.430382",
     "last_run_status": "running (notebook-execution)",
     "notes": "Notebook initialization on 2026-04-07 22:44:57"
   }

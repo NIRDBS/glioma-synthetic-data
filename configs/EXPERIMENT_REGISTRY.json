@@ -17,8 +17,24 @@
     "created_date": "2026-04-07T22:44:57.062657",
     "description": "Enhanced preprocessing: 3x3 spatial median filter + pre-computed patient tumor_masks",
     "status": "running",
-    "last_run_date": "2026-04-14T17:09:27.430382",
+    "last_run_date": "2026-04-15T18:42:07.884444",
     "last_run_status": "running (notebook-execution)",
     "notes": "Notebook initialization on 2026-04-07 22:44:57"
+  },
+  "exp_103": {
+    "created_date": "2026-04-15T12:27:55.741864",
+    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "status": "running",
+    "last_run_date": "2026-04-16T10:51:55.480511",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-04-15 12:27:55"
+  },
+  "exp_104": {
+    "created_date": "2026-04-16T12:03:20.426041",
+    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "status": "running",
+    "last_run_date": "2026-04-16T18:14:48.905125",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-04-16 12:03:20"
   }
 }

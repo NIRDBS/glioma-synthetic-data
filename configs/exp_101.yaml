@@ -145,3 +145,15 @@ output:
   include_experiment_name_in_output: true
   save_intermediate: true
   verbosity: "info"
+
+# ============================================================================
+# EXPERIMENT NOTES
+# ============================================================================
+notes: |
+  exp_101: NMF + GMM preprocessing → Baseline TRTR → CVAE synthetic generation → TSTR on synthetic → Statistical evaluation (bootstrap)
+  - Preprocessing: Cosmic Ray Removal, Normalization, NMF + GMM for tumor mask annotation 
+  - TRTR: Train on real data, test on real data (strict patient splits, full dataset)
+  - CVAE: Generate synthetic spectra (20k per class) using real data distribution 
+  - TSTR: Train on real + synthetic, test on synthetic (holdout patients)
+  - Statistical evaluation: Patient-level bootstrap comparing TRTR vs TSTR on real test set (
+  

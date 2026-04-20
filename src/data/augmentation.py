@@ -1,181 +1,229 @@
 """
-Raman Spectra Augmentation Module
-==================================
+On-the-fly spectral augmentation for Raman spectra.
 
-Provides data augmentation for Raman spectroscopy:
-- Spectral shifting (calibration drift simulation)
-- Intra-class mixup (convex combinations of same-class spectra)
-- Training-time augmentation via Keras Sequence
+Supports:
+1. Spectral shift (calibration drift simulation via cubic interpolation)
+   - Real-valued shifts (e.g., 0.5 pixels) handled by cubic interpolation
+2. Within-class mixup (linear blending of spectra within same class)
+   - Randomly draw 2 spectra from same class, blend with p ~ Uniform[0, mixup_alpha]
+3. Batched augmentation with on-the-fly application
 
-Used in exp_103+ for:
-1. CVAE pre-training: RamanAugmentationGenerator feeds augmented data
-2. TATR (Trains-Augmented-Train-Real): Classic models trained on real + augmented mix
+Used in exp_103+ for CVAE pre-training with full augmentation.
+Default: no augmentation (safe for exp_101, exp_102 compatibility).
 """
 
 import numpy as np
+from scipy.interpolate import interp1d
 import tensorflow as tf
 from typing import Optional, Tuple
 
 
-class RamanAugmentationGenerator(tf.keras.utils.Sequence):
+def spectral_shift(spectrum, shift_amount, kind='cubic'):
     """
-    Training-time augmentation for Raman spectroscopy.
+    Apply spectral shift via cubic interpolation.
     
-    Features:
-    - Spectral shifting: simulates calibration drift (±N wavenumber pixels)
-    - Intra-class mixup: convex combinations of spectra from the same class
-    - Configurable enable/disable for augmentation during inference
-    - Stratified shuffling to maintain class balance
+    Simulates calibration drift by shifting the spectrum along the wavenumber axis.
+    Uses cubic interpolation to handle fractional pixel shifts (e.g., 0.5 pixels).
     
-    Usage (CVAE pre-training):
-        train_gen = RamanAugmentationGenerator(X_train, y_train, batch_size=256,
-                                              max_shift=3, mixup_alpha=0.2)
-        cvae.fit(train_gen, validation_data=val_gen, epochs=70)
+    Args:
+        spectrum: (n_features,) array - single spectrum
+        shift_amount: float - shift in pixels (can be fractional, e.g., 0.5, -1.2)
+        kind: str - interpolation kind ('cubic', 'quadratic', 'linear')
     
-    Usage (TATR for classifiers):
-        aug_gen = RamanAugmentationGenerator(X_train, y_train, batch_size=32,
-                                            max_shift=3, augment=True)
-        # Draw one epoch of augmented data
-        for batch_x, _ in aug_gen:
-            X_aug = np.vstack([batch_x for batch_x, _ in aug_gen])  # Single epoch
-        X_combined = np.vstack([X_train, X_aug])
-        y_combined = np.concatenate([y_train, y_train])  # Labels repeat
-        rf.fit(X_combined, y_combined)
+    Returns:
+        shifted_spectrum: (n_features,) array - spectrum after shift
+    """
+    n = len(spectrum)
+    x_orig = np.arange(n, dtype=np.float32)
+    
+    # Build cubic interpolator (extrapolate at edges)
+    f = interp1d(x_orig, spectrum, kind=kind, bounds_error=False, fill_value='extrapolate')
+    
+    # New positions after shift
+    x_shifted = x_orig - shift_amount
+    
+    # Interpolate at new positions
+    spectrum_shifted = f(x_shifted)
+    
+    return spectrum_shifted.astype(np.float32)
+
+
+def within_class_mixup(spectrum, X_data, y_data, class_idx, mixup_alpha):
+    """
+    Randomly blend current spectrum with another from the same class.
+    
+    Implements: new_spectrum = p * other_spectrum + (1-p) * current_spectrum
+    where p is randomly drawn from Uniform[0, mixup_alpha].
+    
+    Args:
+        spectrum: (n_features,) array - current spectrum to augment
+        X_data: (n_samples, n_features) array - all training spectra
+        y_data: (n_samples,) array - all training labels
+        class_idx: int - class label of current spectrum
+        mixup_alpha: float - upper bound for random p
+    
+    Returns:
+        mixed_spectrum: (n_features,) array - augmented spectrum
+    """
+    # Find all indices with same class
+    same_class_indices = np.where(y_data == class_idx)[0]
+    
+    # Randomly pick another spectrum from same class
+    other_idx = np.random.choice(same_class_indices)
+    other_spectrum = X_data[other_idx]
+    
+    # Random blending coefficient p in [0, mixup_alpha]
+    p = np.random.uniform(0, mixup_alpha)
+    
+    # Linear combination
+    mixed_spectrum = p * other_spectrum + (1 - p) * spectrum
+    
+    return mixed_spectrum.astype(np.float32)
+
+
+class AugmentedDataGenerator:
+    """
+    Wraps preprocessed data and applies on-the-fly augmentation.
+    
+    Creates augmented batches without storing augmented data in memory.
+    Supports both full augmentation (shift + mixup) and individual augmentations.
+    
+    Augmentation strategy:
+    1. Spectral shift: Real-valued cubic interpolation (handles 0.5 pixel shifts)
+    2. Within-class mixup: Randomly draw 2 spectra from same class, blend with p ~ Uniform[0, mixup_alpha]
+    
+    Default: Disabled (safe for exp_101, exp_102 backward compatibility).
+    
+    Usage:
+        gen = AugmentedDataGenerator(X_train, y_train, augmentation_config)
+        train_dataset = gen.get_tf_dataset(batch_size=256, epochs=70)
+        cvae.fit(train_dataset, epochs=70)
     """
     
-    def __init__(self, X: np.ndarray, y: np.ndarray, batch_size: int = 256,
-                 max_shift: int = 3, mixup_alpha: float = 0.2,
-                 augment: bool = True, seed: int = 42):
+    def __init__(self, X_data, y_data, augmentation_config=None):
         """
         Initialize augmentation generator.
         
         Args:
-            X: (n_samples, n_features) spectra array
-            y: (n_samples,) class labels
-            batch_size: Batch size for iteration
-            max_shift: Max wavenumber pixel shift (±N)
-            mixup_alpha: Beta distribution parameter for mixup (higher = more aggressive)
-            augment: If False, returns unaugmented batches (for inference)
-            seed: Random seed for reproducibility
+            X_data: (n_samples, n_features) or (n_samples, n_features, 1) - training spectra
+            y_data: (n_samples,) - training labels
+            augmentation_config: dict with keys:
+                - 'enabled': bool - whether to enable augmentation (default: False)
+                - 'max_shift': float - max spectral shift in pixels (default: 3.0)
+                - 'mixup_alpha': float - upper bound for mixup blending (default: 0.5)
         """
-        self.X = X.astype(np.float32)
-        self.y = y.astype(np.int32)
-        self.batch_size = batch_size
-        self.max_shift = max_shift
-        self.mixup_alpha = mixup_alpha
-        self.augment = augment
+        # Handle 3D input (n_samples, n_features, 1) -> (n_samples, n_features)
+        if X_data.ndim == 3:
+            X_data = X_data.squeeze(axis=-1)
         
-        np.random.seed(seed)
-        self.indices = np.arange(len(self.X))
-        self.on_epoch_end()
-
-    def __len__(self) -> int:
-        """Number of batches per epoch."""
-        return int(np.ceil(len(self.X) / self.batch_size))
-
-    def on_epoch_end(self) -> None:
-        """Shuffle indices at end of epoch."""
-        np.random.shuffle(self.indices)
-
-    def _shift_spectra(self, batch_x: np.ndarray) -> np.ndarray:
+        self.X_data = X_data.astype(np.float32)
+        self.y_data = y_data.astype(np.int32)
+        
+        # Default config: no augmentation (backward compatible)
+        if augmentation_config is None:
+            augmentation_config = {'enabled': False}
+        
+        self.config = augmentation_config
+        self.enabled = augmentation_config.get('enabled', False)
+        self.max_shift = augmentation_config.get('max_shift', 3.0)
+        self.mixup_alpha = augmentation_config.get('mixup_alpha', 0.5)
+        
+        self.n_samples = len(X_data)
+        self.n_features = X_data.shape[1]
+    
+    def augment_sample(self, idx):
         """
-        Spectral shift augmentation: simulates calibration drift.
+        Augment a single sample at index idx.
         
-        Randomly shifts spectra left/right by up to `max_shift` pixels,
-        padding edges with the boundary value.
+        Applies in order:
+        1. Within-class mixup (blend with random sample from same class)
+        2. Spectral shift (random calibration drift)
         
         Args:
-            batch_x: (batch_size, n_features) spectra
+            idx: int - index of sample to augment
         
         Returns:
-            Shifted spectra of same shape
+            augmented_spectrum: (n_features,) augmented spectrum
         """
-        shifted_x = np.zeros_like(batch_x)
-        for i in range(len(batch_x)):
-            shift = np.random.randint(-self.max_shift, self.max_shift + 1)
-            if shift > 0:
-                # Shift right: copy data right, pad left with edge value
-                shifted_x[i, shift:] = batch_x[i, :-shift]
-                shifted_x[i, :shift] = batch_x[i, 0]
-            elif shift < 0:
-                # Shift left: copy data left, pad right with edge value
-                shifted_x[i, :shift] = batch_x[i, -shift:]
-                shifted_x[i, shift:] = batch_x[i, -1]
-            else:
-                # No shift
-                shifted_x[i] = batch_x[i]
-        return shifted_x
-
-    def _intra_class_mixup(self, batch_x: np.ndarray, batch_y: np.ndarray) -> np.ndarray:
+        if not self.enabled:
+            return self.X_data[idx]
+        
+        spectrum = self.X_data[idx].copy()
+        class_idx = self.y_data[idx]
+        
+        # 1. Within-class mixup
+        spectrum = within_class_mixup(
+            spectrum, self.X_data, self.y_data, 
+            class_idx, self.mixup_alpha
+        )
+        
+        # 2. Spectral shift (random fractional shift)
+        shift = np.random.uniform(-self.max_shift, self.max_shift)
+        spectrum = spectral_shift(spectrum, shift)
+        
+        return spectrum
+    
+    def get_batches(self, batch_size=256, epochs=1, shuffle=True):
         """
-        Intra-class mixup: convex combinations of same-class spectra.
-        
-        Only blends spectra from the same tumor type/class. If classes don't match,
-        no blending occurs (lam=1.0, identity operation).
-        
-        Mathematical:
-            x_mixed[i] = λ * x[i] + (1 - λ) * x[perm[i]]
-            where λ ~ Beta(α, α)
+        Generator that yields augmented batches.
         
         Args:
-            batch_x: (batch_size, n_features) spectra
-            batch_y: (batch_size,) class labels
+            batch_size: int - batch size
+            epochs: int - number of epochs to iterate
+            shuffle: bool - whether to shuffle indices each epoch
         
-        Returns:
-            Mixed spectra of same shape (with same y labels, no label mixup)
+        Yields:
+            (X_batch, y_batch): tuple of augmented batch data and labels
         """
-        # Shuffle batch to create permutation
-        shuffle_idx = np.random.permutation(len(batch_x))
-        batch_x_shuffled = batch_x[shuffle_idx]
-        batch_y_shuffled = batch_y[shuffle_idx]
-        
-        # Draw lambda from Beta distribution
-        # Shape (batch_size, 1) for broadcasting
-        lam = np.random.beta(self.mixup_alpha, self.mixup_alpha, 
-                            size=(len(batch_x), 1)).astype(np.float32)
-        
-        # Only blend if classes match, else lambda=1 (no change)
-        same_class_mask = (batch_y == batch_y_shuffled).reshape(-1, 1).astype(np.float32)
-        lam = same_class_mask * lam + (1 - same_class_mask) * 1.0
-        
-        # Blend spectra
-        mixed_x = lam * batch_x + (1 - lam) * batch_x_shuffled
-        
-        return mixed_x.astype(np.float32)
-
-    def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]:
+        for epoch in range(epochs):
+            indices = np.arange(self.n_samples)
+            if shuffle:
+                np.random.shuffle(indices)
+            
+            for batch_start in range(0, self.n_samples, batch_size):
+                batch_end = min(batch_start + batch_size, self.n_samples)
+                batch_indices = indices[batch_start:batch_end]
+                
+                # Augment each sample in batch
+                X_batch = np.array([
+                    self.augment_sample(idx) for idx in batch_indices
+                ], dtype=np.float32)
+                y_batch = self.y_data[batch_indices].astype(np.int32)
+                
+                yield X_batch, y_batch
+    
+    def get_tf_dataset(self, batch_size=256, epochs=1, shuffle=True):
         """
-        Get augmented batch.
+        Wrap batches as TensorFlow Dataset.
         
         Args:
-            index: Batch index
+            batch_size: int - batch size
+            epochs: int - number of epochs
+            shuffle: bool - whether to shuffle
         
         Returns:
-            Tuple of (batch_x, batch_y)
-            - batch_x: (batch_size, n_features) augmented spectra or originals
-            - batch_y: (batch_size,) class labels (unchanged)
+            tf.data.Dataset - yields (X_batch, y_batch) tuples
         """
-        # Get batch indices
-        start_idx = index * self.batch_size
-        end_idx = min((index + 1) * self.batch_size, len(self.X))
-        batch_indices = self.indices[start_idx:end_idx]
+        def generator():
+            for X_batch, y_batch in self.get_batches(batch_size, epochs, shuffle):
+                yield X_batch, y_batch
         
-        # Load batch
-        batch_x = self.X[batch_indices].copy().astype(np.float32)
-        batch_y = self.y[batch_indices]
-        
-        # Apply augmentation if enabled
-        if self.augment:
-            # Apply spectral shift first
-            batch_x = self._shift_spectra(batch_x)
-            # Then apply intra-class mixup
-            batch_x = self._intra_class_mixup(batch_x, batch_y)
-        
-        return batch_x, batch_y
+        return tf.data.Dataset.from_generator(
+            generator,
+            output_signature=(
+                tf.TensorSpec(shape=(None, self.n_features), dtype=tf.float32),
+                tf.TensorSpec(shape=(None,), dtype=tf.int32)
+            )
+        )
 
 
-def spectral_loss(y_true: tf.Tensor, y_pred: tf.Tensor,
-                  mse_weight: float = 0.7, cosine_weight: float = 0.3) -> tf.Tensor:
+# Backward compatibility alias
+class RamanAugmentationGenerator(AugmentedDataGenerator):
+    """Backward compatibility alias for AugmentedDataGenerator."""
+    pass
+
+
+def spectral_loss(y_true, y_pred, mse_weight: float = 0.7, cosine_weight: float = 0.3):
     """
     Combined MSE + Cosine Similarity loss for CVAE pre-training on spectral data.
     
@@ -201,6 +249,8 @@ def spectral_loss(y_true: tf.Tensor, y_pred: tf.Tensor,
         
         cvae.compile(optimizer='adam', loss=custom_loss)
     """
+    import tensorflow as tf
+    
     # MSE: pixel-level reconstruction
     mse = tf.keras.losses.mean_squared_error(y_true, y_pred)
     
@@ -242,4 +292,184 @@ def get_augmentation_config(config_dict: dict) -> dict:
         'max_shift': aug_cfg.get('max_shift', 3),
         'mixup_alpha': aug_cfg.get('mixup_alpha', 0.2),
         'augment': True
+    }
+
+
+# ============================================================================
+# DYNAMIC PATIENT CAP SAMPLING
+# ============================================================================
+
+class DynamicPatientCapSequence:
+    """
+    Dynamic patient-level downsampling for training.
+    
+    Instead of permanently downsampling during preprocessing, this generator
+    samples ≤N spectra per (patient_id, class) on each epoch, providing:
+    
+    - Data efficiency: Uses all available data (variable subsets per epoch)
+    - Implicit regularization: Different samples each epoch prevents overfitting
+    - Class balance: Fair representation regardless of patient slide count
+    
+    Key insight: Each epoch, the model sees a DIFFERENT random 500-sample subset
+    from each patient, effectively acting as data augmentation through sampling.
+    
+    Typical patient imbalance:
+        Before: Class_A Patient #5 has 1500 spectra, Patient #10 has 100
+        After: Each epoch, both sampled to min(N, 500) → balanced training
+    
+    Note: Implements Keras Sequence interface without explicit inheritance.
+    Compatible with model.fit(generator) due to duck typing.
+    
+    Usage:
+        train_gen = DynamicPatientCapSequence(
+            X_train, y_train, patient_ids=patient_ids,
+            patient_cap=500, batch_size=256
+        )
+        model.fit(train_gen, validation_data=(X_val, y_val), epochs=70)
+    """
+    
+    def __init__(self, X: np.ndarray, y: np.ndarray, patient_ids: np.ndarray,
+                 patient_cap: int = 500, batch_size: int = 256, seed: int = 42):
+        """
+        Initialize dynamic patient cap generator.
+        
+        Args:
+            X: (n_samples, n_features) spectra array (FULL, uncapped)
+            y: (n_samples,) class labels
+            patient_ids: (n_samples,) patient identifiers (used for grouping)
+            patient_cap: Max spectra per (patient_id, class) to sample per epoch
+            batch_size: Batch size for iteration
+            seed: Random seed for reproducibility
+        """
+        self.X_full = X.astype(np.float32)
+        self.y_full = y.astype(np.int32)
+        self.patient_ids = np.array(patient_ids)
+        self.patient_cap = patient_cap
+        self.batch_size = batch_size
+        self.seed = seed
+        
+        np.random.seed(seed)
+        
+        # Pre-compute (patient_id, class) groups and their indices
+        self.groups = {}  # {(patient_id, class): [idx1, idx2, ...]}
+        for idx in range(len(self.X_full)):
+            group_key = (self.patient_ids[idx], self.y_full[idx])
+            if group_key not in self.groups:
+                self.groups[group_key] = []
+            self.groups[group_key].append(idx)
+        
+        # Sample initial epoch
+        self.sampled_indices = None
+        self.on_epoch_end()
+    
+    def _sample_epoch(self) -> np.ndarray:
+        """
+        Sample up to patient_cap spectra from each (patient_id, class) group.
+        
+        Returns:
+            Array of sampled indices (total may vary slightly due to group sizes)
+        """
+        sampled = []
+        for group_indices in self.groups.values():
+            # Sample up to patient_cap from this group (or all if fewer)
+            n_sample = min(len(group_indices), self.patient_cap)
+            sampled_group = np.random.choice(group_indices, size=n_sample, replace=False)
+            sampled.extend(sampled_group)
+        
+        sampled_indices = np.array(sampled)
+        np.random.shuffle(sampled_indices)
+        return sampled_indices
+    
+    def __len__(self) -> int:
+        """Number of batches per epoch."""
+        # Total sampled size depends on group distribution
+        # Approximate: min(total_spectra, n_groups * patient_cap)
+        approx_size = sum(min(len(group), self.patient_cap) 
+                         for group in self.groups.values())
+        return int(np.ceil(approx_size / self.batch_size))
+    
+    def on_epoch_end(self) -> None:
+        """Resample at end of epoch (different 500-sample subset next epoch)."""
+        self.sampled_indices = self._sample_epoch()
+    
+    def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Get batch from sampled epoch data.
+        
+        Args:
+            index: Batch index
+        
+        Returns:
+            Tuple of (batch_x, batch_y)
+        """
+        start_idx = index * self.batch_size
+        end_idx = min((index + 1) * self.batch_size, len(self.sampled_indices))
+        
+        batch_indices = self.sampled_indices[start_idx:end_idx]
+        batch_x = self.X_full[batch_indices].astype(np.float32)
+        batch_y = self.y_full[batch_indices]
+        
+        return batch_x, batch_y
+    
+    def get_statistics(self) -> dict:
+        """
+        Return statistics about sampling.
+        
+        Returns:
+            Dictionary with sampling info for debugging
+        """
+        stats = {
+            'n_groups': len(self.groups),
+            'total_spectra_full': len(self.X_full),
+            'patient_cap': self.patient_cap,
+            'n_unique_patients': len(np.unique(self.patient_ids)),
+            'n_classes': len(np.unique(self.y_full)),
+        }
+        
+        # Per-group stats
+        group_sizes_before = [len(g) for g in self.groups.values()]
+        group_sizes_after = [min(len(g), self.patient_cap) for g in self.groups.values()]
+        
+        stats.update({
+            'group_sizes_before_min': min(group_sizes_before),
+            'group_sizes_before_max': max(group_sizes_before),
+            'group_sizes_before_mean': np.mean(group_sizes_before),
+            'group_sizes_after_min': min(group_sizes_after),
+            'group_sizes_after_max': max(group_sizes_after),
+            'group_sizes_after_mean': np.mean(group_sizes_after),
+            'total_spectra_sampled': sum(group_sizes_after),
+            'reduction_pct': 100 * (1 - sum(group_sizes_after) / sum(group_sizes_before)),
+        })
+        
+        return stats
+
+
+def get_patient_cap_config(config_dict: dict) -> dict:
+    """
+    Extract patient cap configuration from cv_strategy section.
+    
+    Args:
+        config_dict: Configuration dictionary (from ConfigManager)
+    
+    Returns:
+        Dictionary with patient_cap and cap_strategy, or empty dict if not configured
+    
+    Example:
+        cap_cfg = get_patient_cap_config(config)
+        if cap_cfg:
+            train_gen = DynamicPatientCapSequence(X_train, y_train, 
+                                                  patient_ids=patient_ids, 
+                                                  **cap_cfg)
+    """
+    cv_cfg = config_dict.get('cv_strategy', {})
+    
+    patient_cap = cv_cfg.get('patient_cap', None)
+    cap_strategy = cv_cfg.get('cap_strategy', 'dynamic_per_epoch')
+    
+    if patient_cap is None:
+        return {}
+    
+    return {
+        'patient_cap': patient_cap,
+        'cap_strategy': cap_strategy,
     }

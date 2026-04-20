@@ -141,9 +141,11 @@ class GliomaDataLoader:
             loader.apply_spectral_crop(crop_region=preproc_cfg['crop_region'], 
                                       calib_file=calib_file)
         
-        # Apply patient cap downsampling
-        if 'patient_cap' in preproc_cfg:
-            loader.apply_patient_cap(patient_cap=preproc_cfg['patient_cap'])
+        # NOTE: patient cap is applied dynamically at epoch level, not here
+        # This preserves all training data for per-epoch resampling
+        # cv_cfg = config.get('cv_strategy', {})
+        # if 'patient_cap' in cv_cfg:
+        #     loader.apply_patient_cap(patient_cap=cv_cfg['patient_cap'])
         
         return loader
     
@@ -181,7 +183,7 @@ class GliomaDataLoader:
         # --- TUMOR FILTERING LOGIC ---
         if self.tumor_only:
             if self.y_tumor is not None:
-                print("🔬 'tumor_only=True': Filtering out healthy tissue...")
+                print("[*] 'tumor_only=True': Filtering out healthy tissue...")
                 # Convert to numpy array in case it's an HDF5 dataset ref
                 y_t = self.y_tumor[:] 
                 mask = (y_t == 1)
@@ -240,7 +242,7 @@ class GliomaDataLoader:
                     break
         
         if not calib_path.exists():
-            print(f"⚠️  Warning: Calibration file not found: {calib_path}. Using full spectrum.")
+            print(f"[WARNING] Calibration file not found: {calib_path}. Using full spectrum.")
             return 0, self.X.shape[1]
         
         # Load calibration table
@@ -253,15 +255,19 @@ class GliomaDataLoader:
         start_idx = np.argmin(np.abs(wavenums - start_wavenum))
         end_idx = np.argmin(np.abs(wavenums - end_wavenum)) + 1  # +1 for slice end
         
-        print(f"✓ Spectral Crop: [{start_wavenum}, {end_wavenum}] cm⁻¹ → indices [{start_idx}, {end_idx}]")
-        print(f"  Wavenumber mapping: {wavenums[start_idx]:.2f} → {wavenums[end_idx-1]:.2f} cm⁻¹")
+        print(f"[OK] Spectral Crop: [{start_wavenum}, {end_wavenum}] cm-1 -> indices [{start_idx}, {end_idx}]")
+        print(f"  Wavenumber mapping: {wavenums[start_idx]:.2f} -> {wavenums[end_idx-1]:.2f} cm-1")
         
         return start_idx, end_idx
 
     def apply_spectral_crop(self, crop_region: Optional[Tuple[float, float]] = None,
                            calib_file: Optional[str] = None) -> None:
         """
-        Apply spectral cropping in-place to X data.
+        Apply spectral cropping and renormalization in-place to X data.
+        
+        Important: Cropping changes the feature range, so renormalization is needed.
+        Original normalization was to full spectrum's max (usually 2800-3000 cm⁻¹).
+        After cropping to fingerprint region (700-1800), new max values emerge.
         
         Args:
             crop_region: Tuple of (start_cm1, end_cm1)
@@ -272,20 +278,34 @@ class GliomaDataLoader:
             print("  (No cropping applied)")
             return
         
+        # Crop
         self.X = self.X[:, start_idx:end_idx]
         if self.wavenumbers is not None:
             self.wavenumbers = self.wavenumbers[start_idx:end_idx]
+        
+        # Renormalize to cropped region (critical for exp_103)
+        print(f"  Renormalizing to cropped region...")
+        max_per_spectrum = np.max(self.X, axis=1, keepdims=True)
+        max_per_spectrum[max_per_spectrum == 0] = 1.0  # Avoid division by zero
+        self.X = self.X / max_per_spectrum
+        
+        # Verify normalization
+        min_val = np.min(self.X)
+        max_val = np.max(self.X)
+        print(f"    After renormalization: min={min_val:.6f}, max={max_val:.6f} (fingerprint region)")
+        
         print(f"  Spectra shape after crop: {self.X.shape}")
 
     def apply_patient_cap(self, patient_cap: Optional[int] = None) -> None:
         """
-        Downsample spectra to at most `patient_cap` per patient per class.
+        Downsample spectra to at most `patient_cap` per slide (patient).
         
-        This prevents batch memorization for patients with many similar spectra
-        (some slides have hundreds/thousands of similar spectra).
+        This prevents batch memorization when a single slide has many similar spectra
+        (some slides have hundreds/thousands of correlated spectra).
+        Each slide is from one patient with one tumor class.
         
         Args:
-            patient_cap: Maximum spectra per patient per class (e.g., 500)
+            patient_cap: Maximum spectra per slide (e.g., 500)
         
         Example:
             loader.apply_patient_cap(patient_cap=500)
@@ -294,26 +314,25 @@ class GliomaDataLoader:
             print("  (No patient cap applied)")
             return
         
-        print(f"Applying patient cap: {patient_cap} spectra per patient per class...")
+        print(f"Applying patient cap: {patient_cap} spectra per slide...")
         
-        # Extract patient_id from groups (format: "PATID_VIDID_..." or similar)
-        patient_ids = np.array([g.split('_')[0] + '_' + g.split('_')[1] 
-                               if len(g.split('_')) > 1 
-                               else g for g in self.groups])
+        # Use full group string (slide identifier) as the grouping key
+        # Each group like "HF-448_V5B_1.h5_3" is a unique slide from one patient
+        patient_ids = self.groups.copy()
         
-        # Group by (patient_id, y_class) and downsample
+        # Group by slide and downsample
         keep_indices = []
-        for patient in np.unique(patient_ids):
-            for cls in np.unique(self.y_class):
-                mask = (patient_ids == patient) & (self.y_class == cls)
-                indices = np.where(mask)[0]
-                
-                if len(indices) > patient_cap:
-                    # Randomly downsample
-                    keep = np.random.choice(indices, size=patient_cap, replace=False)
-                    keep_indices.extend(keep)
-                else:
-                    keep_indices.extend(indices)
+        for slide_id in np.unique(patient_ids):
+            mask = (patient_ids == slide_id)
+            indices = np.where(mask)[0]
+            
+            if len(indices) > patient_cap:
+                # Randomly downsample to patient_cap
+                keep = np.random.choice(indices, size=patient_cap, replace=False)
+                keep_indices.extend(keep)
+            else:
+                # Keep all spectra from this slide
+                keep_indices.extend(indices)
         
         keep_indices = np.sort(np.array(keep_indices))
         
@@ -324,7 +343,7 @@ class GliomaDataLoader:
         if self.y_tumor is not None:
             self.y_tumor = self.y_tumor[keep_indices]
         
-        print(f"✓ Downsampled to {self.X.shape[0]} spectra (was {len(patient_ids)})")
+        print(f"[OK] Downsampled to {self.X.shape[0]} spectra (was {len(patient_ids)})")
 
     def __iter__(self):
         if self.split_file and self.split_file.exists():
@@ -362,7 +381,9 @@ class GliomaDataLoader:
                     'fold_name': fold_name,
                     'train': (self.X[train_mask], self.y_class[train_mask]),
                     'val':   (self.X[test_mask],  self.y_class[test_mask]),
-                    'val_sample_ids': np.unique(self.groups[test_mask])
+                    'train_sample_ids': np.unique(self.groups[train_mask]),
+                    'val_sample_ids': np.unique(self.groups[test_mask]),
+                    'train_groups': self.groups[train_mask]
                 }
         else:
             print("\n Split file not found or not configured.")
@@ -375,6 +396,7 @@ class GliomaDataLoader:
                     'fold_name': f"fold_{fold_idx}",
                     'train': (self.X[train_idx], self.y_class[train_idx]),
                     'val':   (self.X[val_idx],   self.y_class[val_idx]),
+                    'train_sample_ids': np.unique(self.groups[train_idx]),
                     'val_sample_ids': np.unique(self.groups[val_idx])
                 }
 
@@ -382,7 +404,12 @@ class GliomaDataLoader:
         """Returns number of folds (default 5 if unknown)."""
         if self.split_file and self.split_file.exists():
             with open(self.split_file, 'r') as f:
-                return len(json.load(f))
+                splits_data = json.load(f)
+                # Handle new format with cv_folds section
+                if "cv_folds" in splits_data:
+                    return len(splits_data["cv_folds"])
+                # Handle old format where folds are at top level
+                return len(splits_data)
         return 5
 
     def close(self):

@@ -141,8 +141,8 @@ class GliomaDataLoader:
             loader.apply_spectral_crop(crop_region=preproc_cfg['crop_region'], 
                                       calib_file=calib_file)
         
-        # NOTE: patient cap is applied dynamically at epoch level, not here
-        # This preserves all training data for per-epoch resampling
+        # NOTE: patient cap can be applied here, at loading, or
+        # it can be applied dynamically at epoch level (see augmentations.py) for more flexibility., 
         # cv_cfg = config.get('cv_strategy', {})
         # if 'patient_cap' in cv_cfg:
         #     loader.apply_patient_cap(patient_cap=cv_cfg['patient_cap'])

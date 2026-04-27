@@ -1,0 +1,130 @@
+# Classical TATR Architecture: Binary Classification with In-Memory Augmentation (MixUp/SMOTE)
+# Target: Mutant vs Wildtype glioma spectra
+
+name: exp_106
+description: "Classical TATR: Binary classification using classical ML models trained on augmented data (MixUp/SMOTE)"
+version: "1.0"
+
+# ============================================================================
+# DATA PATHS
+# ============================================================================
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/strict_splits.json"
+  
+  # Reuse preprocessed data from exp_102 (identical preprocessing, cropping/cap at load time)
+  results_root: "results"
+  experiment_root: "results/exp_106"
+  data_output_dir: "results/exp_106/data"
+  processed_file: "results/exp_102/data/glioma_dataset.h5"  # Shared dataset
+
+  # Model outputs
+  models_baseline_dir: "results/exp_106/models/baselines"  # <-- Copy your Exp 105 baselines here!
+  models_tatr_dir: "results/exp_106/models/tatr"           # <-- New directory for augmented models
+  models_tstr_dir: "results/exp_106/models/tstr"           # (Unused in this exp, kept for pipeline compatibility)
+
+# ============================================================================
+# PREPROCESSING CONFIGURATION
+# ============================================================================
+preprocessing:
+  spatial_median_filter: true           
+  spatial_median_filter_size: 3         
+  airpls_lambda: 100                    
+  airpls_porder: 1                      
+  normalization: "minmax"               
+
+  # Dimensionality & Balancing
+  signal_length: 1738
+  crop_region: [700, 1800]                                
+  y_tumor: true                         
+  ignore_samples: ['HF-1887_via-t_2_1.h5_3']
+  
+  # Tumor Mask Strategy
+  mask_strategy: "tumor_map"
+  tumor_maps_path: "results/exp_102/tumor_maps.npy"  # Reuse the masks from exp_102 to save time
+  use_precomputed_masks: true
+
+# ============================================================================
+# CLASSICAL AUGMENTATION (IN-MEMORY TATR)
+# ============================================================================
+augmentation:
+  enabled: true
+  method: "mixup"                       # Options: "mixup", "smote", "both"
+  mixup_alpha: 0.2                      # Beta distribution parameter for intra-class blending
+  max_shift: 3                          # Wavenumber shift
+  smote_k_neighbors: 5                  # If testing SMOTE
+
+# ============================================================================
+# CROSS-VALIDATION STRATEGY
+# ============================================================================
+cv_strategy:
+  split_source: "data/splits/strict_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+
+# ============================================================================
+# TRAINING EXECUTION PARAMETERS
+# ============================================================================
+training:
+  random_seed: 42                       # Global seed for reproducibility (numpy, TensorFlow, random)
+  verbose: 1                            # Verbosity level (0=silent, 1=progress, 2=detailed)
+
+
+# ============================================================================
+# MODEL HYPERPARAMETERS (BINARY SETUP)
+# ============================================================================
+models:
+  # Apollo: RF feature selector + SVM (TRTR & TSTR)
+  apollo:
+    n_features: 20
+    random_state: 42
+
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+
+  xgboost:
+    objective: "binary:logistic"        # Strictly binary
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+
+  # 1D-CNN (TRTR & TSTR)
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 30
+    early_stopping_patience: 5
+    random_state: 42
+    dropout_rate: 0.6  # Increased dropout for stronger regularization given the dynamic patient capping
+
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1"                  # Changed from f1_macro to f1 for standard binary eval
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+# ============================================================================
+# Notes
+# ============================================================================
+notes: |
+  - Exp 106 bypasses deep generative models completely.
+  - Applies classical augmentation (MixUp/Spectral Shifting/SMOTE) directly to the training arrays before feeding them to XGBoost/RF.
+  - Baseline TRTR models copied directly from Exp 105.

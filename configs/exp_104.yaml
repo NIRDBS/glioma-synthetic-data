@@ -129,7 +129,7 @@ models:
     delta: 0.5 # cosine weight
     validation_split: 0.1
     random_state: 42
-    loss_function: "mse_cosine_combo"   # Upgraded loss function
+    reconstruction_loss_mode: "mse"
     
     encoder:
       filters: [32, 64, 128]

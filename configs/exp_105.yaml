@@ -22,6 +22,7 @@ paths:
 # Model outputs
   models_baseline_dir: "results/exp_105/models/baselines"
   models_tstr_dir: "results/exp_105/models/tstr"
+  models_tetr_dir: "results/exp_105/models/tetr"
   models_cvae_dir: "results/exp_105/models/cvae"
   synthetic_dir: "results/exp_105/synthetic"
   quality_dir: "results/exp_105/data_quality"
@@ -120,6 +121,7 @@ models:
     dropout_rate: 0.6  # Increased dropout for stronger regularization given the dynamic patient capping
 
   cvae:
+    num_classes: 2
     batch_size: 256
     epochs: 70
     learning_rate: 0.001

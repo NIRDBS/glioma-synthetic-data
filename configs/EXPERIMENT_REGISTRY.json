@@ -33,8 +33,40 @@
     "created_date": "2026-04-16T12:03:20.426041",
     "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
     "status": "running",
-    "last_run_date": "2026-04-16T18:14:48.905125",
+    "last_run_date": "2026-05-04T14:24:17.465722",
     "last_run_status": "running (notebook-execution)",
     "notes": "Notebook initialization on 2026-04-16 12:03:20"
+  },
+  "exp_105": {
+    "created_date": "2026-04-20T13:55:36.136632",
+    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "status": "running",
+    "last_run_date": "2026-05-03T23:08:14.720138",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-04-20 13:55:36"
+  },
+  "exp_106": {
+    "created_date": "2026-04-24T13:53:56.158395",
+    "description": "Classical TATR: Binary classification using classical ML models trained on augmented data (MixUp/SMOTE)",
+    "status": "running",
+    "last_run_date": "2026-04-28T13:42:48.108920",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-04-24 13:53:56"
+  },
+  "exp_107": {
+    "created_date": "2026-04-29T19:52:47.905555",
+    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "status": "running",
+    "last_run_date": "2026-04-30T22:57:13.090650",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-04-29 19:52:47"
+  },
+  "exp_108": {
+    "created_date": "2026-04-30T22:58:34.342272",
+    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "status": "running",
+    "last_run_date": "2026-05-02T17:14:19.126502",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-04-30 22:58:34"
   }
 }

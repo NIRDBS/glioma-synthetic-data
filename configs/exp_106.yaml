@@ -21,9 +21,11 @@ paths:
   processed_file: "results/exp_102/data/glioma_dataset.h5"  # Shared dataset
 
   # Model outputs
-  models_baseline_dir: "results/exp_106/models/baselines"  # <-- Copy your Exp 105 baselines here!
+  models_baseline_dir: "results/exp_106/models/trtr"  # <-- Copy your Exp 105 baselines here!
   models_tatr_dir: "results/exp_106/models/tatr"           # <-- New directory for augmented models
-  models_tstr_dir: "results/exp_106/models/tstr"           # (Unused in this exp, kept for pipeline compatibility)
+  models_tstr_dir: "results/exp_106/models/tatr"           # (Used in statistical eval as "model_b_dir" for consistency with previous notebooks)
+  quality_dir: "results/exp_106/data_quality"
+  statistical_dir: "results/exp_106/statistical_eval"
 
 # ============================================================================
 # PREPROCESSING CONFIGURATION
@@ -64,6 +66,10 @@ cv_strategy:
   use_group_aware_cv: true
   holdout_test_set: true
   n_folds: 5
+  # ========== EXP 105 DYNAMIC SAMPLING ==========
+  patient_cap: 500                      # Max spectra per patient/class sampled EACH EPOCH during training
+  cap_strategy: "fixed"     # Samples different 500-spec subsets per epoch (implicit regularization)
+
 
 # ============================================================================
 # TRAINING EXECUTION PARAMETERS

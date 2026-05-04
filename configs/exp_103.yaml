@@ -123,13 +123,13 @@ models:
     epochs: 70
     learning_rate: 0.001
     latent_dim: 32     
-    beta: 2.0
-    alpha: 0.2
-    gamma: 0.5 # mse weight
-    delta: 0.5 # cosine weight
+    loss_weights:
+      beta: 2.0
+      alpha: 0.2
+      gamma: 1 # mse weight
     validation_split: 0.1
     random_state: 42
-    loss_function: "mse_cosine_combo"   # Upgraded loss function
+    reconstruction_loss_mode: "mse"   # Upgraded loss function
     
     encoder:
       filters: [32, 64, 128]

@@ -22,6 +22,7 @@ paths:
 # Model outputs
   models_baseline_dir: "results/exp_104/models/baselines"
   models_tstr_dir: "results/exp_104/models/tstr"
+  models_tetr_dir: "results/exp_104/models/tetr"
   models_cvae_dir: "results/exp_104/models/cvae"
   synthetic_dir: "results/exp_104/synthetic"
   quality_dir: "results/exp_104/data_quality"
@@ -122,11 +123,11 @@ models:
     batch_size: 256
     epochs: 70
     learning_rate: 0.001
-    latent_dim: 32     
-    beta: 2.0
-    alpha: 0.2
-    gamma: 0.5 # mse weight
-    delta: 0.5 # cosine weight
+    latent_dim: 32  
+    loss_weights:   
+      beta: 2.0
+      alpha: 0.2
+      gamma: 1 # mse weight
     validation_split: 0.1
     random_state: 42
     reconstruction_loss_mode: "mse"

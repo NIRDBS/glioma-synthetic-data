@@ -143,9 +143,9 @@ class GliomaDataLoader:
         
         # NOTE: patient cap can be applied here, at loading, or
         # it can be applied dynamically at epoch level (see augmentations.py) for more flexibility., 
-        # cv_cfg = config.get('cv_strategy', {})
-        # if 'patient_cap' in cv_cfg:
-        #     loader.apply_patient_cap(patient_cap=cv_cfg['patient_cap'])
+        cv_cfg = config.get('cv_strategy', {})
+        if 'patient_cap' in cv_cfg and 'cap_strategy' in cv_cfg and cv_cfg['cap_strategy'] == "fixed":
+            loader.apply_patient_cap(patient_cap=cv_cfg['patient_cap'])
         
         return loader
     

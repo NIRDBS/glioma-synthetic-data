@@ -1,0 +1,68 @@
+# Synthetic Data Augmentation Experiment with CVAE
+# Trains CVAE per fold, generates synthetic minority class samples,
+# then evaluates Train-on-Synthetic-Test-on-Real (TSTR)
+
+name: synthetic_exp_001
+description: "CVAE-based synthetic data augmentation with TSTR evaluation"
+version: "1.0"
+
+# Preprocessing Configuration
+preprocessing:
+  # AirPLS baseline correction  
+  airpls_lambda: 100
+  airpls_porder: 1
+
+  # Spectral dimensions
+  signal_length: 1738
+  crop_region: [700, 1800]
+
+  # Quality filtering
+  ignore_samples: []
+
+# Cross-Validation Strategy
+cv_strategy:
+  split_source: "data/splits/strict_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true     # Crucial for TSTR: separate test set
+  n_folds: 5
+
+# Model Hyperparameters
+models:
+  # Random Forest for TSTR evaluation
+  random_forest:
+    n_estimators: 300
+    max_depth: 10
+    criterion: "entropy"
+    min_samples_leaf: 50
+    min_samples_split: 50
+    random_state: 42
+
+  # SVM for TSTR evaluation
+  svm:
+    C: 1.0
+    kernel: "rbf"
+    gamma: "scale"
+    probability: true
+    random_state: 42
+
+  feature_selection:
+    n_features: 20
+    method: "mutual_info"
+
+  # Conditional VAE for synthetic generation
+  cvae:
+    batch_size: 256
+    epochs: 45
+    learning_rate: 0.001
+    latent_dim: 32
+    beta: 2.0                 # KL divergence weight
+    random_state: 42
+    validation_split: 0.1
+
+# Output Configuration
+output:
+  output_base: "synthetic_exp_001"
+  h5_filename: "glioma_dataset.h5"
+  include_experiment_name_in_output: false
+  save_intermediate: false
+  verbosity: "info"

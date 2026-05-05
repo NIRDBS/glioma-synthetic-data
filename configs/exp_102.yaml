@@ -1,0 +1,197 @@
+# Updated Preprocessing with Pre-Computed Tumor Masks + Spatial Median Filter
+# Uses hand-validated tumor_masks from patient folders, preprocesses with spatial filtering
+
+name: exp_102
+description: "Enhanced preprocessing: 3x3 spatial median filter + pre-computed patient tumor_masks"
+version: "1.0"
+
+# ============================================================================
+# DATA PATHS
+# ============================================================================
+paths:
+  # Raw data inputs (shared, read-only across all experiments)
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/strict_splits.json"
+  presentation_dir: "presentation"
+  
+  # PREPROCESSED DATA OUTPUT (experiment-specific artifact)
+  # Preprocessing is part of the experiment - re-computed for each experiment config
+  # This ensures reproducibility: each experiment locks in its preprocessing
+  results_root: "results"
+  experiment_root: "results/exp_102"
+  data_output_dir: "results/exp_102/data"
+  processed_file: "results/exp_102/data/glioma_dataset.h5"     # Preprocessing OUTPUT, not input
+  
+  # Model outputs
+  models_baseline_dir: "results/exp_102/models/baselines"
+  models_tstr_dir: "results/exp_102/models/tstr"
+  models_cvae_dir: "results/exp_102/models/cvae"
+  synthetic_dir: "results/exp_102/synthetic"
+  quality_dir: "results/exp_102/data_quality"
+  statistical_dir: "results/exp_102/statistical_eval"
+
+# ============================================================================
+# PREPROCESSING CONFIGURATION
+# ============================================================================
+preprocessing:
+  # ========== PIPELINE STEPS (EXPLICIT CONFIGURATION) ==========
+  # Customize the preprocessing pipeline by enabling/disabling steps
+  
+  # Step 2: Spatial Median Filter (noise reduction on raw data)
+  spatial_median_filter: true           # Enable 3x3 spatial median filtering
+  spatial_median_filter_size: 3         # Use 3x3 neighborhood per wavelength
+  
+  # Step 2b: Spatial Smoothing (OPTIONAL - use EITHER median filter OR mean smoothing, not both)
+  apply_spatial_smoothing: false        # Disabled for exp_102 (using median filter instead)
+  
+  # Step 5: Baseline Correction
+  airpls_lambda: 100                    # AirPLS lambda parameter (strength of correction)
+  airpls_porder: 1                      # AirPLS polynomial order
+  
+  # Step 5b: Cosmic Ray Removal (OPTIONAL - artifact correction)
+  cosmic_ray_removal: false             # Disabled for exp_102 (manual validation already filters these)
+  
+  # Step 6: Normalization (per-spectrum level)
+  normalization: "minmax"               # Min-max normalization per spectrum
+  
+  # Quality Filtering (OPTIONAL - skip if manual validation already done)
+  apply_quality_filter: false           # Disabled for exp_102 (manual tumor mask validation replaces this)
+
+  # ========== DATA SELECTION ==========
+  signal_length: 1738
+  crop_region: null                     # Full spectrum, no cropping
+  y_tumor: true                         # Use only tumor region (step 4)
+  ignore_samples: ['HF-1887_via-t_2_1.h5_3']
+
+  # ========== TUMOR MASK STRATEGY ==========
+  # Step 3: Load pre-computed tumor masks (INSTEAD of computing on-the-fly via clustering)
+  mask_strategy: "tumor_map"
+  tumor_maps_path: "results/exp_102/tumor_maps.npy"  # Consolidated from patient folders (59 slides, 46 patients)
+  use_precomputed_masks: true
+
+  # ========== ANNOTATION ==========
+  # Skip clustering since we have pre-validated tumor masks from patient folders
+  annotator:
+    skip: true
+    use_precomputed_y_tumor: true
+
+# ============================================================================
+# CROSS-VALIDATION STRATEGY
+# ============================================================================
+cv_strategy:
+  split_source: "data/splits/strict_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+
+# ============================================================================
+# MODEL HYPERPARAMETERS
+# ============================================================================
+models:
+  # Apollo: RF feature selector + SVM (TRTR & TSTR)
+  apollo:
+    n_features: 20
+    random_state: 42
+
+  # Random Forest (TRTR & TSTR)
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+
+  # XGBoost (TRTR & TSTR)
+  xgboost:
+    objective: "multi:softprob"
+    num_class: 6
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+
+  # 1D-CNN (TRTR & TSTR)
+  cnn:
+    input_shape: [1738, 1]
+    num_classes: 6
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 30
+    early_stopping_patience: 5
+    random_state: 42
+
+  # CVAE for synthetic data generation (03_Synthetic_CVAE)
+  cvae:
+    batch_size: 256
+    epochs: 70
+    learning_rate: 0.001
+    latent_dim: 32
+    loss_weights:
+      beta: 2.0
+      alpha: 0.2
+    validation_split: 0.1
+    random_state: 42
+    
+    # Architecture
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    
+    decoder:
+      initial_filters: 128
+      filters: [64, 32, 16]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+    
+    # Synthetic data generation
+    samples_per_class: 20000  # ~120k total synthetic
+    num_classes: 6
+
+# ============================================================================
+# TSTR CONFIGURATION
+# ============================================================================
+tstr:
+  sleep_before_training: 0     # seconds (for remote scheduling)
+
+# ============================================================================
+# STATISTICAL EVALUATION
+# ============================================================================
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+output:
+  output_base: "exp_102"
+  h5_filename: "glioma_dataset.h5"
+  include_experiment_name_in_output: true
+  save_intermediate: true
+  verbosity: "info"
+
+# ============================================================================
+# EXPERIMENT NOTES
+# ============================================================================
+notes: |
+  exp_102: Enhanced Preprocessing with Spatial Median Filter + Pre-Computed Masks
+  
+  Architecture Change (NEW):
+  1. Preprocessing now part of experiment (output, not shared input)
+  2. Ensures reproducibility: each experiment locks in its preprocessing
+  3. Enables easy comparison: exp_101 (original) vs exp_102 (spatial filtering)
+  
+  Key Changes from exp_101:
+  1. Uses 3x3 spatial median filter BEFORE baseline correction
+  2. Hand-validated tumor_masks from patient folders
+  3. Skips clustering annotation (masks pre-computed)
+  4. Output paths: results/exp_102/data/ (not data/processed/)
+  
+  To create exp_103 with different preprocessing:
+  - Copy configs/exp_102.yaml → configs/exp_103.yaml
+  - Modify preprocessing parameters (e.g., airpls_lambda, filter size)
+  - Output goes to results/exp_103/ (isolated, no conflicts)

@@ -8,6 +8,7 @@ matplotlib==3.10.6
 seaborn==0.13.2
 tqdm==4.67.1
 natsort==8.4.0
+# umap-learn>=0.5  # blocked by AppControl on Windows — install manually if available
 
 # Optional / dev (tests, linting)
 pytest>=7.0

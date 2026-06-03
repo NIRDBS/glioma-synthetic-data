@@ -33,7 +33,7 @@
     "created_date": "2026-04-16T12:03:20.426041",
     "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
     "status": "running",
-    "last_run_date": "2026-05-05T13:31:45.948703",
+    "last_run_date": "2026-05-05T13:44:23.573616",
     "last_run_status": "running (notebook-execution)",
     "notes": "Notebook initialization on 2026-04-16 12:03:20"
   },
@@ -41,7 +41,7 @@
     "created_date": "2026-04-20T13:55:36.136632",
     "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
     "status": "running",
-    "last_run_date": "2026-05-06T10:45:49.021722",
+    "last_run_date": "2026-05-05T12:29:00.741151",
     "last_run_status": "running (notebook-execution)",
     "notes": "Notebook initialization on 2026-04-20 13:55:36"
   },

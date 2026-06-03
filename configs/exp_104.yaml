@@ -20,9 +20,9 @@ paths:
   processed_file: "results/exp_102/data/glioma_dataset.h5"  # Shared with exp_102
 
 # Model outputs
-  models_baseline_dir: "results/exp_104/models/baselines"
+  models_trtr_dir: "results/exp_104/models/trtr"
   models_tstr_dir: "results/exp_104/models/tstr"
-  models_tetr_dir: "results/exp_104/models/tetr"
+  models_tsrtr_dir: "results/exp_104/models/tsrtr"
   models_cvae_dir: "results/exp_104/models/cvae"
   synthetic_dir: "results/exp_104/synthetic"
   quality_dir: "results/exp_104/data_quality"
@@ -120,6 +120,7 @@ models:
     dropout_rate: 0.6  # Increased dropout for stronger regularization given the dynamic patient capping
 
   cvae:
+    num_classes: 6
     batch_size: 256
     epochs: 70
     learning_rate: 0.001

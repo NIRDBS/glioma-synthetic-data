@@ -35,12 +35,12 @@ class ClinicalAnnotator:
         return clusterer.fit_predict(features)
 
     def annotate(self):
-        print(f"🚀 Starting Spatio-Spectral Annotation (Algorithm: {self.algorithm.upper()})...")
+        print(f" Starting Spatio-Spectral Annotation (Algorithm: {self.algorithm.upper()})...")
 
         with h5py.File(self.data_path, 'r+') as f:
             X = f['spectra_smoothed'][:]
             if 'coords' not in f:
-                raise KeyError("❌ 'coords' not found in HDF5. Did you run the spatial preprocessor?")
+                raise KeyError(" 'coords' not found in HDF5. Did you run the spatial preprocessor?")
             coords = f['coords'][:]
             wn = f['wavenumbers'][:]
             
@@ -55,7 +55,7 @@ class ClinicalAnnotator:
             idx_1004 = np.argmin(np.abs(wn - 1004)) # Phenylalanine peak index
 
             unique_samples = np.unique(samples)
-            print(f"📂 Found {len(unique_samples)} unique slides to process.")
+            print(f" Found {len(unique_samples)} unique slides to process.")
 
             for sample in tqdm(unique_samples, desc="Clustering Slides"):
                 mask = (samples == sample)
@@ -102,7 +102,7 @@ class ClinicalAnnotator:
                 y_tumor_global[mask] = y_tumor_slide
 
             # 6. Save to HDF5
-            print("\n💾 Writing 'y_tumor' labels directly to HDF5...")
+            print("\n Writing 'y_tumor' labels directly to HDF5...")
             if 'y_tumor' in f:
                 del f['y_tumor']
                 
@@ -110,5 +110,5 @@ class ClinicalAnnotator:
             
             n_tumor = np.sum(y_tumor_global == 1)
             n_total = len(y_tumor_global)
-            print(f"✅ Annotation Complete!")
-            print(f"📊 Final Dataset: {n_tumor} Tumor spectra ({n_tumor/n_total:.1%}) out of {n_total} total tissue spectra.")
+            print(f" Annotation Complete!")
+            print(f" Final Dataset: {n_tumor} Tumor spectra ({n_tumor/n_total:.1%}) out of {n_total} total tissue spectra.")

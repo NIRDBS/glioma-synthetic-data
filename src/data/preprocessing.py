@@ -71,10 +71,10 @@ class RamanPreprocessor:
             self.idx_hwn_start = np.argmin(np.abs(wavenumbers - 2800))
             self.idx_hwn_end   = np.argmin(np.abs(wavenumbers - 3000))
             
-            print(f"✅ Calibration Loaded. Range: {wavenumbers[0]:.1f} - {wavenumbers[-1]:.1f} cm⁻¹")
+            print(f" Calibration Loaded. Range: {wavenumbers[0]:.1f} - {wavenumbers[-1]:.1f} cm⁻¹")
             
         except Exception as e:
-            print(f"❌ Failed to load calibration: {e}")
+            print(f" Failed to load calibration: {e}")
             raise
 
     def _create_bio_mask(self, image_data):
@@ -192,12 +192,12 @@ class RamanPreprocessor:
         for class_dir in glob.glob(str(self.raw_data_dir / "LGm-*")):
             files_to_process.extend(glob.glob(os.path.join(class_dir, "*.npy")))
         files_to_process = natsort.natsorted(files_to_process)
-        print(f"🔍 Found {len(files_to_process)} scan files.")
+        print(f" Found {len(files_to_process)} scan files.")
         
         # --- 1. Load Tumor Maps (If needed) ---
         file_to_map = {}
         if self.mask_strategy == "tumor_map":
-            print(f"📂 Loading Tumor Maps from {self.tumor_maps_path}...")
+            print(f" Loading Tumor Maps from {self.tumor_maps_path}...")
             try:
                 tumor_maps_data = np.load(self.tumor_maps_path, allow_pickle=True)
                 if isinstance(tumor_maps_data, np.ndarray) and tumor_maps_data.dtype == object:
@@ -210,7 +210,7 @@ class RamanPreprocessor:
                 else:
                     file_to_map = {f: tumor_maps_array.get(os.path.basename(f)) for f in files_to_process}
             except Exception as e:
-                print(f"❌ Error loading maps: {e}")
+                print(f" Error loading maps: {e}")
                 return
 
         # --- 2. Determine Output Shape (Legacy vs RamanSPy) ---
@@ -221,12 +221,12 @@ class RamanPreprocessor:
             dummy_out = cropper.apply(dummy_container)
             final_wavenumbers = dummy_out.spectral_axis
             n_features = len(final_wavenumbers)
-            print(f"📏 RamanSPy Mode: Output shape is {n_features} features (Cropped).")
+            print(f" RamanSPy Mode: Output shape is {n_features} features (Cropped).")
         else:
             # Legacy Mode: Keep original full size
             final_wavenumbers = self.wavenumbers
             n_features = len(self.wavenumbers)
-            print(f"🐢 Legacy Mode: Output shape is {n_features} features (Full).")
+            print(f" Legacy Mode: Output shape is {n_features} features (Full).")
 
         # --- 3. Create H5 File ---
         with h5py.File(self.output_file, "w") as h5f:
@@ -322,4 +322,4 @@ class RamanPreprocessor:
                     dset_spectra_smoothed.resize(new_size, axis=0)
                     dset_spectra_smoothed[current_size:] = batch_spectra_smoothed
 
-        print(f"✅ Processing complete. Saved to {self.output_file}")
+        print(f" Processing complete. Saved to {self.output_file}")

@@ -228,7 +228,7 @@ class GliomaDataLoader:
             if self.config and 'paths' in self.config and 'calib_file' in self.config['paths']:
                 calib_file = self.config['paths']['calib_file']
             else:
-                print("⚠️  Warning: crop_region specified but no calib_file found. Using full spectrum.")
+                print("  Warning: crop_region specified but no calib_file found. Using full spectrum.")
                 return 0, self.X.shape[1]
         
         # Resolve calib_file path

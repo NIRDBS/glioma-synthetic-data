@@ -271,7 +271,7 @@ def compute_cbr_predictions_per_fold(loader, cvae_config, model_dir, n_folds):
         dec_path = f"{model_dir}/decoder_{fold_name}.weights.h5"
         
         if not os.path.exists(enc_path) or not os.path.exists(dec_path):
-            print(f"  ⚠️  CVAE weights not found for {fold_name}. Skipping CbR for this fold.")
+            print(f"    CVAE weights not found for {fold_name}. Skipping CbR for this fold.")
             continue
         
         cvae.encoder.load_weights(enc_path)
@@ -303,7 +303,7 @@ def compute_cbr_predictions_per_fold(loader, cvae_config, model_dir, n_folds):
         cbr_classes_all.append(y_val)
         
         acc_cbr = accuracy_score(y_val, y_pred_cbr)
-        print(f"  ✓ Accuracy: {acc_cbr:.4f}")
+        print(f"   Accuracy: {acc_cbr:.4f}")
     
     # Concatenate across folds
     cbr_preds_all = np.concatenate(cbr_preds_all)

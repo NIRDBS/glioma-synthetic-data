@@ -2,13 +2,21 @@
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras import layers, Model, Input, metrics
-from .losses import compute_reconstruction_loss, compute_kl_loss, compute_classification_loss
+from .losses import (
+    compute_reconstruction_loss, 
+    compute_mse_loss, 
+    compute_cosine_loss,
+    compute_combined_reconstruction_loss,
+    compute_kl_loss, 
+    compute_classification_loss
+)
 
 class CVAE(Model):
     def __init__(self, config):
         """
         Dynamic CVAE that builds itself based on a config dictionary.
         Supports 'use_skip_gap' to toggle multi-scale feature aggregation.
+        Supports gamma/delta for reconstruction loss ablation (Suite 200).
         """
         super(CVAE, self).__init__()
         # Handle both ExperimentConfig object or raw dict
@@ -20,9 +28,16 @@ class CVAE(Model):
         self.beta = self.cfg['loss_weights']['beta']
         self.alpha = self.cfg['loss_weights']['alpha']
         
+        # Suite 200 Ablation: Extract gamma/delta for reconstruction loss weighting
+        self.gamma = self.cfg['loss_weights'].get('gamma', None)  # Weight for MSE
+        self.delta = self.cfg['loss_weights'].get('delta', None)  # Weight for Cosine
+        self.use_combined_loss = (self.gamma is not None and self.delta is not None)
+        
         # Metrics
         self.total_loss_tracker = metrics.Mean(name="total_loss")
         self.recon_loss_tracker = metrics.Mean(name="recon_loss")
+        self.mse_tracker = metrics.Mean(name="mse_loss")
+        self.cos_tracker = metrics.Mean(name="cos_loss")
         self.kl_loss_tracker = metrics.Mean(name="kl_loss")
         self.class_loss_tracker = metrics.Mean(name="class_loss")
         self.accuracy_tracker = metrics.CategoricalAccuracy(name="accuracy")
@@ -122,6 +137,7 @@ class CVAE(Model):
     @property
     def metrics(self):
         return [self.total_loss_tracker, self.recon_loss_tracker, 
+                self.mse_tracker, self.cos_tracker,
                 self.kl_loss_tracker, self.class_loss_tracker, self.accuracy_tracker]
 
     def call(self, inputs):
@@ -138,7 +154,16 @@ class CVAE(Model):
             z_mean, z_log_var, z, class_pred = self.encoder(x)
             reconstruction = self.decoder([z, y]) 
             
-            recon_loss = compute_reconstruction_loss(x, reconstruction)
+            # Compute reconstruction loss (MSE, Cosine, or Combined)
+            if self.use_combined_loss:
+                recon_loss = compute_combined_reconstruction_loss(x, reconstruction, gamma=self.gamma, delta=self.delta)
+                mse_loss = compute_mse_loss(x, reconstruction)
+                cos_loss = compute_cosine_loss(x, reconstruction)
+            else:
+                recon_loss = compute_reconstruction_loss(x, reconstruction)
+                mse_loss = recon_loss  # For backward compatibility, report MSE as main loss
+                cos_loss = 0.0
+            
             kl_loss = compute_kl_loss(z_mean, z_log_var)
             class_loss = compute_classification_loss(y, class_pred)
             total_loss = recon_loss + (self.beta * kl_loss) + (self.alpha * class_loss)
@@ -148,6 +173,8 @@ class CVAE(Model):
         
         self.total_loss_tracker.update_state(total_loss)
         self.recon_loss_tracker.update_state(recon_loss)
+        self.mse_tracker.update_state(mse_loss)
+        self.cos_tracker.update_state(cos_loss)
         self.kl_loss_tracker.update_state(kl_loss)
         self.class_loss_tracker.update_state(class_loss)
         self.accuracy_tracker.update_state(y, class_pred)

@@ -12,7 +12,7 @@ paths:
   data_root: "data"
   raw_data_dir: "data/raw"
   calib_file: "data/RamanFreqTable.csv"
-  splits_file: "data/splits/strict_splits.json"
+  splits_file: "data/splits/manual_splits.json"
   
   # Reuse preprocessed data from exp_102 (identical preprocessing, cropping/cap at load time)
   results_root: "results"
@@ -69,7 +69,7 @@ augmentation:
 # CROSS-VALIDATION STRATEGY
 # ============================================================================
 cv_strategy:
-  split_source: "data/splits/strict_splits.json"
+  split_source: "data/splits/manual_splits.json"
   use_group_aware_cv: true
   holdout_test_set: true
   n_folds: 5

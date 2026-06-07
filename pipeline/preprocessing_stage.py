@@ -47,7 +47,7 @@ def preprocessing_stage(config, output_dir):
     print(f"\nStarting preprocessing...")
     preprocessor.run()
     
-    print(f"\n✓ Preprocessing complete")
+    print(f"\n Preprocessing complete")
     print(f"  Output file: {output_h5}")
     
     return output_h5

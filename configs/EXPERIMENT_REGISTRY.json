@@ -23,7 +23,7 @@
   },
   "exp_103": {
     "created_date": "2026-04-15T12:27:55.741864",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "description": "TSTR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
     "status": "running",
     "last_run_date": "2026-04-16T10:51:55.480511",
     "last_run_status": "running (notebook-execution)",
@@ -31,17 +31,17 @@
   },
   "exp_104": {
     "created_date": "2026-04-16T12:03:20.426041",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "description": "TSRTR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
     "status": "running",
-    "last_run_date": "2026-05-05T13:44:23.573616",
+    "last_run_date": "2026-06-02T21:25:36.547621",
     "last_run_status": "running (notebook-execution)",
     "notes": "Notebook initialization on 2026-04-16 12:03:20"
   },
   "exp_105": {
     "created_date": "2026-04-20T13:55:36.136632",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "description": "TSRTR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
     "status": "running",
-    "last_run_date": "2026-05-05T12:29:00.741151",
+    "last_run_date": "2026-05-13T12:38:07.003110",
     "last_run_status": "running (notebook-execution)",
     "notes": "Notebook initialization on 2026-04-20 13:55:36"
   },
@@ -55,7 +55,7 @@
   },
   "exp_107": {
     "created_date": "2026-04-29T19:52:47.905555",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "description": "TSRTR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
     "status": "running",
     "last_run_date": "2026-04-30T22:57:13.090650",
     "last_run_status": "running (notebook-execution)",
@@ -63,10 +63,18 @@
   },
   "exp_108": {
     "created_date": "2026-04-30T22:58:34.342272",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+    "description": "TSRTR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
     "status": "running",
     "last_run_date": "2026-05-02T17:14:19.126502",
     "last_run_status": "running (notebook-execution)",
     "notes": "Notebook initialization on 2026-04-30 22:58:34"
+  },
+  "exp_201": {
+    "created_date": "2026-06-02T20:20:42.218766",
+    "description": "Reconstruction Loss Ablation: MSE-only (gamma=1, delta=0) for binary classification",
+    "status": "running",
+    "last_run_date": "2026-06-02T20:47:03.177771",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-06-02 20:20:42"
   }
 }

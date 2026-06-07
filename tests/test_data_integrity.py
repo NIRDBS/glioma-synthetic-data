@@ -53,9 +53,9 @@ def test_alignment_and_shapes():
                 
             map_size = t_map.size if t_map is not None else 0
             
-            status = "✅ OK"
+            status = " OK"
             if flat_size != map_size:
-                status = "❌ MISMATCH"
+                status = " MISMATCH"
                 mismatches.append((i, sample_name, flat_size, map_size))
             
             # Check if this is the ignored sample

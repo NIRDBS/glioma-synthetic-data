@@ -130,7 +130,7 @@ def tstr_stage(config, output_dir, cvae_results=None):
     summary_path = models_dir / 'tstr_summary.joblib'
     joblib.dump(tstr_results, summary_path)
     
-    print(f"\n✓ TSTR training complete")
+    print(f"\n TSTR training complete")
     print(f"  Models saved to: {models_dir}")
     print(f"  Summary: {summary_path}")
     

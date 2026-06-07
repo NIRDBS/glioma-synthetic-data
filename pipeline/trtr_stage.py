@@ -104,7 +104,7 @@ def trtr_stage(config, output_dir):
     summary_path = models_dir / 'trtr_summary.joblib'
     joblib.dump(trtr_results, summary_path)
     
-    print(f"\n✓ TRTR training complete")
+    print(f"\n TRTR training complete")
     print(f"  Models saved to: {models_dir}")
     print(f"  Summary: {summary_path}")
     

@@ -77,7 +77,7 @@ def cvae_stage(config, output_dir):
     
     cvae.encoder.save(models_dir / 'encoder.h5')
     cvae.decoder.save(models_dir / 'decoder.h5')
-    print(f"\n✓ Models saved to {models_dir}")
+    print(f"\n Models saved to {models_dir}")
     
     # Generate synthetic data
     print(f"\nGenerating synthetic data...")
@@ -104,7 +104,7 @@ def cvae_stage(config, output_dir):
     # Save synthetic data
     synthetic_path = synthetic_dir / 'synthetic_spectra.npz'
     np.savez(synthetic_path, **synthetic_data)
-    print(f"\n✓ Synthetic data saved to {synthetic_path}")
+    print(f"\n Synthetic data saved to {synthetic_path}")
     
     # Return results
     cvae_results = {

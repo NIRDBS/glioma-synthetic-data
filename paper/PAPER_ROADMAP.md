@@ -10,15 +10,15 @@
 
 | Section | Status | Notes |
 |:--------|:-------|:------|
-| **Abstract** | ✅ Complete | Well-written, may need minor revisions once TSTR numbers are in |
-| **1. Introduction** | ✅ Complete | Clinical context, data scarcity, research objectives, paper outline |
-| **2. Background** | ✅ Complete | Raman fundamentals, VAE/CVAE theory, synthetic data lit review |
-| **3. Methods** | ✅ Complete | Preprocessing, annotation, architecture, training, experimental design |
+| **Abstract** |  Complete | Well-written, may need minor revisions once TSTR numbers are in |
+| **1. Introduction** |  Complete | Clinical context, data scarcity, research objectives, paper outline |
+| **2. Background** |  Complete | Raman fundamentals, VAE/CVAE theory, synthetic data lit review |
+| **3. Methods** |  Complete | Preprocessing, annotation, architecture, training, experimental design |
 | **4. Results** | 🟡 Framework Ready | TRTR table filled (29.5%); TSTR, Wasserstein, t-SNE need data |
-| **5. Discussion** | ✅ Draft Ready | Generalization gap, annotation role, TSTR interpretation, limitations |
-| **6. Conclusion** | ✅ Draft Ready | Summary of contributions; needs TSTR numbers for final claims |
-| **Bibliography** | ✅ Created | `references.bib` with 15 key references; expand as needed |
-| **Figures** | 🔴 Pending | Notebook `05_Paper_Figures.ipynb` created to generate all figures |
+| **5. Discussion** |  Draft Ready | Generalization gap, annotation role, TSTR interpretation, limitations |
+| **6. Conclusion** |  Draft Ready | Summary of contributions; needs TSTR numbers for final claims |
+| **Bibliography** |  Created | `references.bib` with 15 key references; expand as needed |
+| **Figures** |  Pending | Notebook `05_Paper_Figures.ipynb` created to generate all figures |
 
 ---
 
@@ -59,7 +59,7 @@
 
 ## What's Left to Do
 
-### 🔴 Priority 1: Experiments (Blocking)
+###  Priority 1: Experiments (Blocking)
 
 These generate the numbers needed to fill the paper tables and figures.
 

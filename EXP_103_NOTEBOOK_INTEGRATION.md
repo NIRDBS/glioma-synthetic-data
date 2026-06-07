@@ -30,7 +30,7 @@ from src.data.augmentation import RamanAugmentationGenerator, get_augmentation_c
 aug_cfg = get_augmentation_config(config)
 
 if aug_cfg:
-    print("✓ Augmentation enabled: generating TATR mix...")
+    print(" Augmentation enabled: generating TATR mix...")
     
     # Create generator with augmentation
     aug_gen = RamanAugmentationGenerator(
@@ -56,7 +56,7 @@ if aug_cfg:
 else:
     X_train_tatr = X_train
     y_train_tatr = y_train
-    print("⚠️  Augmentation disabled: using real data only")
+    print("  Augmentation disabled: using real data only")
 
 # Train on TATR data (real + augmented)
 rf = RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42)
@@ -199,7 +199,7 @@ else:
         verbose=1
     )
 
-print("✓ Training complete")
+print(" Training complete")
 ```
 
 ---
@@ -243,14 +243,14 @@ models:
 
 ### 1. Augmentation is Training-Only
 ```python
-# ✓ CORRECT: augment=True for training
+#  CORRECT: augment=True for training
 train_gen = RamanAugmentationGenerator(X_train, y_train, augment=True)
 
-# ✓ CORRECT: augment=False for validation/test
+#  CORRECT: augment=False for validation/test
 val_gen = RamanAugmentationGenerator(X_val, y_val, augment=False)
 test_gen = RamanAugmentationGenerator(X_test, y_test, augment=False)
 
-# ✗ WRONG: Don't augment inference
+#  WRONG: Don't augment inference
 # cnn.predict(X_test_augmented)  # Will break test results
 ```
 
@@ -261,7 +261,7 @@ X_aug = np.vstack([batch_x for batch_x, _ in aug_gen])  # Augmented
 X_combined = np.vstack([X_train, X_aug])                # Real + Augmented
 y_combined = np.concatenate([y_train, y_train])         # Labels repeat
 
-# ✓ Train on combined
+#  Train on combined
 classifier.fit(X_combined, y_combined)
 ```
 

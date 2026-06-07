@@ -2,37 +2,37 @@
 
 # Synthetic Raman Spectra for Glioma Detection
 
-**Project Status:** 🚧 Phase 1: Data Engineering & Baseline (In Progress)
+**Project Status:**  Phase 1: Data Engineering & Baseline (In Progress)
 
 This project aims to develop generative machine learning models (CVAE, RBM) to synthesize high-fidelity Raman spectra of glioma brain tissue. The core objective is to validate whether synthetic data can replace or augment real data in clinical classification pipelines ("Train on Synthetic, Test on Real").
 
-## 📂 Project Structure
+##  Project Structure
 
 ```text
 glioma-synthetic-data/
-├── data/
-│   ├── raw/                  # Source .npy spectral cubes (LGm-1 to LGm-6)
-│   ├── processed/            # Optimized HDF5 dataset (glioma_dataset.h5)
-│   ├── splits/               # Frozen JSON files defining Train/Test folds
-│   └── tumor_maps.npy        # Ground truth tumor masks for raw files
-│
-├── src/                      # Core Python Library
-│   ├── data/
-│   │   ├── preprocessing.py  # The "Builder": AirPLS + Normalization + H5 Writer
-│   │   └── loader.py         # The "Loader": Lazy loading & Leakage-free splitting
-│   ├── models/
-│   │   └── baselines.py      # Apollo pipeline (RF Selector + SVM Classifier)
-│
-├── notebooks/
-│   ├── 00_Preprocessing.ipynb  # Executable notebook to build the dataset
-│   └── 01_Apollo_Baseline.ipynb # Benchmarking real data accuracy
-│
-├── tests/                    # Data integrity & alignment tests
-└── README.md
+ data/
+    raw/                  # Source .npy spectral cubes (LGm-1 to LGm-6)
+    processed/            # Optimized HDF5 dataset (glioma_dataset.h5)
+    splits/               # Frozen JSON files defining Train/Test folds
+    tumor_maps.npy        # Ground truth tumor masks for raw files
+
+ src/                      # Core Python Library
+    data/
+       preprocessing.py  # The "Builder": AirPLS + Normalization + H5 Writer
+       loader.py         # The "Loader": Lazy loading & Leakage-free splitting
+    models/
+       baselines.py      # Apollo pipeline (RF Selector + SVM Classifier)
+
+ notebooks/
+    00_Preprocessing.ipynb  # Executable notebook to build the dataset
+    01_Apollo_Baseline.ipynb # Benchmarking real data accuracy
+
+ tests/                    # Data integrity & alignment tests
+ README.md
 
 ```
 
-## ⚙️ Data Pipeline & Preprocessing
+##  Data Pipeline & Preprocessing
 
 Raman spectroscopy data is high-dimensional and noisy. We implement a rigorous **"Builder-Loader" pattern** to handle ~300,000 spectra efficiently.
 
@@ -63,7 +63,7 @@ A fast, memory-efficient data manager for training loops.
 * **Leakage Prevention:** Implements **Group-Aware Splitting**. It ensures that if a tissue sample (e.g., `HF-448`) is in the Training Set, *no pixel* from that sample appears in the Test Set.
 * **Reproducibility:** Loads frozen split definitions from `data/splits/manual_splits.json` to guarantee that every model (SVM, CVAE, RBM) is tested on the exact same data folds.
 
-## 🔬 Methodology: The "Apollo" Baseline
+##  Methodology: The "Apollo" Baseline
 
 To evaluate the quality of our synthetic data, we first reproduce the "Gold Standard" methodology from prior work (Code Name: Apollo).
 
@@ -71,7 +71,7 @@ To evaluate the quality of our synthetic data, we first reproduce the "Gold Stan
 * **Classification:** A Support Vector Machine (SVM) with an RBF kernel is trained on these 20 features.
 * **Goal:** This establishes the "Target Accuracy." Our generative models will be judged by their ability to train *this same SVM architecture* to achieve comparable performance on real test data.
 
-## 🚀 Usage
+##  Usage
 
 ### 1. Build the Dataset
 
@@ -102,15 +102,15 @@ python -m src.models.baselines
 
 ```
 
-## 🗺️ Project Roadmap
+##  Project Roadmap
 
-### ✅ Phase 1: Data Engineering & Baseline (TRTR)
+###  Phase 1: Data Engineering & Baseline (TRTR)
 - [x] **Ingestion & Cleaning:** airPLS baseline correction and normalization.
 - [x] **Spatio-Spectral Annotation:** Implemented spatial MRF filters and GMMs to isolate 88k pure tumor spectra from healthy tissue.
 - [x] **TRTR Benchmarking (Train Real, Test Real):** Replicated the Apollo Nature paper baseline (RF Feature Selection + SVM) and a 1D-CNN using a strict 5-Fold patient-level split. 
 - [x] *Finding:* Established the ~30% generalization ceiling for the 6-class task, justifying the generative approach.
 
-### 🚧 Phase 2: Generative Modeling (Current Stage)
+###  Phase 2: Generative Modeling (Current Stage)
 - [x] **Architecture:** Built a dynamic TensorFlow $\beta$-CVAE conditioned on the 6 LGm tumor grades.
 - [ ] **Training:** Train the CVAE inside the 5-Fold CV loop (to prevent data leakage) and generate isolated synthetic datasets per fold.
 - [ ] **Latent Space Analysis:** Visualize the CVAE's ability to cluster the 6 glioma subtypes using t-SNE/PCA.
@@ -120,7 +120,7 @@ python -m src.models.baselines
 - [ ] **Validation:** Test these synthetic-trained models on the held-out *Real* patient folds.
 - [ ] **Success Criteria:** If the TSTR accuracy matches or exceeds the TRTR ~30% baseline, we prove the CVAE successfully captured the biology while discarding the batch-effect noise.
 
-### 📝 Phase 4: Thesis Writing
+###  Phase 4: Thesis Writing
 - [ ] **Chapter 1-2:** Introduction, Literature Review (Hyperspectral imaging, Generalization gaps).
 - [ ] **Chapter 3:** Methodology (MRF, GMM Annotation, $\beta$-CVAE).
 - [ ] **Chapter 4:** Results (TRTR vs TSTR benchmarks).

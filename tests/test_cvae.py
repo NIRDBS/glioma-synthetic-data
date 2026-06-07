@@ -26,7 +26,7 @@ def test_config():
         if loaded_cfg['experiment_name'] != "test_run":
             raise ValueError("Loaded config does not match saved config!")
             
-        print("✅ Config Manager passed.")
+        print(" Config Manager passed.")
         
     finally:
         # Cleanup
@@ -67,10 +67,10 @@ def test_model_build():
         if model.decoder.output_shape != (None, 100, 1):
             raise ValueError(f"Decoder output shape mismatch! Got {model.decoder.output_shape}")
         
-        print("✅ Model built successfully with dynamic config.")
+        print(" Model built successfully with dynamic config.")
         
     except Exception as e:
-        print(f"❌ Model build failed: {e}")
+        print(f" Model build failed: {e}")
         raise e
 
 def test_training_step():
@@ -105,10 +105,10 @@ def test_training_step():
             if np.isnan(logs[k]):
                 raise ValueError(f"Metric '{k}' is NaN! Check loss functions.")
                 
-        print(f"✅ Training step passed. Total Loss: {logs['total_loss']:.4f}")
+        print(f" Training step passed. Total Loss: {logs['total_loss']:.4f}")
         
     except Exception as e:
-        print(f"❌ Training step failed: {e}")
+        print(f" Training step failed: {e}")
         raise e
 
 if __name__ == "__main__":
@@ -117,6 +117,6 @@ if __name__ == "__main__":
         test_config()
         test_model_build()
         test_training_step()
-        print("\n🎉 ALL TESTS PASSED. You are ready to train.")
+        print("\n ALL TESTS PASSED. You are ready to train.")
     except Exception as e:
-        print(f"\n🚫 TESTS FAILED. See error above.")
+        print(f"\n TESTS FAILED. See error above.")

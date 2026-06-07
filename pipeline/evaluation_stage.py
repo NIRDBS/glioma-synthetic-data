@@ -188,7 +188,7 @@ def evaluation_stage(trtr_results, tstr_results, config, output_dir):
     csv_file = eval_dir / 'metrics_table.csv'
     summary_table.to_csv(csv_file, index=False)
     
-    print(f"\n✓ Evaluation complete")
+    print(f"\n Evaluation complete")
     print(f"  Results saved to: {eval_dir}")
     print(f"  Summary file: {results_file.name}")
     print(f"  CSV table: {csv_file.name}")

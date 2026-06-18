@@ -22,7 +22,7 @@ paths:
 # Model outputs
   models_baseline_dir: "results/exp_105/models/baselines"
   models_tstr_dir: "results/exp_105/models/tstr"
-  models_tetr_dir: "results/exp_105/models/tetr"
+  models_tsrtr_dir: "results/exp_105/models/tsrtr"
   models_cvae_dir: "results/exp_105/models/cvae"
   synthetic_dir: "results/exp_105/synthetic"
   quality_dir: "results/exp_105/data_quality"

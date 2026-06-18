@@ -120,6 +120,39 @@ def get_fold_specific_predictions(preds_by_fold, patient_ids, patient_to_fold):
     return preds
 
 
+def stratified_slide_accuracy(preds, y_true, slide_ids):
+    """
+    Compute accuracy as the mean of per-(slide, class) accuracies — exactly the
+    statistic that stratified_slide_bootstrap accumulates in each iteration.
+
+    Using this for the observed point estimate ensures the reported delta and its
+    bootstrap CI are derived from the same statistic, so the CI is centred around
+    the delta.  Slides contribute equally (not weighted by spectrum count), and
+    classes contribute equally (macro-averaged over classes), matching the
+    clinical motivation of treating each patient slide as one observation.
+    """
+    unique_classes = np.unique(y_true)
+
+    slide_to_indices = {}
+    for idx, sid in enumerate(slide_ids):
+        slide_to_indices.setdefault(sid, []).append(idx)
+    for sid in slide_to_indices:
+        slide_to_indices[sid] = np.array(slide_to_indices[sid])
+
+    class_to_slides = {
+        cls: np.unique(slide_ids[y_true == cls]) for cls in unique_classes
+    }
+
+    accs = []
+    for cls in unique_classes:
+        for slide in class_to_slides[cls]:
+            idx = slide_to_indices[slide]
+            cls_idx = idx[y_true[idx] == cls]
+            if len(cls_idx) > 0:
+                accs.append(accuracy_score(y_true[cls_idx], preds[cls_idx]))
+    return float(np.mean(accs)) if accs else 0.0
+
+
 def stratified_slide_bootstrap(preds_A, preds_B, y_true, slide_ids, n_boot=1000, seed=42):
     """
     Fast slide-level stratified bootstrap for comparing two models.

@@ -128,7 +128,7 @@ class ConfigManager:
                 f"Available configs should be in: {project_root / 'configs'}/"
             )
         
-        with open(config_path, 'r') as f:
+        with open(config_path, 'r', encoding='utf-8') as f:
             raw_config = yaml.safe_load(f)
         
         if raw_config is None:

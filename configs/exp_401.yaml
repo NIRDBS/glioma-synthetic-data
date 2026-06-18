@@ -1,0 +1,169 @@
+# Ratio Ablation: Train Real+Synthetic (TSRTR), real:synth = 1:0.5
+# Reuses exp_201's trained CVAE decoder + TRTR baseline (must run exp_201 first).
+# Only the enriched (real+synth) training + statistical evaluation are run here.
+name: exp_401
+description: "TSRTR ratio ablation 1:0.5 - real+synth enriched training (reuses exp_201 CVAE/TRTR)"
+version: "1.0"
+
+# ============================================================================
+# DATA PATHS
+# ============================================================================
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  # Shared preprocessed dataset (same as exp_201 / exp_102)
+  results_root: "results"
+  experiment_root: "results/exp_401"
+  data_output_dir: "results/exp_401/data"
+  processed_file: "results/exp_102/data/glioma_dataset.h5"
+
+  # REUSED from exp_201 (do not retrain): CVAE decoder weights + TRTR baseline
+  models_baseline_dir: "results/exp_201/models/trtr"
+  models_cvae_dir: "results/exp_201/models/cvae"
+
+  # Own outputs
+  models_tstr_dir: "results/exp_401/models/tstr"
+  models_tsrtr_dir: "results/exp_401/models/tsrtr"
+  synthetic_dir: "results/exp_401/synthetic"
+  quality_dir: "results/exp_401/data_quality"
+  statistical_dir: "results/exp_401/statistical_eval"
+
+# ============================================================================
+# REAL+SYNTH (TSRTR) MIXING
+# ============================================================================
+tsrtr:
+  synth_ratio: 0.5                         # n_synth = round(synth_ratio * n_real); generated on demand
+  cvae_weights_dir: "results/exp_201/models/cvae"   # decoder weights to generate from
+
+# ============================================================================
+# SUITE PIPELINE
+# ============================================================================
+pipeline:
+  stages: [tsrtr, stats_eval]              # reuse exp_201's trtr + CVAE decoder
+
+# ============================================================================
+# PREPROCESSING CONFIGURATION  (identical to exp_201 - defines the data the
+# reused CVAE/TRTR were built on; must not diverge)
+# ============================================================================
+preprocessing:
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+  airpls_lambda: 100
+  airpls_porder: 1
+  normalization: "minmax"
+
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: true
+  ignore_samples: ['HF-1887_via-t_2_1.h5_3']
+
+  mask_strategy: "tumor_map"
+  tumor_maps_path: "results/exp_102/tumor_maps.npy"
+  use_precomputed_masks: true
+
+# ============================================================================
+# DYNAMIC AUGMENTATION
+# ============================================================================
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+# ============================================================================
+# CROSS-VALIDATION STRATEGY
+# ============================================================================
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+# ============================================================================
+# TRAINING EXECUTION PARAMETERS
+# ============================================================================
+training:
+  random_seed: 42
+  verbose: 1
+
+# ============================================================================
+# MODEL HYPERPARAMETERS  (identical to exp_201; the cvae block must match the
+# reused decoder architecture so weights can be rebuilt and loaded)
+# ============================================================================
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 30
+    early_stopping_patience: 5
+    random_state: 42
+    dropout_rate: 0.6
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 70
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 2.0
+      gamma: 1.0
+      delta: 0.0
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+notes: |
+  - TSRTR ratio ablation, real:synth = 1:0.5 (synth_ratio=0.5).
+  - Reuses exp_201's trained CVAE decoder (results/exp_201/models/cvae) and TRTR
+    baseline (results/exp_201/models/trtr); exp_201 must be run first.
+  - Synthetic spectra are generated on demand from the decoder at exactly the
+    count the ratio requires (n_synth = round(0.5 * n_real)).
+  - Statistical evaluation compares TRTR (exp_201) vs TSRTR (this experiment).

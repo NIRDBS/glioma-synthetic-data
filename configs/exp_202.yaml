@@ -141,7 +141,7 @@ models:
       strides: [2, 2, 2]
     decoder:
       initial_filters: 128
-      filters: [64, 32, 16]
+      filters: [128, 64, 32]
       kernels: [3, 5, 11]
       strides: [2, 2, 2]
     

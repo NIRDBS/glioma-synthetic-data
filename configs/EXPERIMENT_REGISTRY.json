@@ -72,9 +72,89 @@
   "exp_201": {
     "created_date": "2026-06-02T20:20:42.218766",
     "description": "Reconstruction Loss Ablation: MSE-only (gamma=1, delta=0) for binary classification",
-    "status": "running",
-    "last_run_date": "2026-06-02T20:47:03.177771",
-    "last_run_status": "running (notebook-execution)",
+    "status": "completed",
+    "last_run_date": "2026-06-18T11:29:08.634410",
+    "last_run_status": "success (stats_eval)",
     "notes": "Notebook initialization on 2026-06-02 20:20:42"
+  },
+  "exp_202": {
+    "created_date": "2026-06-07T21:05:33.180635",
+    "description": "Reconstruction Loss Ablation: Balanced MSE+Cosine (gamma=0.5, delta=0.5) for binary classification",
+    "status": "running",
+    "last_run_date": "2026-06-18T11:29:08.698878",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-06-07 21:05:33"
+  },
+  "exp_401": {
+    "created_date": "2026-06-17T00:00:00.000000",
+    "description": "TSRTR ratio ablation 1:0.5 \u2014 real+synth enriched (reuses exp_201 CVAE/TRTR)",
+    "status": "created",
+    "last_run_date": null,
+    "last_run_status": "not yet run",
+    "notes": "Registered for suite orchestration (run_suite.py)"
+  },
+  "exp_402": {
+    "created_date": "2026-06-17T00:00:00.000000",
+    "description": "TSRTR ratio ablation 1:1 \u2014 real+synth enriched (reuses exp_201 CVAE/TRTR)",
+    "status": "created",
+    "last_run_date": null,
+    "last_run_status": "not yet run",
+    "notes": "Registered for suite orchestration (run_suite.py)"
+  },
+  "exp_403": {
+    "created_date": "2026-06-17T00:00:00.000000",
+    "description": "TSRTR ratio ablation 1:2 \u2014 real+synth enriched (reuses exp_201 CVAE/TRTR)",
+    "status": "created",
+    "last_run_date": null,
+    "last_run_status": "not yet run",
+    "notes": "Registered for suite orchestration (run_suite.py)"
+  },
+  "exp_203": {
+    "created_date": "2026-06-17T23:34:31.431193",
+    "description": "Reconstruction Loss Ablation: Cosine-only (gamma=0, delta=1) for binary classification",
+    "status": "completed",
+    "last_run_date": "2026-06-18T10:21:26.600167",
+    "last_run_status": "success (stats_eval)",
+    "notes": "Notebook initialization on 2026-06-17 23:34:31"
+  },
+  "exp_204": {
+    "created_date": "2026-06-17T23:53:48.017272",
+    "description": "Reconstruction Loss Ablation: MSE-only (gamma=1, delta=0) for 6-class classification",
+    "status": "running",
+    "last_run_date": "2026-06-18T10:43:04.105920",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-06-17 23:53:48"
+  },
+  "exp_302": {
+    "created_date": "2026-06-18T00:09:45.902987",
+    "description": "Reconstruction Loss Ablation: MSE-only (gamma=1, delta=0) for binary classification",
+    "status": "running",
+    "last_run_date": "2026-06-18T11:29:25.355338",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-06-18 00:09:45"
+  },
+  "exp_205": {
+    "created_date": "2026-06-18T11:16:25.505875",
+    "description": "Reconstruction Loss Ablation: Balanced MSE+Cosine (gamma=0.5, delta=0.5) for 6-class classification",
+    "status": "completed",
+    "last_run_date": "2026-06-18T11:40:56.055395",
+    "last_run_status": "success (trtr)",
+    "notes": "Notebook initialization on 2026-06-18 11:16:25"
+  },
+  "exp_206": {
+    "created_date": "2026-06-18T11:25:20.995789",
+    "description": "Reconstruction Loss Ablation: Cosine-only (gamma=0, delta=1) for 6-class classification",
+    "status": "running",
+    "last_run_date": "2026-06-18T11:29:25.262740",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-06-18 11:25:20"
+  },
+  "exp_303": {
+    "created_date": "2026-06-18T11:29:25.467171",
+    "description": "Reconstruction Loss Ablation: MSE-only (gamma=1, delta=0) for binary classification",
+    "status": "running",
+    "last_run_date": "2026-06-18T11:29:25.478791",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-06-18 11:29:25"
   }
 }

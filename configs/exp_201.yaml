@@ -29,6 +29,18 @@ paths:
   quality_dir: "results/exp_201/data_quality"
   statistical_dir: "results/exp_201/statistical_eval"
 
+# ============================================================================
+# REAL+SYNTH (TSRTR) MIXING
+# ============================================================================
+tsrtr:
+  synth_ratio: 1.0                         # n_synth = round(synth_ratio * n_real); generated on demand
+  cvae_weights_dir: "results/exp_201/models/cvae"   # this experiment's own trained decoder
+
+# ============================================================================
+# SUITE PIPELINE  (full end-to-end; produces the CVAE/TRTR artifacts 401-403 reuse)
+# ============================================================================
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]
 
 # ============================================================================
 # PREPROCESSING CONFIGURATION
@@ -141,7 +153,7 @@ models:
       strides: [2, 2, 2]
     decoder:
       initial_filters: 128
-      filters: [64, 32, 16]
+      filters: [128, 64, 32]
       kernels: [3, 5, 11]
       strides: [2, 2, 2]
     

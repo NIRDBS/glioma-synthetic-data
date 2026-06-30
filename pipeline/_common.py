@@ -2,7 +2,7 @@
 Shared helpers for the unified pipeline stages.
 
 These functions factor out the canonical logic used by notebook 02
-(02_Classification_baseline.ipynb): config-driven loading, per-fold preparation
+(02_Train_Classifiers.ipynb): config-driven loading, per-fold preparation
 (0-indexing fix, binary mapping, train-only patient cap), and the 4-model
 benchmark (Apollo / RandomForest / XGBoost / 1D-CNN). The stage modules
 (trtr/tstr/tsrtr) all delegate here so the training behaviour stays identical
@@ -49,7 +49,10 @@ def prepare_fold(fold_data, config, cap_train=True):
     Order of operations (must match the notebook):
       1. 0-indexing fix (labels stored 1..6 -> 0..5)
       2. Binary mapping when num_classes == 2  (y<3 -> 0 Mutant, else 1 Wildtype)
-      3. Train-only per-slide patient cap (validation is never capped)
+      3. Train-only per-slide cap (validation is never capped). This is a single
+         FIXED subsample drawn once per fold. (The CVAE stage instead re-samples
+         the cap fresh every epoch — see pipeline/cvae_stage.py. The config key
+         ``cap_strategy`` documents that CVAE behaviour and is not read here.)
 
     Returns (X_train_raw, y_train_raw, X_val, y_val). The train arrays are the
     capped REAL training data; regimen-specific stages decide what to actually

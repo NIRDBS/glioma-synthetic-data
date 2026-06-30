@@ -825,3 +825,6 @@ presentation/presentation.snm
 presentation/presentation.synctex.gz
 presentation/presentation.toc
 Train_VAE.ipynb
+
+# Publication cleanup: archived clutter (reversible, not for the repo)
+_archive/

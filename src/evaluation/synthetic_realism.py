@@ -856,7 +856,8 @@ if __name__ == '__main__':
                              "CVAE was fitted to)")
     args = parser.parse_args()
 
-    cfg = ConfigManager.load_config(args.config)
+    # load_config returns a ConfigManager, not a mapping; run_all wants a dict
+    cfg = ConfigManager.load_config(args.config).to_dict()
     exp_root = cfg['paths']['experiment_root']
     out_dir  = args.out or f'{exp_root}/figures/synth_eval'
     run_all(cfg, figures_dir=out_dir,

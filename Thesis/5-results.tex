@@ -1,0 +1,60 @@
+\chapter{Results}
+\label{sec:results}
+
+We performed a series of experiments to determine the effects of different design choices on the domain gap metric. Specifically, we tested (a) the reconstruction loss function (MSE, CosineLoss, or a combination of them), (b) the latent space dimension, and (c) the real-to-synthetic data ratio. Detailed results can be found in Appendix A. The main findings are presented below.
+
+\section{Binary IDH Classification}
+\label{sec:results_binary}
+
+The binary classification is influenced by broad metabolic differences that can be detected using RS. Under the TR/TR setting, the best-performing discriminative models achieved accuracies above $70\%$ (see Table \ref{tab:binary_results}).
+
+\begin{table}[h] 
+\caption{Binary Classification Results}
+\label{tab:binary_results}
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{F1-score}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.688$ & -- & -- & $0.697$ \\
+ & TS/TR & $0.431$ & $-0.257$* & $[-0.330, -0.180]$ & $0.340$ \\
+ & TSR/TR & $0.699$ & $+0.011$ & $[-0.015, +0.037]$ & $0.720$ \\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.734$ & -- & -- & $0.724$ \\
+ & TS/TR & $0.669$ & $-0.065$ & $[-0.148, +0.017]$ & $0.696$ \\
+ & TSR/TR & $0.742$ & $+0.008$ & $[-0.001, +0.019]$ & $0.745$ \\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.742$ & -- & -- & $0.742$ \\
+ & TS/TR & $0.622$ & $-0.120$* & $[-0.191, -0.051]$ & $0.653$ \\
+ & TSR/TR & $0.746$ & $+0.004$ & $[-0.004, +0.013]$ & $0.749$ \\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.588$ & -- & -- & $0.445$ \\
+ & TS/TR & $0.398$ & $-0.190$* & $[-0.299, -0.077]$ & $0.380$ \\
+ & TSR/TR & $0.602$ & $+0.014$ & $[-0.055, +0.086]$ & $0.555$ \\
+\midrule
+CbR & -- & $0.622$ & -- & $[+0.555, +0.682]$ & $0.644$ \\
+\bottomrule
+\end{tabular*}
+\caption{Regimens: TR/TR (real-only baseline), TS/TR (synthetic-only), TSR/TR (synthetic + real), CbR (Classification by Reconstruction, model-independent). $\Delta$ and 95\% CI are the slide-level bootstrap difference vs.\ TR/TR; (*) marks a 95\% CI excluding zero. F1-score is macro-averaged, spectrum-level pooled across folds. The CbR row reports its own accuracy 95\% CI.}
+\end{table}
+
+Across all classifiers, models trained exclusively on synthetic spectra underperformed the corresponding TR/TR baselines, which implies a substantial domain gap between synthetic and real spectra. Nevertheless, the performance degradation remained relatively moderate for RF and XGBoost, suggesting that the generated spectra retain part of the discriminative structure of the original data distribution.
+
+In contrast to the TS/TR setting, combining synthetic and real spectra generally improved downstream classification performance. The largest improvement was observed for the 1D-CNN model; Random Forest and XGBoost also showed positive trends. This indicates that synthetic spectra are more effective as a regularization mechanism, augmenting real training data, than as a complete replacement for real measurements.
+
+Of particular interest is the CbR inference method, which reached an accuracy of around 62\%. While lower than the other classifiers' accuracies, it is in the same range as the TS/TR models.
+
+\section{6-Class Glioma Sub-Grading}
+\label{sec:results_6class}
+
+
+The 6-class glioma sub-grading task proved more challenging than binary IDH-status classification. Under the TR/TR setting, the best-performing models achieved accuracies of approximately $30\%$. Such results pinpoint the difficulty of detecting spectral differences at glioma sub-grades granularity. The outcomes of the 6-class experiments can be found in Appendix A (see Tables \ref{tab:appendix_exp_204}--\ref{tab:appendix_exp_206}).
+
+Across all classifiers, training exclusively on synthetic spectra resulted in lower performance than the corresponding TR/TR baselines, reiterating the gap between generated and real spectra. The reduction in performance was more pronounced than in the binary setting, suggesting that subtle inter-class biological differences are more difficult to reproduce through synthetic generation in this small cohort setting.
+
+\section{Remarks}
+Despite the limitations observed in the TS/TR setting, augmenting the real training data with synthetic spectra generally improved downstream classification performance slightly. In nearly all experiments, RF and XGBoost were the most robust, with the lowest domain gaps and most consistent outcomes across experiments, with results over 70\% for TR/TR, over 60\% for TS/TR and slight improvements over the baseline for TSR/TR.
+
+The accuracies of 1D-CNN were less consistent, showing a tendency of improvement with larger training datasets (see Tables \ref{tab:appendix_exp_401}--\ref{tab:appendix_exp_403}).
+
+We note that, given our large number of model comparisons, for a rigorous statistical evaluation, a correction on the statistical significance should be applied. However, given that most of our results reveal mostly small and not statistically significant improvements, we decided not to perform any correction and discuss the results only as general tendencies.

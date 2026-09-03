@@ -16,25 +16,32 @@ We analyzed the dataset of glioma RS biopsies collected for the study performed 
 
 The resulting dataset consists of approximately $270{,}000$ Raman spectra from 59 biopsy scans. One scan, \texttt{HF-1887\_via-t\_2\_1.h5\_3}, was excluded for data quality reasons, leaving the 58 scans used throughout this work; the exclusion is recorded in the \texttt{ignore\_samples} field of every experiment configuration. Each sample scan is a $(H_i,W_i,N_\lambda)$ tensor, with $H_i$ and $W_i$ the width and height of the slide $i$, in number of pixels, and $N_\lambda = 1738$ represents the number of spectral bands or spectral dimension, which is constant throught the dataset as all of the samples were processed with the same spectrometer.
 
-The samples are labeled with LGm1 to LGm6, corresponding to 6 distinct methylation profiles. The labels (LGm1, LGm2, LGm3) are all classified as IDH-mutant tumour, while the labels (LGm4, LGm5, LGm6) are classified as IDH-wildtype. This coarser classification is very impotrant, as it corresponds to a much higher physiological difference than the differences between methylation profiles. This allows us to formulate two problems, one of binary classification of tumour grade between mutant and wildtype and a more difficult problem of determining the methylation profile. The number of samples per class can be found in Table \ref{tab:dataset}
+The samples are labeled with LGm1 to LGm6, corresponding to 6 distinct methylation profiles. The labels (LGm1, LGm2, LGm3) are all classified as IDH-mutant tumour, while the labels (LGm4, LGm5, LGm6) are classified as IDH-wildtype. This coarser classification is very important, as it corresponds to a much higher physiological difference than the differences between methylation profiles. This allows us to formulate two problems, one of binary classification of tumour grade between mutant and wildtype and a more difficult problem of determining the methylation profile. The number of samples per class can be found in Table \ref{tab:dataset}
 
 \begin{table}[h]
 \centering
-\caption{Number of samples by tumor grade class.}
+\caption{Number of slides and patients by methylation subtype, for the 58 slides retained for
+analysis.}
 \label{tab:dataset}
-\begin{tabular}{llcc}
+\begin{tabular}{llcccc}
 \toprule
-\textbf{Methylation} & \textbf{IDH Group} & \textbf{No. of Slides} & \textbf{No. of Slides Group} \\
+\textbf{Methylation} & \textbf{IDH Group} & \textbf{Slides} & \textbf{Group total} & \textbf{Patients} & \textbf{Group total} \\
 \midrule
-LGm1 & Mutant   & 5   \\
-LGm2 & Mutant   & 12 & 26 \\
-LGm3 & Mutant   & 9   \\
+LGm1 & Mutant   & 5  &    & 5  & \\
+LGm2 & Mutant   & 11 & 25 & 11 & 20 \\
+LGm3 & Mutant   & 9  &    & 4  & \\
 \midrule
-LGm4 & Wildtype & 13  \\
-LGm5 & Wildtype & 15 & 33\\
-LGm6 & Wildtype & 5   \\
+LGm4 & Wildtype & 13 &    & 10 & \\
+LGm5 & Wildtype & 15 & 33 & 11 & 25 \\
+LGm6 & Wildtype & 5  &    & 4  & \\
+\midrule
+\multicolumn{2}{@{}l}{\textbf{Total}} & \textbf{58} & & \textbf{45} & \\
 \bottomrule
 \end{tabular}
+\small{Slides outnumber patients because several patients contributed more than one tissue
+section; the cross-validation scheme of Section~\ref{sec:cv_design} therefore splits at the
+patient level. The excluded LGm2 slide is not counted here. The population-level subtype
+distribution is compared against this composition in Table~\ref{tab:glioma_distribution}.}
 \end{table}
 
 \subsection{Cross Validation design}

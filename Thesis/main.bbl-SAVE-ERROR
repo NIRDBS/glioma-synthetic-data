@@ -1774,6 +1774,45 @@
       \field{title}{beta-{VAE}: Learning Basic Visual Concepts with a Constrained Variational Framework}
       \field{year}{2017}
     \endentry
+    \entry{hollon2021raman}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=9ff29341cbffa20aaa0fb8d02a217b0f}{%
+           family={Hollon},
+           familyi={H\bibinitperiod},
+           given={Todd},
+           giveni={T\bibinitperiod}}}%
+        {{hash=b3f5277877892d40eb4609a83bec4cff}{%
+           family={Orringer},
+           familyi={O\bibinitperiod},
+           given={Daniel\bibnamedelima A.},
+           giveni={D\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{7bc84c8099463b7ac1c6127ce0a079a4}
+      \strng{fullhash}{7bc84c8099463b7ac1c6127ce0a079a4}
+      \strng{fullhashraw}{7bc84c8099463b7ac1c6127ce0a079a4}
+      \strng{bibnamehash}{7bc84c8099463b7ac1c6127ce0a079a4}
+      \strng{authorbibnamehash}{7bc84c8099463b7ac1c6127ce0a079a4}
+      \strng{authornamehash}{7bc84c8099463b7ac1c6127ce0a079a4}
+      \strng{authorfullhash}{7bc84c8099463b7ac1c6127ce0a079a4}
+      \strng{authorfullhashraw}{7bc84c8099463b7ac1c6127ce0a079a4}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Neuro-Oncology}
+      \field{number}{3}
+      \field{title}{Label-free brain tumor imaging using Raman-based methods}
+      \field{volume}{151}
+      \field{year}{2021}
+      \field{pages}{393\bibrangedash 402}
+      \range{pages}{10}
+      \verb{doi}
+      \verb 10.1007/s11060-019-03380-z
+      \endverb
+    \endentry
     \entry{Hornik1989}{article}{}{}
       \name{author}{3}{}{%
         {{hash=bec8dd1340457a82c21b54971e4c9417}{%
@@ -1824,6 +1863,52 @@
       \endverb
       \verb{url}
       \verb http://dx.doi.org/10.1016/0893-6080(89)90020-8
+      \endverb
+    \endentry
+    \entry{Jafari2025}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=cf1298efc019f336820416831f0c383a}{%
+           family={Jafari},
+           familyi={J\bibinitperiod},
+           given={Jamile\bibnamedelima Mohammad},
+           giveni={J\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=a0057aabb5e9e540272fb9b853fc6038}{%
+           family={Bocklitz},
+           familyi={B\bibinitperiod},
+           given={Thomas},
+           giveni={T\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier BV}%
+      }
+      \strng{namehash}{995b5fab4e9d3e5025bae86916813060}
+      \strng{fullhash}{995b5fab4e9d3e5025bae86916813060}
+      \strng{fullhashraw}{995b5fab4e9d3e5025bae86916813060}
+      \strng{bibnamehash}{995b5fab4e9d3e5025bae86916813060}
+      \strng{authorbibnamehash}{995b5fab4e9d3e5025bae86916813060}
+      \strng{authornamehash}{995b5fab4e9d3e5025bae86916813060}
+      \strng{authorfullhash}{995b5fab4e9d3e5025bae86916813060}
+      \strng{authorfullhashraw}{995b5fab4e9d3e5025bae86916813060}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0003-2670}
+      \field{journaltitle}{Analytica Chimica Acta}
+      \field{month}{12}
+      \field{title}{Exploring feature extraction methods for Raman spectroscopy: A comparative study}
+      \field{volume}{1380}
+      \field{year}{2025}
+      \field{pages}{344755}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.aca.2025.344755
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1016/j.aca.2025.344755
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1016/j.aca.2025.344755
       \endverb
     \endentry
     \entry{Jones2019}{article}{}{}
@@ -2353,6 +2438,47 @@
       \field{pages}{2579\bibrangedash 2605}
       \range{pages}{27}
     \endentry
+    \entry{murugappan2023raman}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=a2a010ff86637c2ab487c85006f31025}{%
+           family={Murugappan},
+           familyi={M\bibinitperiod},
+           given={Sivasubramanian},
+           giveni={S\bibinitperiod}}}%
+        {{hash=bd52bc4737de9e0ceadcfca86e458d99}{%
+           family={Tofail},
+           familyi={T\bibinitperiod},
+           given={Syed\bibnamedelimb A.\bibnamedelimi M.},
+           giveni={S\bibinitperiod\bibinitdelim A\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=0d03002a68799ff8867868597e0951bb}{%
+           family={Thorat},
+           familyi={T\bibinitperiod},
+           given={Nanasaheb\bibnamedelima D.},
+           giveni={N\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+      }
+      \strng{namehash}{c4b734cd054c00227067de5e353c90b6}
+      \strng{fullhash}{c4b734cd054c00227067de5e353c90b6}
+      \strng{fullhashraw}{c4b734cd054c00227067de5e353c90b6}
+      \strng{bibnamehash}{c4b734cd054c00227067de5e353c90b6}
+      \strng{authorbibnamehash}{c4b734cd054c00227067de5e353c90b6}
+      \strng{authornamehash}{c4b734cd054c00227067de5e353c90b6}
+      \strng{authorfullhash}{c4b734cd054c00227067de5e353c90b6}
+      \strng{authorfullhashraw}{c4b734cd054c00227067de5e353c90b6}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{ACS Omega}
+      \field{number}{31}
+      \field{title}{Raman Spectroscopy: A Tool for Molecular Fingerprinting of Brain Cancer}
+      \field{volume}{8}
+      \field{year}{2023}
+      \field{pages}{27845\bibrangedash 27861}
+      \range{pages}{17}
+      \verb{doi}
+      \verb 10.1021/acsomega.3c01848
+      \endverb
+    \endentry
     \entry{sklearn2011}{article}{}{}
       \name{author}{16}{}{%
         {{hash=bab4e5caee2d67831e464ce575022b37}{%
@@ -2559,6 +2685,35 @@
       \verb{url}
       \verb http://dx.doi.org/10.1080/05704928.2026.2643613
       \endverb
+    \endentry
+    \entry{sineesh2026raman}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=f27d83f7ff6f2593ce877dda71856878}{%
+           family={Sineesh},
+           familyi={S\bibinitperiod},
+           given={Adithya},
+           giveni={A\bibinitperiod}}}%
+        {{hash=274c4d6b4429ca18030ea6bd8c315b4c}{%
+           family={Kamsali},
+           familyi={K\bibinitperiod},
+           given={Akshita},
+           giveni={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{406dd06bb4f4a59b1c0c28417969c718}
+      \strng{fullhash}{406dd06bb4f4a59b1c0c28417969c718}
+      \strng{fullhashraw}{406dd06bb4f4a59b1c0c28417969c718}
+      \strng{bibnamehash}{406dd06bb4f4a59b1c0c28417969c718}
+      \strng{authorbibnamehash}{406dd06bb4f4a59b1c0c28417969c718}
+      \strng{authornamehash}{406dd06bb4f4a59b1c0c28417969c718}
+      \strng{authorfullhash}{406dd06bb4f4a59b1c0c28417969c718}
+      \strng{authorfullhashraw}{406dd06bb4f4a59b1c0c28417969c718}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:2601.16107}
+      \field{title}{Benchmarking Deep Learning Models for Raman Spectroscopy Across Open-Source Datasets}
+      \field{year}{2026}
     \endentry
     \entry{sohn2015cvae}{inproceedings}{}{}
       \name{author}{3}{}{%

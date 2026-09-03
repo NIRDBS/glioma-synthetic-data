@@ -1,7 +1,7 @@
 \chapter{Experimental Design}
 \label{sec:experimental_design}
 
-All experiments were conducted using a strict slide-isolated 5-fold design (see Appendix \ref{app:cv_schema}), ensuring that spectra originating from the same biopsy sample never appeared simultaneously in training and evaluation sets, while keeping class balance into account. We evaluated the proposed framework under three complementary settings: Train-on-Real, Test-on-Real (TR/TR), Train-on-Synthetic, Test-on-Real (TS/TR), and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) \cite{esteban2017real}. We also evaluated the proposed Classification by Reconstruction (CbR) strategy as a reconstruction-based generative inference approach.
+All experiments were conducted using a strict patient-level 5-fold design (see Appendix \ref{app:cv_schema}), ensuring that no patient contributed tissue to both the training and the evaluation set of a fold, while keeping class balance into account. Since several patients supplied more than one tissue section, this is a stronger guarantee than separating individual slides. We evaluated the proposed framework under three complementary settings: Train-on-Real, Test-on-Real (TR/TR), Train-on-Synthetic, Test-on-Real (TS/TR), and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) \cite{esteban2017real}. We also evaluated the proposed Classification by Reconstruction (CbR) strategy as a reconstruction-based generative inference approach.
 
 \section{Classification Tasks}
 
@@ -46,9 +46,42 @@ We present here the specific details of our training setup. We note that the ML 
 
 \section{Statistical Evaluation}
 \label{sec:statistical_eval}
-Due to the hierarchical structure of the dataset, individual spectra originating from the same biopsy sample are strongly correlated. Consequently, statistical evaluation at the individual-spectrum level violates the independent and identically distributed (I.I.D.) assumption and may artificially underestimate uncertainty. Conversely, estimating variance solely across the five cross-validation folds yields limited statistical power.
 
-To obtain more robust uncertainty estimates, we implemented a stratified cluster bootstrap procedure at the slide level. Across 1,000 bootstrap iterations, slides were sampled with replacement while preserving class proportions. This procedure preserves the correlation structure within each slide while approximating variability across independent batches of biopsy slides.
+Two protocols in this work group spectra into clusters, and they deliberately use different
+units. It is worth stating the distinction explicitly, since both are referred to as
+``clustering'' of the data and they serve different purposes.
+
+\emph{Data splitting is performed at the patient level.} No patient contributes tissue to both
+the training and the evaluation side of any fold (Section~\ref{sec:cv_design}). The purpose here
+is to guarantee that evaluation data is genuinely unseen, so the correct unit is the strictest
+one available: a model must not be tested on a patient it has already been shown, regardless of
+which tissue section that patient supplied. Every accuracy reported in this work is obtained
+under this constraint.
+
+\emph{Uncertainty estimation is performed at the slide level.} The bootstrap described below
+resamples whole slides rather than whole patients. The purpose here is different: not to prevent
+leakage, but to estimate how much a reported metric would vary if the study were repeated. Each
+slide corresponds to one Raman acquisition on one tissue section, and the dominant sources of
+variation between measurements, i.e., instrument state, focusing, calibration drift, and sample
+preparation, act at the level of the acquisition rather than at the level of the patient. Since
+the object under evaluation is a spectral generator, we regard the acquisition session as the
+natural exchangeable cluster, and resampling slides simulates the variability that a fresh batch
+of acquisitions would produce. This is a deliberate relaxation relative to the splitting
+protocol: where a single patient contributed several sections, those sections are treated as
+exchangeable during resampling, which we consider appropriate for characterising spectral
+variability even though it would not be appropriate for constructing a test set.
+
+Due to the hierarchical structure of the dataset, individual spectra originating from the same
+biopsy sample are strongly correlated. Consequently, statistical evaluation at the
+individual-spectrum level violates the independent and identically distributed (I.I.D.)
+assumption and may artificially underestimate uncertainty. Conversely, estimating variance solely
+across the five cross-validation folds yields limited statistical power.
+
+To obtain more robust uncertainty estimates, we implemented a stratified cluster bootstrap
+procedure at the slide level. Across 1,000 bootstrap iterations, slides were sampled with
+replacement while preserving class proportions. This procedure preserves the correlation
+structure within each slide while approximating variability across independent batches of biopsy
+slides.
 
 For pairwise comparisons between evaluation settings (TS/TR vs. TR/TR or TSR/TR vs. TR/TR), we computed bootstrap distributions of the corresponding accuracy differences:
 \[

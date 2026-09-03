@@ -28,11 +28,14 @@ Our contributions to the research of the applicability of RS in the context of g
         $\beta$-CVAE trained under a multi-task objective combining reconstruction, KL
         regularisation, and auxiliary classification (Section~\ref{sec:cvae_architecture}).
 
-  \item \emph{An evaluation under a strict slide-isolated protocol}, comparing TR/TR, TS/TR
+  \item \emph{An evaluation under a strict patient-level protocol}, comparing TR/TR, TS/TR
         and TSR/TR regimes across four downstream classifiers and two tasks
         (Chapter~\ref{sec:experimental_design}), with uncertainty estimated by a slide-level
         cluster bootstrap rather than at the spectrum level
-        (Section~\ref{sec:statistical_eval}). This methodology is required for faithful estimation of real world performance of the models. We treat each sample as the unit of test and not individual spectra.
+        (Section~\ref{sec:statistical_eval}). The two protocols deliberately use
+        different units: splitting at the patient level, which is the stricter
+        requirement for preventing leakage, and resampling at the level of the
+        acquisition, which is the cluster that governs spectral variability. This methodology is required for faithful estimation of real world performance of the models. We treat each sample as the unit of test and not individual spectra.
 
   \item \emph{Classification by Reconstruction}, an inference strategy that classifies a
         spectrum by which class-conditioned reconstruction best matches it, using no

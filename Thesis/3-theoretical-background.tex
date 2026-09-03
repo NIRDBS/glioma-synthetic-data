@@ -49,7 +49,7 @@ Many algorithms have been developed for solving the NMF problem \cite{ChihJenLin
     This distance is invariant under these updates iff $W$ and $H$ are at a stationary point.
 \end{theorem}
 
-The proof of convergence can be found in full in D.D. Lee's article. We can see that the updates alternate, hence it resembles the Expectatio-Maximization algorithm. \cite{Lee2000}.
+The proof of convergence can be found in full in D.D. Lee's article. We can see that the updates alternate, hence it resembles the Expectation-Maximization algorithm. \cite{Lee2000}.
 
 In our analysis we used the scikit-learn implementation of the NMF \cite{sklearn2011,Cichocki2009}.
 
@@ -63,7 +63,7 @@ The Gaussian Mixture can be defined as a weighted sum of Gaussian distributions:
 
 $$ p(\mathbf{x}) = \sum_{k=1}^{K}\pi_k \mathcal{N}(\mathbf{x} | \mu_k, \Sigma_k) $$
 
-where $\mathbf{x}$ is the data set $\mathbf{x} = \{x_1, x_2, \dots x_N\}$. In order to assign points to clusters, we will assume there exists this assignment as a latent variable. We will denote this latent variariable with $\mathbf{z}$, as unit vectors of $\mathbb{R}^K$. We can now define the joint distribution $\mathbb{P}(\mathbf{x},\mathbf{z})$, the marginal distribution $\mathbb{P}(\mathbf{z})$, the conditional distribution $\mathbb{P}(\mathbf{x}|\mathbf{z})$. The marginal distribution over $\mathbf{z}$ is:
+where $\mathbf{x}$ is the data set $\mathbf{x} = \{x_1, x_2, \dots x_N\}$. In order to assign points to clusters, we will assume there exists this assignment as a latent variable. We will denote this latent variable with $\mathbf{z}$, as unit vectors of $\mathbb{R}^K$. We can now define the joint distribution $\mathbb{P}(\mathbf{x},\mathbf{z})$, the marginal distribution $\mathbb{P}(\mathbf{z})$, the conditional distribution $\mathbb{P}(\mathbf{x}|\mathbf{z})$. The marginal distribution over $\mathbf{z}$ is:
 $$\mathbb{P}(z_k = 1) = \pi_k$$
 where the parameters $\{\pi_k\}$ form a probability distribution, so they must satisfy the constraints:
 $$0 \le \pi_k \le 1 \quad \sum_{k=1}^{K}\pi_k = 1$$
@@ -93,14 +93,14 @@ Next we set the derivatives with respect to $\Sigma_k$ to zero and we obtain:
 
 $$ \Sigma_k = \frac{1}{N_k} \sum_{n=1}^{N}\gamma(z_{nk})(\mathbf{x}_n - \mu_k)(\mathbf{x}_n - \mu_k)^T $$
 
-In order to find the $\pi_k$ coeficients, we take into account the probability constraints over $\pi_k$ and we maximize:
+In order to find the $\pi_k$ coefficients, we take into account the probability constraints over $\pi_k$ and we maximize:
 $$ \ln \mathbb{P}(\mathbf{x}|\pi, \mu, \Sigma) + \lambda \left(\sum_{k=1}^{K} \pi_k - 1 \right)$$
 and we obtain
 $$ \pi_k = \frac{N_k}{N} $$
 
 \subsection*{The Expectation Maximization algorithm}
 
-We cannot find a direct solution to the GMM problem, but we can devise an iterative algorithm by alternating between the cluster assignments and the parameters of the gaussians. The algorithm is called Expectation Maximization (EM):
+We cannot find a direct solution to the GMM problem, but we can devise an iterative algorithm by alternating between the cluster assignments and the parameters of the gaussians. The algorithm is called Expectation Maximization (EM) \cite{Dempster1977}:
 
 
 
@@ -143,10 +143,10 @@ Note that this is an iterative algorithm and it converges to a local solution. W
 Research in Artificial Neural Networks, or Deep Learning has expanded significantly in the last decades, motivated by advances in computing power, development of software frameworks for easy implementation and testing, as well as theoretical results that offer some guarantees regarding the behaviour of Artificial Neural Networks. 
 
 \subsection*{Early results: ANNs as Universal Function Approximators}
-The first theoretical results were formulated in 1989, with Kurt Hornik et al. \cite{Hornik1989} prooving that a Neural Network with one hidden layer, with a squashing activation function can aproximate arbitrarily well any continuous function on a compact set, provided we let the number of neurons in the hidden layer grow arbitrarily large, and G. Cyabenko proving the Universal Approximator theorem for sigmoid activation functions \cite{Cybenko1989}.
+The first theoretical results were formulated in 1989, with Kurt Hornik et al. \cite{Hornik1989} proving that a Neural Network with one hidden layer, with a squashing activation function can aproximate arbitrarily well any continuous function on a compact set, provided we let the number of neurons in the hidden layer grow arbitrarily large, and G. Cyabenko proving the Universal Approximator theorem for sigmoid activation functions \cite{Cybenko1989}.
 
 \subsection*{Extending the Universal Function Approximation Theorem}
-Other activation functions were tested, and as the requrements on the function were reduced to continuous, non linear, and differentiable almost everywhere, the function $X^+$ (0 if $x < 0$, $x$ otherwise), known in the Deep Learning comunity as the Rectified Linear Unit (ReLU) activation function became widespread.
+Other activation functions were tested, and as the requirements on the function were reduced to continuous, non linear, and differentiable almost everywhere, the function $X^+$ (0 if $x < 0$, $x$ otherwise), known in the Deep Learning comunity as the Rectified Linear Unit (ReLU) activation function became widespread.
 
 The theorem of Universal Approximation was proved for the ReLU activation function as well under some particular geometries \cite{Hanin2019, Lu2017}. 
 
@@ -304,7 +304,7 @@ can be found in Hastie et al.\ \cite{hastie2009elements}.
 
 \subsection*{Decision trees and Random Forests}
 
-A decision tree is a recursive partition of the feature space. At each step, a feature is selected by some criterion, like the Gini impurity or entropy, and that feature is used to separate the dataset. Random Forests are ensamble methods that work by aggregate voting by weak classifiers. Since the decision trees are the simplest classifiers possible, they are the most widely used ensamble method. An ensamble of decision trees is called a random forest. There are a many ways to make decision trees faster and induce variability in an ensamble, such as feature subsampling, where each decision tree has access to a subset of the feature set, data subsampling, where each tree is trained on a smaller subset of the data, pruning the trees, i.e. allowing a small number of decisions, not a perfect classification of the data.
+A decision tree is a recursive partition of the feature space. At each step, a feature is selected by some criterion, like the Gini impurity or entropy, and that feature is used to separate the dataset. Random Forests are ensemble methods that work by aggregate voting by weak classifiers. Since the decision trees are the simplest classifiers possible, they are the most widely used ensemble method. An ensemble of decision trees is called a random forest. There are a many ways to make decision trees faster and induce variability in an ensemble, such as feature subsampling, where each decision tree has access to a subset of the feature set, data subsampling, where each tree is trained on a smaller subset of the data, pruning the trees, i.e. allowing a small number of decisions, not a perfect classification of the data.
 
 
 The mean decrease in impurity attributable to feature $j$, aggregated over the $T$ trees of the
@@ -341,7 +341,7 @@ K(x, x') = \exp\!\left(-\gamma \norm{x - x'}^2\right).
 
 The kernel method can be used to treat the feature space as a mapping to a different, usually non-linear transformation of the features. It works by replacing the scalar product with a non-linear function, without performing the feature transformation. Only the distances between points, and correlation are computed through the kernel function.
 
-An important implementation detail is that by using setting class\_weights to "balanced" when training an SVM, the penalty parameters are scaled inversly proportional to its sample frequencies. Hence there is no longer a single $C$ parameter in \eqref{eq:svm_primal}, but a different $C$ for each class.
+An important implementation detail is that by using setting class\_weights to "balanced" when training an SVM, the penalty parameters are scaled inversely proportional to its sample frequencies. Hence there is no longer a single $C$ parameter in \eqref{eq:svm_primal}, but a different $C$ for each class.
 
 \subsection*{Gradient boosting and XGBoost}
 
@@ -528,7 +528,7 @@ Figure~\ref{fig:airpls_example} shows the procedure applied to one spectrum from
 
 Bootstrapping is a technique to generate meaningful samples and compute statistic when we have only a single sample and an unknown distribution. It works by drawing samples with replacement, simulating new samples from the distribution. Assuming the original sample is representative, this technique can be used to estimate any statistic of interest. This is a great flexibility offered by bootstrap, as we can compute empirical bootstrap confidence intervals even on complex metrics such as classification accuracy.
 
-Ordinary bootstrap resamples observations independantly, however, in our case, the independent unit of reference is not a spectrum, but a patient (or at the very least a slide). This is what cluster bootstrap means: drawing entire clusters of data points, in this case slides, instead of individual spectra, even though the classifiers operate per spectrum. In this way we simulate a new cohort of patients at every bootstrap draw. 
+Ordinary bootstrap resamples observations independently, however, in our case, the independent unit of reference is not a spectrum, but a patient (or at the very least a slide). This is what cluster bootstrap means: drawing entire clusters of data points, in this case slides, instead of individual spectra, even though the classifiers operate per spectrum. In this way we simulate a new cohort of patients at every bootstrap draw. 
 
 Stratified sampling refers to drawing in accordance with the proportions of some classes. In our case, the different glioma classes are very unbalanced, with two classes, LGm1 and LGm6 being very poorly represented, by only 5 samples each. Those are small enough that a random sampling could omit one of those classes entirely. By performing a stratified sampling, we ensure that each class is represented according to its proportion in the initial dataset.
 

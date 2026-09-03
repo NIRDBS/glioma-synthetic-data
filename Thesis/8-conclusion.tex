@@ -1,5 +1,48 @@
 \chapter{Conclusion}
+\label{ch:conclusion}
 
 The present study supports the use of synthetic augmentation to improve model robustness in small-cohort Raman spectroscopy studies and highlights the potential of generative modeling as a complementary strategy for addressing data scarcity in biomedical spectral diagnostics. 
 
 In this work, we addressed the problem of data scarcity in Raman spectroscopy-based glioma classification by developing a conditional variational autoencoder capable of generating class-conditioned synthetic spectra. We have designed and applied a spatio-spectral preprocessing pipeline to extract tumor-spectra from $58$ glioma biopsy slides, combining median filtering, NMF-based clustering, and GMM-guided visual selection. The conditional VAE was trained under a multi-task objective that jointly optimized spectral reconstruction and auxiliary class discrimination, with a KL-regularized latent space to support generative sampling. Synthetic spectra were evaluated under TS/TR and TSR/TR protocols within a strict slide-isolated cross-validation scheme across four downstream classifiers, i.e., RF+SVM, Random Forest, XGBoost, and $1$D-CNN, on both binary IDH-status and $6$-class methylation subtype tasks. We have also proposed and evaluated Classification by Reconstruction (CbR) as a generative inference strategy that bypasses discriminative classifiers entirely. We gained the insight that, whereas synthetic spectra were not able to substitute for real data, they are useful as an augmentation data tool in order to improve classification robustness.
+
+\section*{Summary of contributions}
+
+\TODO{Mirror the contributions list in Chapter~\ref{ch:background}'s preceding introduction,
+but written in the past tense and with the outcome of each attached rather than the promise.
+Keep the two lists in correspondence: a reader should be able to check each claim made at the
+start against what was actually delivered.}
+
+\section*{What the evidence does and does not support}
+
+\TODO{This section is what distinguishes a defensible conclusion from a summary, and it is
+worth being precise. The honest reading of Chapter~\ref{sec:results}:
+
+\emph{Supported.} Synthetic augmentation in the TSR/TR regime shifts accuracy upward
+consistently in sign across models and both tasks. The generator captures class-mean spectral
+structure well enough for a classifier trained on synthetic data alone to stay well above
+chance (RF reaches $0.669$ against a $0.734$ real baseline in
+Table~\ref{tab:binary_results}). CbR performs comparably to TS/TR, indicating the latent
+space retains class-relevant information.
+
+\emph{Not supported.} That the TSR/TR improvements are statistically distinguishable from
+zero: of the four binary models, none has a 95\% CI excluding zero
+(Table~\ref{tab:binary_results}), and the same holds in the six-class task
+(Table~\ref{tab:sixclass_results}). The consistent \emph{sign} across models and tasks is
+suggestive, and the honest formulation is that these are tendencies rather than demonstrated
+effects. Note also that no correction for multiple comparisons is applied
+(Section~\ref{sec:statistical_eval}), which if anything makes the individual intervals
+optimistic.
+
+\emph{Refuted, or at least clearly not achieved.} That synthetic spectra can substitute for
+real ones: TS/TR is below TR/TR for every model in both tasks, significantly so in most.
+
+Resist the temptation to soften the middle category -- a thesis that states plainly which of
+its own results are inconclusive is stronger at a defence, not weaker.}
+
+\section*{Outlook}
+
+\TODO{Two or three sentences pointing forward, and cross-reference
+Section~\ref{sec:limitations} rather than repeating it. The most concrete next step suggested
+by this work's own evidence is a $\beta$ sweep: Chapter~\ref{sec:discussion} identifies
+variance collapse as the specific failure, and $\beta$ is the parameter that trades latent
+regularisation against reconstruction diversity. It was held at $2.0$ in every experiment.}

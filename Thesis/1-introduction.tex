@@ -12,4 +12,53 @@ Because of these limitations, the technique is still in its research phase, and 
 
 In this work, we aim to address some of these limitations by using synthetic data to augment the available datasets of RS spectra from glioma tumors. We propose a Conditional Variational Autoencoder (CVAE) architecture to generate synthetic RS spectra that are similar to real spectra, and we will use these synthetic spectra to train machine learning models for glioma grading. We will then evaluate the performance of these models on real RS spectra, and compare their performance to models trained only on real data.
 
+\section*{Contributions}
 
+\TODO{Turn each bullet below into one or two sentences. They are stated here as claims with
+the chapter that substantiates each, so that the list and the body cannot drift apart. Trim
+any you would rather not defend.}
+
+\begin{itemize}
+  \item \emph{A spatio-spectral annotation pipeline} for separating tumour spectra from
+        background and non-tissue regions on a per-slide basis, combining median filtering,
+        NMF, and GMM clustering under visual inspection
+        (Section~\ref{sec:preprocessing_steps}).
+        \TODO{Say what this offers over the PCA+DBSCAN-over-all-spectra approach of Lita et
+        al., and be honest that the visual inspection step is a limitation as well as a
+        feature -- Chapter~\ref{sec:discussion} already concedes it may introduce selection
+        bias.}
+
+  \item \emph{A conditional generative model for Raman spectra}, a 1D-convolutional
+        $\beta$-CVAE trained under a multi-task objective combining reconstruction, KL
+        regularisation, and auxiliary classification (Section~\ref{sec:cvae_architecture}).
+
+  \item \emph{An evaluation under a strict slide-isolated protocol}, comparing TR/TR, TS/TR
+        and TSR/TR regimes across four downstream classifiers and two tasks
+        (Chapter~\ref{sec:experimental_design}), with uncertainty estimated by a slide-level
+        cluster bootstrap rather than at the spectrum level
+        (Section~\ref{sec:statistical_eval}).
+        \TODO{This is arguably the central methodological contribution and worth stating
+        firmly: spectrum-level statistics on this kind of data badly understate uncertainty,
+        because thousands of spectra come from one slide.}
+
+  \item \emph{Classification by Reconstruction}, an inference strategy that classifies a
+        spectrum by which class-conditioned reconstruction best matches it, using no
+        discriminative classifier at all (Section~\ref{sec:cbr}).
+
+  \item \emph{A characterisation of the domain gap}, showing that the generator reproduces
+        class-mean spectra faithfully but collapses their variance, and that this fidelity /
+        diversity split explains the observed TS/TR and TSR/TR behaviour
+        (Chapter~\ref{sec:discussion}).
+\end{itemize}
+
+\section*{Outline}
+
+\TODO{One short paragraph, one clause per chapter. Roughly: Chapter~\ref{ch:background}
+reviews Raman spectroscopy, its use in medical diagnostics, glioma grading, and synthetic data
+for spectroscopy; Chapter~\ref{ch:theory} develops the mathematical background for the methods
+used; Chapter~\ref{sec:results}'s methodology chapter describes the data and the preprocessing,
+generative and inference pipelines; Chapter~\ref{sec:experimental_design} defines the
+evaluation protocols and the statistical framework; Chapter~\ref{sec:results} reports results;
+Chapter~\ref{sec:discussion} interprets them and states limitations; and
+Chapter~\ref{ch:conclusion} concludes. Check the chapter cross-references as you write --
+the methodology chapter has no label of its own yet, so add one if you reference it.}

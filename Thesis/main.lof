@@ -1,0 +1,18 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces \xpg@aux {}{english}\ignorespaces \footnotesize Diagram of energy model of the molecule-photon system.}}{10}{figure.2.1}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces \xpg@aux {}{english}\ignorespaces \footnotesize One raw spectrum of a sample in our dataset.}}{11}{figure.2.2}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces \xpg@aux {}{english}\ignorespaces \footnotesize (a) False coloring of a slide, with Red = Phenylalanine marker (990--1020 $\text { cm}^{-1}$), Green = Lipids (2800--3000 $\text { cm}^{-1}$), Blue = $CH_2$ deformations (1430--1460 $\text { cm}^{-1}$). (b) Zoomed region for $3\times 3$ median kernel visualization. (c) Raw vs. Median filtered spectra.}}{25}{figure.4.1}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces \xpg@aux {}{english}\ignorespaces \footnotesize Spectral clustering of two slides (top, middle). (a) Slide 1 cluster assignment; (b) Slide 1 Mean spectra per cluster: blue = weak signal cluster, discarded, red = medium intensity signal, discarded, green = strong signal, selected as tumor; (c) Slide 2 cluster assignment; (d) Slide 2 Mean spectra per cluster: red, green = strong tissue signal, selected as tumor, blue = weak signal, discarded; (e, f) Histograms of maximum intensity of spectra for the first and second slides, respectively.}}{27}{figure.4.2}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces \xpg@aux {}{english}\ignorespaces Histogram of retention rates.}}{28}{figure.4.3}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces \xpg@aux {}{english}\ignorespaces \footnotesize Architecture of the 1D-Convolutional Conditional Variational Autoencoder ($\mitbeta $-CVAE). The encoder is composed of 1-d convolutional layers with 3 blocks: filters $[32, 64, 128]$, kernels $[11, 5, 3]$, and strides $[2, 2, 2]$, compressing the input spectrum to the $d$-dimensional latent space. The decoder reconstructs the spectrum conditioned on both the latent representation and the class label, using transpose convolutions with initial filters of 128, followed by 3 blocks with filters $[128, 64, 32]$, kernels $[3, 5, 11]$, and strides $[2, 2, 2]$. An auxiliary classifier head is attached to the encoder to encourage the convolutional layers to capture class discriminative features.}}{29}{figure.4.4}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {7.1}{\ignorespaces \xpg@aux {}{english}\ignorespaces \footnotesize PCA (top) and $t-$SNE (bottom) embeddings of real and synthetic spectra, coloured by source (left) and class (right).}}{38}{figure.7.1}%
+\contentsline {figure}{\numberline {7.2}{\ignorespaces \xpg@aux {}{english}\ignorespaces Mean $\pm \mitsigma $ Raman spectra, real vs. synthetic, per class.}}{39}{figure.7.2}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

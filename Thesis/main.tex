@@ -67,12 +67,12 @@
     urlcolor={blue}
 ]{hyperref}
 
-% Simboluri matematice codificate Unicode
-\usepackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
-
-% Comenzi matematice
+% Comenzi matematice (mathtools trebuie incarcat inaintea unicode-math)
 \usepackage{amsmath}
 \usepackage{mathtools}
+
+% Simboluri matematice codificate Unicode
+\usepackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
 
 % Formule matematice
 \newcommand{\bigO}[1]{\symcal{O}\left(#1\right)}
@@ -98,8 +98,7 @@
 
 \usepackage{multirow}
 
-\usepackage{mathtools}
-\usepackage{amsmath, amsthm}
+\usepackage{amsthm}
 
 \usepackage{algpseudocode} % Core package for pseudocode
 \usepackage{algorithm}     % Optional: Adds a floating box container with captions
@@ -112,6 +111,12 @@
 \DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
 
 \PassOptionsToPackage{toc,page}{appendix} 
+
+% Marcaje TODO vizibile doar in modul draft.
+% Inainte de predare: schimba \drafttrue in \draftfalse si toate dispar.
+\usepackage{xcolor}
+\newif\ifdraft\drafttrue
+\newcommand{\TODO}[1]{\ifdraft\textcolor{red}{[TODO: #1]}\fi}
 
 
 \widowpenalties 3 10000 10000 0
@@ -152,6 +157,8 @@
 \include{0-abstract}
 
 \tableofcontents
+\listoffigures
+\listoftables
 
 % Main matter
 \cleardoublepage

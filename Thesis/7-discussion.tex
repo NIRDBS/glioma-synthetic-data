@@ -31,7 +31,8 @@ An important observation is that useful augmentation effects were obtained despi
 
 The proposed Classification by Reconstruction (CbR) framework further demonstrates that the learned latent representations retain class-relevant spectral information. Although reconstruction-based inference did not outperform discriminative classifiers, its performance remained comparable to the TS/TR setting, suggesting that the generative model captures part of the discriminative structure of the underlying data distribution. More broadly, these results indicate that reconstruction-based inference may provide an alternative perspective for evaluating generative representations in biomedical spectroscopy.
 
-\section*{Limitations and Future Work}
+\section{Limitations and Future Work}
+\label{sec:limitations}
 
 Several limitations remain. The dataset size is modest in terms of independent slide samples, and all experiments were conducted on a single acquisition setting. Moreover, the proposed spatio-spectral annotation pipeline includes heuristic and visually guided components that may introduce selection bias. The observed domain gap between synthetic and real spectra further indicates that the current CVAE architecture does not fully capture the variability present in the real data distribution, particularly for subtle multi-class grading tasks.
 

@@ -1,0 +1,1770 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global/global}
+    \entry{Alix2022}{article}{}{}
+      \name{author}{12}{}{%
+        {{hash=35f1303b9ba1f8376e331284707a33b2}{%
+           family={Alix},
+           familyi={A\bibinitperiod},
+           given={James\bibnamedelimb J.\bibnamedelimi P.},
+           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+        {{hash=40eb70b0583e6b116d9db188ecf78fdf}{%
+           family={Plesia},
+           familyi={P\bibinitperiod},
+           given={Maria},
+           giveni={M\bibinitperiod}}}%
+        {{hash=9c092062d45dabc537c5430abccc9db1}{%
+           family={Schooling},
+           familyi={S\bibinitperiod},
+           given={Chlöe\bibnamedelima N.},
+           giveni={C\bibinitperiod\bibinitdelim N\bibinitperiod}}}%
+        {{hash=99872e9db30be24ea03c02a7a72d7901}{%
+           family={Dudgeon},
+           familyi={D\bibinitperiod},
+           given={Alexander\bibnamedelima P.},
+           giveni={A\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+        {{hash=a473f3403ea15e4f8f5cb5172fb9c376}{%
+           family={Kendall},
+           familyi={K\bibinitperiod},
+           given={Catherine\bibnamedelima A.},
+           giveni={C\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=677d04a0348a57cf38ca9c22779babcd}{%
+           family={Kadirkamanathan},
+           familyi={K\bibinitperiod},
+           given={Visakan},
+           giveni={V\bibinitperiod}}}%
+        {{hash=63adef783db4e872589d7ac8b763ec0a}{%
+           family={McDermott},
+           familyi={M\bibinitperiod},
+           given={Christopher\bibnamedelima J.},
+           giveni={C\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+        {{hash=1462228f689953cced4348dfda99a706}{%
+           family={Gorman},
+           familyi={G\bibinitperiod},
+           given={Gráinne\bibnamedelima S.},
+           giveni={G\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+        {{hash=4ee6ee8e49887f106248de406e682676}{%
+           family={Taylor},
+           familyi={T\bibinitperiod},
+           given={Robert\bibnamedelima W.},
+           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+        {{hash=5175785b7a04b8d333fc8372c0d1fbb4}{%
+           family={Mead},
+           familyi={M\bibinitperiod},
+           given={Richard\bibnamedelima J.},
+           giveni={R\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+        {{hash=c5cc05cee8410cbf3c88b2994134e4b7}{%
+           family={Shaw},
+           familyi={S\bibinitperiod},
+           given={Pamela\bibnamedelima J.},
+           giveni={P\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+        {{hash=4144cff28ea13b71bde1fa9cd25204e5}{%
+           family={Day},
+           familyi={D\bibinitperiod},
+           given={John\bibnamedelima C.},
+           giveni={J\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Wiley}%
+      }
+      \strng{namehash}{e2eb8bc809c846e47e81a73edecd4f68}
+      \strng{fullhash}{c26a03ad164fd0a753041c95e642cef7}
+      \strng{fullhashraw}{c26a03ad164fd0a753041c95e642cef7}
+      \strng{bibnamehash}{c26a03ad164fd0a753041c95e642cef7}
+      \strng{authorbibnamehash}{c26a03ad164fd0a753041c95e642cef7}
+      \strng{authornamehash}{e2eb8bc809c846e47e81a73edecd4f68}
+      \strng{authorfullhash}{c26a03ad164fd0a753041c95e642cef7}
+      \strng{authorfullhashraw}{c26a03ad164fd0a753041c95e642cef7}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1097-4555}
+      \field{journaltitle}{Journal of Raman Spectroscopy}
+      \field{month}{12}
+      \field{number}{3}
+      \field{title}{Non‐negative matrix factorisation of Raman spectra finds common patterns relating to neuromuscular disease across differing equipment configurations, preclinical models and human tissue}
+      \field{volume}{54}
+      \field{year}{2022}
+      \field{pages}{258\bibrangedash 268}
+      \range{pages}{11}
+      \verb{doi}
+      \verb 10.1002/jrs.6480
+      \endverb
+    \endentry
+    \entry{Asperti2020}{misc}{}{}
+      \name{author}{2}{}{%
+        {{hash=97340df96bec6014ee65c30ac5781c04}{%
+           family={Asperti},
+           familyi={A\bibinitperiod},
+           given={Andrea},
+           giveni={A\bibinitperiod}}}%
+        {{hash=15184929d9df5cc2f38e1de2b75d8d0e}{%
+           family={Trentin},
+           familyi={T\bibinitperiod},
+           given={Matteo},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{13d000bcd33552087bb6d0d0fbba1f49}
+      \strng{fullhash}{13d000bcd33552087bb6d0d0fbba1f49}
+      \strng{fullhashraw}{13d000bcd33552087bb6d0d0fbba1f49}
+      \strng{bibnamehash}{13d000bcd33552087bb6d0d0fbba1f49}
+      \strng{authorbibnamehash}{13d000bcd33552087bb6d0d0fbba1f49}
+      \strng{authornamehash}{13d000bcd33552087bb6d0d0fbba1f49}
+      \strng{authorfullhash}{13d000bcd33552087bb6d0d0fbba1f49}
+      \strng{authorfullhashraw}{13d000bcd33552087bb6d0d0fbba1f49}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Balancing reconstruction error and Kullback-Leibler divergence in Variational Autoencoders}
+      \field{year}{2020}
+      \verb{doi}
+      \verb 10.48550/ARXIV.2002.07514
+      \endverb
+    \endentry
+    \entry{Auner2018}{article}{}{}
+      \name{author}{9}{}{%
+        {{hash=12ae9999be986c08f47d26675f759691}{%
+           family={Auner},
+           familyi={A\bibinitperiod},
+           given={Gregory\bibnamedelima W.},
+           giveni={G\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+        {{hash=ef036bce4ed5198a162c2837f7d26d80}{%
+           family={Koya},
+           familyi={K\bibinitperiod},
+           given={S.\bibnamedelimi Kiran},
+           giveni={S\bibinitperiod\bibinitdelim K\bibinitperiod}}}%
+        {{hash=ff260ff804284349b2150fda7def0850}{%
+           family={Huang},
+           familyi={H\bibinitperiod},
+           given={Changhe},
+           giveni={C\bibinitperiod}}}%
+        {{hash=63cf59502cb34f92d09e93604dbdaadd}{%
+           family={Broadbent},
+           familyi={B\bibinitperiod},
+           given={Brandy},
+           giveni={B\bibinitperiod}}}%
+        {{hash=47ece60ed92adc15a954c4e0a3e2a247}{%
+           family={Trexler},
+           familyi={T\bibinitperiod},
+           given={Micaela},
+           giveni={M\bibinitperiod}}}%
+        {{hash=872cf0c2ce1ecbecdf4fb8b6e28d616c}{%
+           family={Auner},
+           familyi={A\bibinitperiod},
+           given={Zachary},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=bb38b7ffd280c19e1045f3ed1a83ea71}{%
+           family={Elias},
+           familyi={E\bibinitperiod},
+           given={Angela},
+           giveni={A\bibinitperiod}}}%
+        {{hash=7de7ec8de286e8cabfb36a8f51b3c268}{%
+           family={Mehne},
+           familyi={M\bibinitperiod},
+           given={Katlyn\bibnamedelima Curtin},
+           giveni={K\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=25d67168aae33a0b80dc268c3c1aec9b}{%
+           family={Brusatori},
+           familyi={B\bibinitperiod},
+           given={Michelle\bibnamedelima A.},
+           giveni={M\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Springer Science}%
+        {Business Media LLC}%
+      }
+      \strng{namehash}{64d960a3bfbe81dceefbe8a68e1d6689}
+      \strng{fullhash}{9b68e82858d2616b364893ade46b6fee}
+      \strng{fullhashraw}{9b68e82858d2616b364893ade46b6fee}
+      \strng{bibnamehash}{9b68e82858d2616b364893ade46b6fee}
+      \strng{authorbibnamehash}{9b68e82858d2616b364893ade46b6fee}
+      \strng{authornamehash}{64d960a3bfbe81dceefbe8a68e1d6689}
+      \strng{authorfullhash}{9b68e82858d2616b364893ade46b6fee}
+      \strng{authorfullhashraw}{9b68e82858d2616b364893ade46b6fee}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1573-7233}
+      \field{journaltitle}{Cancer and Metastasis Reviews}
+      \field{month}{12}
+      \field{number}{4}
+      \field{title}{Applications of Raman spectroscopy in cancer diagnosis}
+      \field{volume}{37}
+      \field{year}{2018}
+      \field{pages}{691\bibrangedash 717}
+      \range{pages}{27}
+      \verb{doi}
+      \verb 10.1007/s10555-018-9770-9
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1007/s10555-018-9770-9
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1007/s10555-018-9770-9
+      \endverb
+    \endentry
+    \entry{bishop2006pattern}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=9dfd0135a5e80aa6d81cea2c10fb7f73}{%
+           family={Bishop},
+           familyi={B\bibinitperiod},
+           given={Christopher\bibnamedelima M.},
+           giveni={C\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer New York}%
+      }
+      \strng{namehash}{9dfd0135a5e80aa6d81cea2c10fb7f73}
+      \strng{fullhash}{9dfd0135a5e80aa6d81cea2c10fb7f73}
+      \strng{fullhashraw}{9dfd0135a5e80aa6d81cea2c10fb7f73}
+      \strng{bibnamehash}{9dfd0135a5e80aa6d81cea2c10fb7f73}
+      \strng{authorbibnamehash}{9dfd0135a5e80aa6d81cea2c10fb7f73}
+      \strng{authornamehash}{9dfd0135a5e80aa6d81cea2c10fb7f73}
+      \strng{authorfullhash}{9dfd0135a5e80aa6d81cea2c10fb7f73}
+      \strng{authorfullhashraw}{9dfd0135a5e80aa6d81cea2c10fb7f73}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{isbn}{978-0-387-31073-2}
+      \field{series}{Information Science and Statistics}
+      \field{title}{Pattern Recognition and Machine Learning}
+      \field{year}{2006}
+    \endentry
+    \entry{Boateng2025ramanmix}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=6e86780ac878d9cd1396b88b80d635ed}{%
+           family={Boateng},
+           familyi={B\bibinitperiod},
+           given={Derrick},
+           giveni={D\bibinitperiod}}}%
+      }
+      \strng{namehash}{6e86780ac878d9cd1396b88b80d635ed}
+      \strng{fullhash}{6e86780ac878d9cd1396b88b80d635ed}
+      \strng{fullhashraw}{6e86780ac878d9cd1396b88b80d635ed}
+      \strng{bibnamehash}{6e86780ac878d9cd1396b88b80d635ed}
+      \strng{authorbibnamehash}{6e86780ac878d9cd1396b88b80d635ed}
+      \strng{authornamehash}{6e86780ac878d9cd1396b88b80d635ed}
+      \strng{authorfullhash}{6e86780ac878d9cd1396b88b80d635ed}
+      \strng{authorfullhashraw}{6e86780ac878d9cd1396b88b80d635ed}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Raman spectroscopy is a non-invasive, label-free characterization technique that provides detailed chemical information about samples, particularly of complex chemical mixtures such as liposomes, lipid droplets, and whole cells. However, extracting precise chemical information, such as component concentrations, from these multicomponent mixtures remains a persistent challenge in Raman spectral analysis. This review provides a concise overview of the technical and theoretical foundations of Raman spectroscopy, its working principles, and the current challenges associated with its application. It also highlights up-to-date and emerging uses of deep learning methods in Raman spectroscopy, including approaches for spectral preprocessing, classification, and regression. Finally, the review discusses the obstacles in developing deep learning models for Raman spectroscopy and provides insights to propel future research in this field.}
+      \field{issn}{0026-265X}
+      \field{journaltitle}{Microchemical Journal}
+      \field{title}{Advances in deep learning-based applications for Raman spectroscopy analysis: A mini-review of the progress and challenges}
+      \field{volume}{209}
+      \field{year}{2025}
+      \field{pages}{112692}
+      \range{pages}{1}
+      \verb{doi}
+      \verb https://doi.org/10.1016/j.microc.2025.112692
+      \endverb
+      \verb{urlraw}
+      \verb https://www.sciencedirect.com/science/article/pii/S0026265X25000463
+      \endverb
+      \verb{url}
+      \verb https://www.sciencedirect.com/science/article/pii/S0026265X25000463
+      \endverb
+      \keyw{Raman spectroscopy,Deep learning,Chemometrics,Asymmetric least squares,Machine learning}
+    \endentry
+    \entry{Cichocki2009}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=bb975893ec4a05ccb19952ef5337a608}{%
+           family={CICHOCKI},
+           familyi={C\bibinitperiod},
+           given={Andrzej},
+           giveni={A\bibinitperiod}}}%
+        {{hash=a7fb0d6f31538fc0661ad1ca5dd0a336}{%
+           family={PHAN},
+           familyi={P\bibinitperiod},
+           given={Anh-Huy},
+           giveni={A\bibinithyphendelim H\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Institute of Electronics, Information}%
+        {Communications Engineers (IEICE)}%
+      }
+      \strng{namehash}{d2f859476b6a65aa0ff39a2978fe3cc9}
+      \strng{fullhash}{d2f859476b6a65aa0ff39a2978fe3cc9}
+      \strng{fullhashraw}{d2f859476b6a65aa0ff39a2978fe3cc9}
+      \strng{bibnamehash}{d2f859476b6a65aa0ff39a2978fe3cc9}
+      \strng{authorbibnamehash}{d2f859476b6a65aa0ff39a2978fe3cc9}
+      \strng{authornamehash}{d2f859476b6a65aa0ff39a2978fe3cc9}
+      \strng{authorfullhash}{d2f859476b6a65aa0ff39a2978fe3cc9}
+      \strng{authorfullhashraw}{d2f859476b6a65aa0ff39a2978fe3cc9}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1745-1337}
+      \field{journaltitle}{IEICE Transactions on Fundamentals of Electronics, Communications and Computer Sciences}
+      \field{number}{3}
+      \field{title}{Fast Local Algorithms for Large Scale Nonnegative Matrix and Tensor Factorizations}
+      \field{volume}{E92-A}
+      \field{year}{2009}
+      \field{pages}{708\bibrangedash 721}
+      \range{pages}{14}
+      \verb{doi}
+      \verb 10.1587/transfun.e92.a.708
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1587/transfun.E92.A.708
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1587/transfun.E92.A.708
+      \endverb
+    \endentry
+    \entry{Cybenko1989}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=743aed8cb3e0d5dddafd15fc0421d6eb}{%
+           family={Cybenko},
+           familyi={C\bibinitperiod},
+           given={G.},
+           giveni={G\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Springer Science}%
+        {Business Media LLC}%
+      }
+      \strng{namehash}{743aed8cb3e0d5dddafd15fc0421d6eb}
+      \strng{fullhash}{743aed8cb3e0d5dddafd15fc0421d6eb}
+      \strng{fullhashraw}{743aed8cb3e0d5dddafd15fc0421d6eb}
+      \strng{bibnamehash}{743aed8cb3e0d5dddafd15fc0421d6eb}
+      \strng{authorbibnamehash}{743aed8cb3e0d5dddafd15fc0421d6eb}
+      \strng{authornamehash}{743aed8cb3e0d5dddafd15fc0421d6eb}
+      \strng{authorfullhash}{743aed8cb3e0d5dddafd15fc0421d6eb}
+      \strng{authorfullhashraw}{743aed8cb3e0d5dddafd15fc0421d6eb}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1435-568X}
+      \field{journaltitle}{Mathematics of Control, Signals, and Systems}
+      \field{month}{12}
+      \field{number}{4}
+      \field{title}{Approximation by superpositions of a sigmoidal function}
+      \field{volume}{2}
+      \field{year}{1989}
+      \field{pages}{303\bibrangedash 314}
+      \range{pages}{12}
+      \verb{doi}
+      \verb 10.1007/bf02551274
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1007/BF02551274
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1007/BF02551274
+      \endverb
+    \endentry
+    \entry{esteban2017real}{misc}{}{}
+      \name{author}{3}{}{%
+        {{hash=517370b327f079c29c38bdc28b81b441}{%
+           family={Esteban},
+           familyi={E\bibinitperiod},
+           given={Cristóbal},
+           giveni={C\bibinitperiod}}}%
+        {{hash=adab195ca432a1aea9dc8ef9e5339fc5}{%
+           family={Hyland},
+           familyi={H\bibinitperiod},
+           given={Stephanie\bibnamedelima L.},
+           giveni={S\bibinitperiod\bibinitdelim L\bibinitperiod}}}%
+        {{hash=ca596a0a9d87ca9f7999db4d71c7e577}{%
+           family={Rätsch},
+           familyi={R\bibinitperiod},
+           given={Gunnar},
+           giveni={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{c364be3164dbae773df3b5d9de39e025}
+      \strng{fullhash}{c364be3164dbae773df3b5d9de39e025}
+      \strng{fullhashraw}{c364be3164dbae773df3b5d9de39e025}
+      \strng{bibnamehash}{c364be3164dbae773df3b5d9de39e025}
+      \strng{authorbibnamehash}{c364be3164dbae773df3b5d9de39e025}
+      \strng{authornamehash}{c364be3164dbae773df3b5d9de39e025}
+      \strng{authorfullhash}{c364be3164dbae773df3b5d9de39e025}
+      \strng{authorfullhashraw}{c364be3164dbae773df3b5d9de39e025}
+      \field{sortinit}{E}
+      \field{sortinithash}{8da8a182d344d5b9047633dfc0cc9131}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{stat.ML}
+      \field{eprinttype}{arXiv}
+      \field{title}{Real-valued (Medical) Time Series Generation with Recurrent Conditional GANs}
+      \field{year}{2017}
+      \verb{eprint}
+      \verb 1706.02633
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/1706.02633
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/1706.02633
+      \endverb
+    \endentry
+    \entry{Gillis2017}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=269a69583c44c74867d49ffb9f3a7283}{%
+           family={Gillis},
+           familyi={G\bibinitperiod},
+           given={Nicolas},
+           giveni={N\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {arXiv}%
+      }
+      \strng{namehash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{fullhash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{fullhashraw}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{bibnamehash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{authorbibnamehash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{authornamehash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{authorfullhash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{authorfullhashraw}{269a69583c44c74867d49ffb9f3a7283}
+      \field{extraname}{1}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Introduction to Nonnegative Matrix Factorization}
+      \field{year}{2017}
+      \verb{doi}
+      \verb 10.48550/ARXIV.1703.00663
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/1703.00663
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/1703.00663
+      \endverb
+      \keyw{Numerical Analysis (math.NA),Computer Vision and Pattern Recognition (cs.CV),Machine Learning (cs.LG),Optimization and Control (math.OC),Machine Learning (stat.ML),FOS: Mathematics,FOS: Mathematics,FOS: Computer and information sciences,FOS: Computer and information sciences}
+    \endentry
+    \entry{Gillis2020}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=269a69583c44c74867d49ffb9f3a7283}{%
+           family={Gillis},
+           familyi={G\bibinitperiod},
+           given={Nicolas},
+           giveni={N\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Society for Industrial}%
+        {Applied Mathematics}%
+      }
+      \strng{namehash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{fullhash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{fullhashraw}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{bibnamehash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{authorbibnamehash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{authornamehash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{authorfullhash}{269a69583c44c74867d49ffb9f3a7283}
+      \strng{authorfullhashraw}{269a69583c44c74867d49ffb9f3a7283}
+      \field{extraname}{2}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{isbn}{9781611976410}
+      \field{month}{1}
+      \field{title}{Nonnegative Matrix Factorization}
+      \field{year}{2020}
+      \verb{doi}
+      \verb 10.1137/1.9781611976410
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1137/1.9781611976410
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1137/1.9781611976410
+      \endverb
+    \endentry
+    \entry{Hanin2019}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=cf9a954bd1391f7be502bbdd80737355}{%
+           family={Hanin},
+           familyi={H\bibinitperiod},
+           given={Boris},
+           giveni={B\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {MDPI AG}%
+      }
+      \strng{namehash}{cf9a954bd1391f7be502bbdd80737355}
+      \strng{fullhash}{cf9a954bd1391f7be502bbdd80737355}
+      \strng{fullhashraw}{cf9a954bd1391f7be502bbdd80737355}
+      \strng{bibnamehash}{cf9a954bd1391f7be502bbdd80737355}
+      \strng{authorbibnamehash}{cf9a954bd1391f7be502bbdd80737355}
+      \strng{authornamehash}{cf9a954bd1391f7be502bbdd80737355}
+      \strng{authorfullhash}{cf9a954bd1391f7be502bbdd80737355}
+      \strng{authorfullhashraw}{cf9a954bd1391f7be502bbdd80737355}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{2227-7390}
+      \field{journaltitle}{Mathematics}
+      \field{month}{10}
+      \field{number}{10}
+      \field{title}{Universal Function Approximation by Deep Neural Nets with Bounded Width and ReLU Activations}
+      \field{volume}{7}
+      \field{year}{2019}
+      \field{pages}{992}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.3390/math7100992
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.3390/math7100992
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.3390/math7100992
+      \endverb
+    \endentry
+    \entry{Harris2023}{article}{}{}
+      \name{author}{4}{}{%
+        {{hash=41950aa9a035aa6f73d4b1fac364f7ef}{%
+           family={Harris},
+           familyi={H\bibinitperiod},
+           given={Georgia},
+           giveni={G\bibinitperiod}}}%
+        {{hash=0edf1ede5e6e2c70c380142d860a8e27}{%
+           family={Stickland},
+           familyi={S\bibinitperiod},
+           given={Clarissa\bibnamedelima A.},
+           giveni={C\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=5171069a23fa9132a643cf45c81768f1}{%
+           family={Lim},
+           familyi={L\bibinitperiod},
+           given={Matthias},
+           giveni={M\bibinitperiod}}}%
+        {{hash=46c7018c8e0cb1ce361330c17a0f1b47}{%
+           family={Goldberg\bibnamedelima Oppenheimer},
+           familyi={G\bibinitperiod\bibinitdelim O\bibinitperiod},
+           given={Pola},
+           giveni={P\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {MDPI AG}%
+      }
+      \strng{namehash}{9034bc1102eff29718b698d7adfd8843}
+      \strng{fullhash}{721e88099c007b82765e10ff00848969}
+      \strng{fullhashraw}{721e88099c007b82765e10ff00848969}
+      \strng{bibnamehash}{721e88099c007b82765e10ff00848969}
+      \strng{authorbibnamehash}{721e88099c007b82765e10ff00848969}
+      \strng{authornamehash}{9034bc1102eff29718b698d7adfd8843}
+      \strng{authorfullhash}{721e88099c007b82765e10ff00848969}
+      \strng{authorfullhashraw}{721e88099c007b82765e10ff00848969}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{2073-4409}
+      \field{journaltitle}{Cells}
+      \field{month}{11}
+      \field{number}{22}
+      \field{title}{Raman Spectroscopy Spectral Fingerprints of Biomarkers of Traumatic Brain Injury}
+      \field{volume}{12}
+      \field{year}{2023}
+      \field{pages}{2589}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.3390/cells12222589
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.3390/cells12222589
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.3390/cells12222589
+      \endverb
+    \endentry
+    \entry{higgins2017betavae}{inproceedings}{}{}
+      \name{author}{8}{}{%
+        {{hash=08a44a7f6d4c6a9b876d60071925d7a7}{%
+           family={Higgins},
+           familyi={H\bibinitperiod},
+           given={Irina},
+           giveni={I\bibinitperiod}}}%
+        {{hash=4ca99bbd5d79fc2a098b19d509dfd618}{%
+           family={Matthey},
+           familyi={M\bibinitperiod},
+           given={Loic},
+           giveni={L\bibinitperiod}}}%
+        {{hash=e108230ff84e0e9dc0342f059801c97f}{%
+           family={Pal},
+           familyi={P\bibinitperiod},
+           given={Arka},
+           giveni={A\bibinitperiod}}}%
+        {{hash=e0e85368fdf139b0fe9e5d220c80e9d2}{%
+           family={Burgess},
+           familyi={B\bibinitperiod},
+           given={Christopher},
+           giveni={C\bibinitperiod}}}%
+        {{hash=0b3943c3bfdbb5867b3760f7c7d488c2}{%
+           family={Glorot},
+           familyi={G\bibinitperiod},
+           given={Xavier},
+           giveni={X\bibinitperiod}}}%
+        {{hash=9ac5fb35edeb23736953b00e66bef926}{%
+           family={Botvinick},
+           familyi={B\bibinitperiod},
+           given={Matthew},
+           giveni={M\bibinitperiod}}}%
+        {{hash=b520f2e46ec8803dd4c66bf1d6059482}{%
+           family={Mohamed},
+           familyi={M\bibinitperiod},
+           given={Shakir},
+           giveni={S\bibinitperiod}}}%
+        {{hash=ab8697e1baff9a8e44cb823b3c9d1013}{%
+           family={Lerchner},
+           familyi={L\bibinitperiod},
+           given={Alexander},
+           giveni={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{9f67f65c7a3314e532e2c457dee12c49}
+      \strng{fullhash}{b49a94d956ad2400c60b6e67a8d5837f}
+      \strng{fullhashraw}{b49a94d956ad2400c60b6e67a8d5837f}
+      \strng{bibnamehash}{b49a94d956ad2400c60b6e67a8d5837f}
+      \strng{authorbibnamehash}{b49a94d956ad2400c60b6e67a8d5837f}
+      \strng{authornamehash}{9f67f65c7a3314e532e2c457dee12c49}
+      \strng{authorfullhash}{b49a94d956ad2400c60b6e67a8d5837f}
+      \strng{authorfullhashraw}{b49a94d956ad2400c60b6e67a8d5837f}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{International Conference on Learning Representations}
+      \field{title}{beta-{VAE}: Learning Basic Visual Concepts with a Constrained Variational Framework}
+      \field{year}{2017}
+    \endentry
+    \entry{Hornik1989}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=bec8dd1340457a82c21b54971e4c9417}{%
+           family={Hornik},
+           familyi={H\bibinitperiod},
+           given={Kurt},
+           giveni={K\bibinitperiod}}}%
+        {{hash=17a26ba07299c37a45cc2475a9f3bc8d}{%
+           family={Stinchcombe},
+           familyi={S\bibinitperiod},
+           given={Maxwell},
+           giveni={M\bibinitperiod}}}%
+        {{hash=426e452a5ec8e692f7740ce0d3e3655c}{%
+           family={White},
+           familyi={W\bibinitperiod},
+           given={Halbert},
+           giveni={H\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier BV}%
+      }
+      \strng{namehash}{31166c18fa8ee825c1eb4693189f9e2a}
+      \strng{fullhash}{31166c18fa8ee825c1eb4693189f9e2a}
+      \strng{fullhashraw}{31166c18fa8ee825c1eb4693189f9e2a}
+      \strng{bibnamehash}{31166c18fa8ee825c1eb4693189f9e2a}
+      \strng{authorbibnamehash}{31166c18fa8ee825c1eb4693189f9e2a}
+      \strng{authornamehash}{31166c18fa8ee825c1eb4693189f9e2a}
+      \strng{authorfullhash}{31166c18fa8ee825c1eb4693189f9e2a}
+      \strng{authorfullhashraw}{31166c18fa8ee825c1eb4693189f9e2a}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0893-6080}
+      \field{journaltitle}{Neural Networks}
+      \field{month}{1}
+      \field{number}{5}
+      \field{title}{Multilayer feedforward networks are universal approximators}
+      \field{volume}{2}
+      \field{year}{1989}
+      \field{pages}{359\bibrangedash 366}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1016/0893-6080(89)90020-8
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1016/0893-6080(89)90020-8
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1016/0893-6080(89)90020-8
+      \endverb
+    \endentry
+    \entry{Jones2019}{article}{}{}
+      \name{author}{5}{}{%
+        {{hash=1e5a213cee9b5b3396d4f50741663b9c}{%
+           family={Jones},
+           familyi={J\bibinitperiod},
+           given={Robin\bibnamedelima R.},
+           giveni={R\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
+        {{hash=fa4eba5f3b63e7e62c267364d5ace412}{%
+           family={Hooper},
+           familyi={H\bibinitperiod},
+           given={David\bibnamedelima C.},
+           giveni={D\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=6d495a70816ab45ec429518fde47c781}{%
+           family={Zhang},
+           familyi={Z\bibinitperiod},
+           given={Liwu},
+           giveni={L\bibinitperiod}}}%
+        {{hash=8dedc9a57fa50dfa3d7b58348051539a}{%
+           family={Wolverson},
+           familyi={W\bibinitperiod},
+           given={Daniel},
+           giveni={D\bibinitperiod}}}%
+        {{hash=9e828843e4dfef3ebada8c9f437f779b}{%
+           family={Valev},
+           familyi={V\bibinitperiod},
+           given={Ventsislav\bibnamedelima K.},
+           giveni={V\bibinitperiod\bibinitdelim K\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Springer Science}%
+        {Business Media LLC}%
+      }
+      \strng{namehash}{b59538677a58db0415165722a9e6332b}
+      \strng{fullhash}{bf2de6af1fb47494115b012c0ce3661f}
+      \strng{fullhashraw}{bf2de6af1fb47494115b012c0ce3661f}
+      \strng{bibnamehash}{bf2de6af1fb47494115b012c0ce3661f}
+      \strng{authorbibnamehash}{bf2de6af1fb47494115b012c0ce3661f}
+      \strng{authornamehash}{b59538677a58db0415165722a9e6332b}
+      \strng{authorfullhash}{bf2de6af1fb47494115b012c0ce3661f}
+      \strng{authorfullhashraw}{bf2de6af1fb47494115b012c0ce3661f}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1556-276X}
+      \field{journaltitle}{Nanoscale Research Letters}
+      \field{number}{1}
+      \field{title}{Raman Techniques: Fundamentals and Frontiers}
+      \field{volume}{14}
+      \field{year}{2019}
+      \verb{doi}
+      \verb 10.1186/s11671-019-3039-2
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1186/s11671-019-3039-2
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1186/s11671-019-3039-2
+      \endverb
+    \endentry
+    \entry{nmf_oncology_2022}{article}{}{}
+      \true{moreauthor}
+      \true{morelabelname}
+      \name{author}{1}{}{%
+        {{hash=60b9f8d0cba57b410ca5488388f1f7f2}{%
+           family={Kato},
+           familyi={K\bibinitperiod},
+           given={H.},
+           giveni={H\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {AME Publishing Company}%
+      }
+      \strng{namehash}{ead08972f4730651f21c7f7200e9bfba}
+      \strng{fullhash}{ead08972f4730651f21c7f7200e9bfba}
+      \strng{fullhashraw}{ead08972f4730651f21c7f7200e9bfba}
+      \strng{bibnamehash}{ead08972f4730651f21c7f7200e9bfba}
+      \strng{authorbibnamehash}{ead08972f4730651f21c7f7200e9bfba}
+      \strng{authornamehash}{ead08972f4730651f21c7f7200e9bfba}
+      \strng{authorfullhash}{ead08972f4730651f21c7f7200e9bfba}
+      \strng{authorfullhashraw}{ead08972f4730651f21c7f7200e9bfba}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Precision Cancer Medicine}
+      \field{title}{Application of non-negative matrix factorization in oncology}
+      \field{volume}{5}
+      \field{year}{2022}
+    \endentry
+    \entry{Kuhn1951}{inbook}{}{}
+      \name{author}{2}{}{%
+        {{hash=5d3862639df5e48a0924f869b9434aeb}{%
+           family={Kuhn},
+           familyi={K\bibinitperiod},
+           given={H.\bibnamedelimi W.},
+           giveni={H\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+        {{hash=abe84663e473b3d5529c054d04944729}{%
+           family={Tucker},
+           familyi={T\bibinitperiod},
+           given={A.\bibnamedelimi W.},
+           giveni={A\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {University of California Press}%
+      }
+      \strng{namehash}{f0559771fd60910a05276209652d5efb}
+      \strng{fullhash}{f0559771fd60910a05276209652d5efb}
+      \strng{fullhashraw}{f0559771fd60910a05276209652d5efb}
+      \strng{bibnamehash}{f0559771fd60910a05276209652d5efb}
+      \strng{authorbibnamehash}{f0559771fd60910a05276209652d5efb}
+      \strng{authornamehash}{f0559771fd60910a05276209652d5efb}
+      \strng{authorfullhash}{f0559771fd60910a05276209652d5efb}
+      \strng{authorfullhashraw}{f0559771fd60910a05276209652d5efb}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the Second Berkeley Symposium on Mathematical Statistics and Probability}
+      \field{isbn}{9780520411586}
+      \field{month}{12}
+      \field{title}{Nonlinear Programming}
+      \field{year}{1951}
+      \field{pages}{481\bibrangedash 492}
+      \range{pages}{12}
+      \verb{doi}
+      \verb 10.1525/9780520411586-036
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1525/9780520411586-036
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1525/9780520411586-036
+      \endverb
+    \endentry
+    \entry{Lee2000}{inproceedings}{}{}
+      \name{author}{2}{}{%
+        {{hash=b90f82bdf98521035859889137ac521a}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={Daniel\bibnamedelima D.},
+           giveni={D\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+        {{hash=a5f8d3905fcb2b6e66a95957edf6d4da}{%
+           family={Seung},
+           familyi={S\bibinitperiod},
+           given={H.\bibnamedelimi Sebastian},
+           giveni={H\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+      }
+      \name{editor}{3}{}{%
+        {{hash=8455a412f2af41f64ec8845f83a4a72a}{%
+           family={Leen},
+           familyi={L\bibinitperiod},
+           given={Todd\bibnamedelima K.},
+           giveni={T\bibinitperiod\bibinitdelim K\bibinitperiod}}}%
+        {{hash=f9a517f99d8450b78124ea4348265e82}{%
+           family={Dietterich},
+           familyi={D\bibinitperiod},
+           given={Thomas\bibnamedelima G.},
+           giveni={T\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+        {{hash=7b4bb47afe2e1fc9925f6178ea46b207}{%
+           family={Tresp},
+           familyi={T\bibinitperiod},
+           given={Volker},
+           giveni={V\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {{MIT} Press}%
+      }
+      \strng{namehash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{fullhash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{fullhashraw}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{bibnamehash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{authorbibnamehash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{authornamehash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{authorfullhash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{authorfullhashraw}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{editorbibnamehash}{a1acb08f6f6041cad73a260a9b0d3d09}
+      \strng{editornamehash}{a1acb08f6f6041cad73a260a9b0d3d09}
+      \strng{editorfullhash}{a1acb08f6f6041cad73a260a9b0d3d09}
+      \strng{editorfullhashraw}{a1acb08f6f6041cad73a260a9b0d3d09}
+      \field{extraname}{1}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Advances in Neural Information Processing Systems 13, Papers from Neural Information Processing Systems {(NIPS)} 2000, Denver, CO, {USA}}
+      \field{title}{Algorithms for Non-negative Matrix Factorization}
+      \field{year}{2000}
+      \field{pages}{556\bibrangedash 562}
+      \range{pages}{7}
+      \verb{urlraw}
+      \verb https://proceedings.neurips.cc/paper/2000/hash/f9d1152547c0bde01830b7e8bd60024c-Abstract.html
+      \endverb
+      \verb{url}
+      \verb https://proceedings.neurips.cc/paper/2000/hash/f9d1152547c0bde01830b7e8bd60024c-Abstract.html
+      \endverb
+      \keyw{diss foundations imported}
+    \endentry
+    \entry{NMF1999}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=b90f82bdf98521035859889137ac521a}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={Daniel\bibnamedelima D.},
+           giveni={D\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+        {{hash=a5f8d3905fcb2b6e66a95957edf6d4da}{%
+           family={Seung},
+           familyi={S\bibinitperiod},
+           given={H.\bibnamedelimi Sebastian},
+           giveni={H\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Springer Science}%
+        {Business Media LLC}%
+      }
+      \strng{namehash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{fullhash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{fullhashraw}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{bibnamehash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{authorbibnamehash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{authornamehash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{authorfullhash}{835da10d2064ce36502d8dec2fcbc0e1}
+      \strng{authorfullhashraw}{835da10d2064ce36502d8dec2fcbc0e1}
+      \field{extraname}{2}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1476-4687}
+      \field{journaltitle}{Nature}
+      \field{month}{10}
+      \field{number}{6755}
+      \field{title}{Learning the parts of objects by non-negative matrix factorization}
+      \field{volume}{401}
+      \field{year}{1999}
+      \field{pages}{788\bibrangedash 791}
+      \range{pages}{4}
+      \verb{doi}
+      \verb 10.1038/44565
+      \endverb
+    \endentry
+    \entry{ChihJenLin2007}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=bb8c32ec740b902c4f066796b083badc}{%
+           family={Lin},
+           familyi={L\bibinitperiod},
+           given={Chih-Jen},
+           giveni={C\bibinithyphendelim J\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Institute of Electrical}%
+        {Electronics Engineers (IEEE)}%
+      }
+      \strng{namehash}{bb8c32ec740b902c4f066796b083badc}
+      \strng{fullhash}{bb8c32ec740b902c4f066796b083badc}
+      \strng{fullhashraw}{bb8c32ec740b902c4f066796b083badc}
+      \strng{bibnamehash}{bb8c32ec740b902c4f066796b083badc}
+      \strng{authorbibnamehash}{bb8c32ec740b902c4f066796b083badc}
+      \strng{authornamehash}{bb8c32ec740b902c4f066796b083badc}
+      \strng{authorfullhash}{bb8c32ec740b902c4f066796b083badc}
+      \strng{authorfullhashraw}{bb8c32ec740b902c4f066796b083badc}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1941-0093}
+      \field{journaltitle}{IEEE Transactions on Neural Networks}
+      \field{month}{11}
+      \field{number}{6}
+      \field{title}{On the Convergence of Multiplicative Update Algorithms for Nonnegative Matrix Factorization}
+      \field{volume}{18}
+      \field{year}{2007}
+      \field{pages}{1589\bibrangedash 1596}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1109/tnn.2007.895831
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1109/TNN.2007.895831
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1109/TNN.2007.895831
+      \endverb
+    \endentry
+    \entry{apollonov2024raman}{article}{}{}
+      \name{author}{11}{}{%
+        {{hash=9ed8c2ff7d62c79da8ecc64e17d04e29}{%
+           family={Lita},
+           familyi={L\bibinitperiod},
+           given={Adrian},
+           giveni={A\bibinitperiod}}}%
+        {{hash=7f92de0384eba39d2acebc60b895c83a}{%
+           family={Sjöberg},
+           familyi={S\bibinitperiod},
+           given={Joel},
+           giveni={J\bibinitperiod}}}%
+        {{hash=54cae92d2c146bb6f7f15fb558cfa034}{%
+           family={Păcioianu},
+           familyi={P\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod}}}%
+        {{hash=f68a0bb31741494ed69266be0530d166}{%
+           family={Siminea},
+           familyi={S\bibinitperiod},
+           given={Nicoleta},
+           giveni={N\bibinitperiod}}}%
+        {{hash=4aaa97f8fd42b8ce76622616c41b66e8}{%
+           family={Celiku},
+           familyi={C\bibinitperiod},
+           given={Orieta},
+           giveni={O\bibinitperiod}}}%
+        {{hash=ae163687b0c25c516f726ef503298a26}{%
+           family={Dowdy},
+           familyi={D\bibinitperiod},
+           given={Tyrone},
+           giveni={T\bibinitperiod}}}%
+        {{hash=2fc2498a98d7d9772d1c0f43ba3544c2}{%
+           family={Paun},
+           familyi={P\bibinitperiod},
+           given={Andrei},
+           giveni={A\bibinitperiod}}}%
+        {{hash=860bf8df4eaf51fcca2115d5befaf784}{%
+           family={Gilbert},
+           familyi={G\bibinitperiod},
+           given={Mark},
+           giveni={M\bibinitperiod}}}%
+        {{hash=f4ecae18ac31ef8a7d9c6ccb6604e15b}{%
+           family={Noushmehr},
+           familyi={N\bibinitperiod},
+           given={Houtan},
+           giveni={H\bibinitperiod}}}%
+        {{hash=8d2bddfe664d7e1a29dededb21b75d50}{%
+           family={Petre},
+           familyi={P\bibinitperiod},
+           given={Ion},
+           giveni={I\bibinitperiod}}}%
+        {{hash=6d0e1bad4ca6df7ffa950ea95c5113f3}{%
+           family={Larion},
+           familyi={L\bibinitperiod},
+           given={Mioara},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{c289a3a39ccc7faa9063abbde71e53a8}
+      \strng{fullhash}{52cc307a1aeafd1a679fe306d502da08}
+      \strng{fullhashraw}{52cc307a1aeafd1a679fe306d502da08}
+      \strng{bibnamehash}{52cc307a1aeafd1a679fe306d502da08}
+      \strng{authorbibnamehash}{52cc307a1aeafd1a679fe306d502da08}
+      \strng{authornamehash}{c289a3a39ccc7faa9063abbde71e53a8}
+      \strng{authorfullhash}{52cc307a1aeafd1a679fe306d502da08}
+      \strng{authorfullhashraw}{52cc307a1aeafd1a679fe306d502da08}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Neuro-oncology}
+      \field{month}{06}
+      \field{title}{Raman-based machine learning platform reveals unique metabolic differences between IDHmut and IDHwt glioma}
+      \field{volume}{26}
+      \field{year}{2024}
+      \verb{doi}
+      \verb 10.1093/neuonc/noae101
+      \endverb
+    \endentry
+    \entry{Long2002}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=5ccdc8c3bde43ad7036b58233d407635}{%
+           family={Long},
+           familyi={L\bibinitperiod},
+           given={Derek\bibnamedelima A.},
+           giveni={D\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Wiley}%
+      }
+      \strng{namehash}{5ccdc8c3bde43ad7036b58233d407635}
+      \strng{fullhash}{5ccdc8c3bde43ad7036b58233d407635}
+      \strng{fullhashraw}{5ccdc8c3bde43ad7036b58233d407635}
+      \strng{bibnamehash}{5ccdc8c3bde43ad7036b58233d407635}
+      \strng{authorbibnamehash}{5ccdc8c3bde43ad7036b58233d407635}
+      \strng{authornamehash}{5ccdc8c3bde43ad7036b58233d407635}
+      \strng{authorfullhash}{5ccdc8c3bde43ad7036b58233d407635}
+      \strng{authorfullhashraw}{5ccdc8c3bde43ad7036b58233d407635}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{isbn}{9780470845769}
+      \field{month}{4}
+      \field{title}{The Raman Effect: A Unified Treatment of the Theory of Raman Scattering by Molecules}
+      \field{year}{2002}
+      \verb{doi}
+      \verb 10.1002/0470845767
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1002/0470845767
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1002/0470845767
+      \endverb
+    \endentry
+    \entry{Lu2017}{misc}{}{}
+      \name{author}{5}{}{%
+        {{hash=a268e32645f2e2e7a04f0036e973447c}{%
+           family={Lu},
+           familyi={L\bibinitperiod},
+           given={Zhou},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=f400b86f369a2c9c1bb20320d47bb1f2}{%
+           family={Pu},
+           familyi={P\bibinitperiod},
+           given={Hongming},
+           giveni={H\bibinitperiod}}}%
+        {{hash=429997c4f52cc4da358692cf4425dc11}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Feicheng},
+           giveni={F\bibinitperiod}}}%
+        {{hash=d2dfe03a9a79f671f2e9e5c36454134a}{%
+           family={Hu},
+           familyi={H\bibinitperiod},
+           given={Zhiqiang},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=6b9aebd3540ced6487a5f42863cb5207}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Liwei},
+           giveni={L\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {arXiv}%
+      }
+      \strng{namehash}{9828a8b2d135a1e4538129b0c47eb63a}
+      \strng{fullhash}{9ca97a7d3d7e4141acfa4a446d5dadab}
+      \strng{fullhashraw}{9ca97a7d3d7e4141acfa4a446d5dadab}
+      \strng{bibnamehash}{9ca97a7d3d7e4141acfa4a446d5dadab}
+      \strng{authorbibnamehash}{9ca97a7d3d7e4141acfa4a446d5dadab}
+      \strng{authornamehash}{9828a8b2d135a1e4538129b0c47eb63a}
+      \strng{authorfullhash}{9ca97a7d3d7e4141acfa4a446d5dadab}
+      \strng{authorfullhashraw}{9ca97a7d3d7e4141acfa4a446d5dadab}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{The Expressive Power of Neural Networks: A View from the Width}
+      \field{year}{2017}
+      \verb{doi}
+      \verb 10.48550/ARXIV.1709.02540
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/1709.02540
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/1709.02540
+      \endverb
+      \keyw{Machine Learning (cs.LG),FOS: Computer and information sciences,FOS: Computer and information sciences}
+    \endentry
+    \entry{sklearn2011}{article}{}{}
+      \name{author}{16}{}{%
+        {{hash=bab4e5caee2d67831e464ce575022b37}{%
+           family={Pedregosa},
+           familyi={P\bibinitperiod},
+           given={Fabian},
+           giveni={F\bibinitperiod}}}%
+        {{hash=cfa3239dded54488f9a82a5718d5b927}{%
+           family={Varoquaux},
+           familyi={V\bibinitperiod},
+           given={Ga{ë}l},
+           giveni={G\bibinitperiod}}}%
+        {{hash=12ebe424e1c87de156c57e8fa7683f46}{%
+           family={Gramfort},
+           familyi={G\bibinitperiod},
+           given={Alexandre},
+           giveni={A\bibinitperiod}}}%
+        {{hash=504ea1986689f1047a6f0beda2cb3822}{%
+           family={Michel},
+           familyi={M\bibinitperiod},
+           given={Vincent},
+           giveni={V\bibinitperiod}}}%
+        {{hash=0f3fc06fb9fcbb01b9cc0985eaf0a71c}{%
+           family={Thirion},
+           familyi={T\bibinitperiod},
+           given={Bertrand},
+           giveni={B\bibinitperiod}}}%
+        {{hash=721be0317527f44db425f7a97dcab15e}{%
+           family={Grisel},
+           familyi={G\bibinitperiod},
+           given={Olivier},
+           giveni={O\bibinitperiod}}}%
+        {{hash=d3b6c8582cea4e8b6576137b6a72cadc}{%
+           family={Blondel},
+           familyi={B\bibinitperiod},
+           given={Mathieu},
+           giveni={M\bibinitperiod}}}%
+        {{hash=86e647e5c801f3ce733927f75f029463}{%
+           family={Prettenhofer},
+           familyi={P\bibinitperiod},
+           given={Peter},
+           giveni={P\bibinitperiod}}}%
+        {{hash=89d698773eaf2fae761ff0008031c7be}{%
+           family={Weiss},
+           familyi={W\bibinitperiod},
+           given={Ron},
+           giveni={R\bibinitperiod}}}%
+        {{hash=b255e99d411f28c789a231829f765c64}{%
+           family={Dubourg},
+           familyi={D\bibinitperiod},
+           given={Vincent},
+           giveni={V\bibinitperiod}}}%
+        {{hash=a08a00cf90823600b731a138afc28949}{%
+           family={Vanderplas},
+           familyi={V\bibinitperiod},
+           given={Jake},
+           giveni={J\bibinitperiod}}}%
+        {{hash=afb9a37bec11b531f1f0f33793a7f1fe}{%
+           family={Passos},
+           familyi={P\bibinitperiod},
+           given={Alexandre},
+           giveni={A\bibinitperiod}}}%
+        {{hash=9fd9ed8466bbb96364ae008f2a665e6e}{%
+           family={Cournapeau},
+           familyi={C\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod}}}%
+        {{hash=281ac3097ec8447c2d26e9f3cfde6082}{%
+           family={Brucher},
+           familyi={B\bibinitperiod},
+           given={Matthieu},
+           giveni={M\bibinitperiod}}}%
+        {{hash=23403cde972dddbdb48efe2bcc07dc3c}{%
+           family={Perrot},
+           familyi={P\bibinitperiod},
+           given={Matthieu},
+           giveni={M\bibinitperiod}}}%
+        {{hash=e2f7a458c7c1f0d13cbcaad5c415ad54}{%
+           family={Duchesnay},
+           familyi={D\bibinitperiod},
+           given={{É}douard},
+           giveni={É\bibinitperiod}}}%
+      }
+      \strng{namehash}{9ec95d747bac3417f92265a9a44f8bb4}
+      \strng{fullhash}{490c08d091505100c571bcba89f8c65d}
+      \strng{fullhashraw}{490c08d091505100c571bcba89f8c65d}
+      \strng{bibnamehash}{490c08d091505100c571bcba89f8c65d}
+      \strng{authorbibnamehash}{490c08d091505100c571bcba89f8c65d}
+      \strng{authornamehash}{9ec95d747bac3417f92265a9a44f8bb4}
+      \strng{authorfullhash}{490c08d091505100c571bcba89f8c65d}
+      \strng{authorfullhashraw}{490c08d091505100c571bcba89f8c65d}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Machine Learning Research}
+      \field{number}{85}
+      \field{title}{Scikit-learn: Machine Learning in Python}
+      \field{volume}{12}
+      \field{year}{2011}
+      \field{pages}{2825\bibrangedash 2830}
+      \range{pages}{6}
+      \verb{urlraw}
+      \verb http://jmlr.org/papers/v12/pedregosa11a.html
+      \endverb
+      \verb{url}
+      \verb http://jmlr.org/papers/v12/pedregosa11a.html
+      \endverb
+    \endentry
+    \entry{shen2026advances}{article}{}{}
+      \name{author}{5}{}{%
+        {{hash=d593e8699f81b8c04d8495374092ca21}{%
+           family={Shen},
+           familyi={S\bibinitperiod},
+           given={Hao},
+           giveni={H\bibinitperiod}}}%
+        {{hash=ef70a7934af7f2e240249336fcbe2e09}{%
+           family={Yin},
+           familyi={Y\bibinitperiod},
+           given={Huancai},
+           giveni={H\bibinitperiod}}}%
+        {{hash=70690fdeb2e9ffeb415711090ebc9ee8}{%
+           family={Huang},
+           familyi={H\bibinitperiod},
+           given={Xia},
+           giveni={X\bibinitperiod}}}%
+        {{hash=2c4b0f81c477dc6604528df0db64b0ab}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Guangxing},
+           giveni={G\bibinitperiod}}}%
+        {{hash=c7cd77f8de6e9b750f9a261d714229e3}{%
+           family={Yin},
+           familyi={Y\bibinitperiod},
+           given={Jian},
+           giveni={J\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Informa UK Limited}%
+      }
+      \strng{namehash}{85bd55174ca31cdadc8689761487da40}
+      \strng{fullhash}{3b3e09cf0a0ced6ad169a9d96731bd26}
+      \strng{fullhashraw}{3b3e09cf0a0ced6ad169a9d96731bd26}
+      \strng{bibnamehash}{3b3e09cf0a0ced6ad169a9d96731bd26}
+      \strng{authorbibnamehash}{3b3e09cf0a0ced6ad169a9d96731bd26}
+      \strng{authornamehash}{85bd55174ca31cdadc8689761487da40}
+      \strng{authorfullhash}{3b3e09cf0a0ced6ad169a9d96731bd26}
+      \strng{authorfullhashraw}{3b3e09cf0a0ced6ad169a9d96731bd26}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1520-569X}
+      \field{journaltitle}{Applied Spectroscopy Reviews}
+      \field{month}{3}
+      \field{title}{Advances in label-free Raman spectroscopic techniques for intraoperative tumor margin delineation: a comprehensive review}
+      \field{year}{2026}
+      \field{pages}{1\bibrangedash 33}
+      \range{pages}{33}
+      \verb{doi}
+      \verb 10.1080/05704928.2026.2643613
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1080/05704928.2026.2643613
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1080/05704928.2026.2643613
+      \endverb
+    \endentry
+    \entry{steinfeld2012molecules}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=c16f70d19c6524ca550dc3832505b888}{%
+           family={Steinfeld},
+           familyi={S\bibinitperiod},
+           given={Jeffrey\bibnamedelima I},
+           giveni={J\bibinitperiod\bibinitdelim I\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Courier Corporation}%
+      }
+      \strng{namehash}{c16f70d19c6524ca550dc3832505b888}
+      \strng{fullhash}{c16f70d19c6524ca550dc3832505b888}
+      \strng{fullhashraw}{c16f70d19c6524ca550dc3832505b888}
+      \strng{bibnamehash}{c16f70d19c6524ca550dc3832505b888}
+      \strng{authorbibnamehash}{c16f70d19c6524ca550dc3832505b888}
+      \strng{authornamehash}{c16f70d19c6524ca550dc3832505b888}
+      \strng{authorfullhash}{c16f70d19c6524ca550dc3832505b888}
+      \strng{authorfullhashraw}{c16f70d19c6524ca550dc3832505b888}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Molecules and radiation: An introduction to modern molecular spectroscopy}
+      \field{year}{2012}
+    \endentry
+    \entry{stupak2025raman}{article}{}{}
+      \name{author}{7}{}{%
+        {{hash=1151eade02241377df3f62e703839fbd}{%
+           family={Stupak},
+           familyi={S\bibinitperiod},
+           given={E.\bibnamedelimi V.},
+           giveni={E\bibinitperiod\bibinitdelim V\bibinitperiod}}}%
+        {{hash=1a6a3ab109914b38632682fb649b7508}{%
+           family={Glotov},
+           familyi={G\bibinitperiod},
+           given={V.\bibnamedelimi M.},
+           giveni={V\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=3ddd82cd77206039d9ea599b9c335644}{%
+           family={Askandaryan},
+           familyi={A\bibinitperiod},
+           given={A.\bibnamedelimi S.},
+           giveni={A\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+        {{hash=b4a843b2feea1a3408542738ee46e7df}{%
+           family={Clancy},
+           familyi={C\bibinitperiod},
+           given={S.\bibnamedelimi E.},
+           giveni={S\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=a85ef1c987117f794c1824200f602f95}{%
+           family={Hiana},
+           familyi={H\bibinitperiod},
+           given={J.\bibnamedelimi C.},
+           giveni={J\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=2aba5e581692ffcfd0c003343dfe1b5b}{%
+           family={Cherkasova},
+           familyi={C\bibinitperiod},
+           given={O.\bibnamedelimi P.},
+           giveni={O\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+        {{hash=debccfa44cc847231df241936da4f9c4}{%
+           family={Stupak},
+           familyi={S\bibinitperiod},
+           given={V.\bibnamedelimi V.},
+           giveni={V\bibinitperiod\bibinitdelim V\bibinitperiod}}}%
+      }
+      \strng{namehash}{de555a10c449168856125ca9075c0bb5}
+      \strng{fullhash}{adb2e67d283eedc45fc170a38cfe8026}
+      \strng{fullhashraw}{adb2e67d283eedc45fc170a38cfe8026}
+      \strng{bibnamehash}{adb2e67d283eedc45fc170a38cfe8026}
+      \strng{authorbibnamehash}{adb2e67d283eedc45fc170a38cfe8026}
+      \strng{authornamehash}{de555a10c449168856125ca9075c0bb5}
+      \strng{authorfullhash}{adb2e67d283eedc45fc170a38cfe8026}
+      \strng{authorfullhashraw}{adb2e67d283eedc45fc170a38cfe8026}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Cureus}
+      \field{number}{2}
+      \field{title}{Raman Spectroscopy in the Diagnosis of Brain Gliomas: A Literature Review}
+      \field{volume}{17}
+      \field{year}{2025}
+      \verb{doi}
+      \verb 10.7759/cureus.79165
+      \endverb
+    \endentry
+    \entry{Trevisi2025}{article}{}{}
+      \name{author}{4}{}{%
+        {{hash=6d6827ca23b348b1f68481669fad1bca}{%
+           family={Trevisi},
+           familyi={T\bibinitperiod},
+           given={Gianluca},
+           giveni={G\bibinitperiod}}}%
+        {{hash=1db9f1fb77797cefa87c0586ddbe9716}{%
+           family={Palermo},
+           familyi={P\bibinitperiod},
+           given={Matteo},
+           giveni={M\bibinitperiod}}}%
+        {{hash=9173692c72860c0f5b587b9d08033835}{%
+           family={Barbone},
+           familyi={B\bibinitperiod},
+           given={Paolo},
+           giveni={P\bibinitperiod}}}%
+        {{hash=899f1370d917e1f682bd5582538751b3}{%
+           family={Sturiale},
+           familyi={S\bibinitperiod},
+           given={Carmelo\bibnamedelima Lucio},
+           giveni={C\bibinitperiod\bibinitdelim L\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Springer Science}%
+        {Business Media LLC}%
+      }
+      \strng{namehash}{95b665332930d096886f5c85586e900a}
+      \strng{fullhash}{6c7b91f37d97b8d4b57626e8ad28c3d3}
+      \strng{fullhashraw}{6c7b91f37d97b8d4b57626e8ad28c3d3}
+      \strng{bibnamehash}{6c7b91f37d97b8d4b57626e8ad28c3d3}
+      \strng{authorbibnamehash}{6c7b91f37d97b8d4b57626e8ad28c3d3}
+      \strng{authornamehash}{95b665332930d096886f5c85586e900a}
+      \strng{authorfullhash}{6c7b91f37d97b8d4b57626e8ad28c3d3}
+      \strng{authorfullhashraw}{6c7b91f37d97b8d4b57626e8ad28c3d3}
+      \field{sortinit}{T}
+      \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1437-2320}
+      \field{journaltitle}{Neurosurgical Review}
+      \field{month}{10}
+      \field{number}{1}
+      \field{title}{Illuminating glioma surgery: A meta-analysis of Raman spectroscopy for intraoperative decision-making}
+      \field{volume}{48}
+      \field{year}{2025}
+      \verb{doi}
+      \verb 10.1007/s10143-025-03836-z
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1007/s10143-025-03836-z
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1007/s10143-025-03836-z
+      \endverb
+    \endentry
+    \entry{wang2024current}{article}{}{}
+      \name{author}{4}{}{%
+        {{hash=b2032367d78ea5676eb0a6dcb8c095bf}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Yumei},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=4488e93fb2f869cec00deb2cc77b332d}{%
+           family={Fang},
+           familyi={F\bibinitperiod},
+           given={Liuru},
+           giveni={L\bibinitperiod}}}%
+        {{hash=cca2b5bd5086aebc2a3528032a8830e3}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Yuhua},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=6204708997941f3512a8020d548cdfdb}{%
+           family={Xiong},
+           familyi={X\bibinitperiod},
+           given={Zuzhao},
+           giveni={Z\bibinitperiod}}}%
+      }
+      \strng{namehash}{bc5e774e87fea86478ad95377f7ed971}
+      \strng{fullhash}{16adf317a5dfa5e9b4b5c9a6b93032e6}
+      \strng{fullhashraw}{16adf317a5dfa5e9b4b5c9a6b93032e6}
+      \strng{bibnamehash}{16adf317a5dfa5e9b4b5c9a6b93032e6}
+      \strng{authorbibnamehash}{16adf317a5dfa5e9b4b5c9a6b93032e6}
+      \strng{authornamehash}{bc5e774e87fea86478ad95377f7ed971}
+      \strng{authorfullhash}{16adf317a5dfa5e9b4b5c9a6b93032e6}
+      \strng{authorfullhashraw}{16adf317a5dfa5e9b4b5c9a6b93032e6}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Abstract Early clinical diagnosis, effective intraoperative guidance, and an accurate prognosis can lead to timely and effective medical treatment. The current conventional clinical methods have several limitations. Therefore, there is a need to develop faster and more reliable clinical detection, treatment, and monitoring methods to enhance their clinical applications. Raman spectroscopy is noninvasive and provides highly specific information about the molecular structure and biochemical composition of analytes in a rapid and accurate manner. It has a wide range of applications in biomedicine, materials, and clinical settings. This review primarily focuses on the application of Raman spectroscopy in clinical medicine. The advantages and limitations of Raman spectroscopy over traditional clinical methods are discussed. In addition, the advantages of combining Raman spectroscopy with machine learning, nanoparticles, and probes are demonstrated, thereby extending its applicability to different clinical phases. Examples of the clinical applications of Raman spectroscopy over the last 3 years are also integrated. Finally, various prospective approaches based on Raman spectroscopy in clinical studies are surveyed, and current challenges are discussed.}
+      \field{journaltitle}{Advanced Science}
+      \field{number}{7}
+      \field{title}{Current Trends of Raman Spectroscopy in Clinic Settings: Opportunities and Challenges}
+      \field{volume}{11}
+      \field{year}{2024}
+      \field{pages}{2300668}
+      \range{pages}{1}
+      \verb{doi}
+      \verb https://doi.org/10.1002/advs.202300668
+      \endverb
+      \verb{eprint}
+      \verb https://advanced.onlinelibrary.wiley.com/doi/pdf/10.1002/advs.202300668
+      \endverb
+      \verb{urlraw}
+      \verb https://advanced.onlinelibrary.wiley.com/doi/abs/10.1002/advs.202300668
+      \endverb
+      \verb{url}
+      \verb https://advanced.onlinelibrary.wiley.com/doi/abs/10.1002/advs.202300668
+      \endverb
+      \keyw{biomarkers,clinical diagnosis,clinic settings,detection,Raman spectroscopy}
+    \endentry
+    \entry{whitfield2022classificationgliomas}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=1ba8f269b8d6ccdd61e6a31a4248ae62}{%
+           family={Whitfield},
+           familyi={W\bibinitperiod},
+           given={Benjamin\bibnamedelima T.},
+           giveni={B\bibinitperiod\bibinitdelim T\bibinitperiod}}}%
+        {{hash=1bd92f59e2fa7ace145a89ac4a247e2f}{%
+           family={Huse},
+           familyi={H\bibinitperiod},
+           given={Jason\bibnamedelima T.},
+           giveni={J\bibinitperiod\bibinitdelim T\bibinitperiod}}}%
+      }
+      \strng{namehash}{d6219a77da6f7d0d21ab621ce5d42d50}
+      \strng{fullhash}{d6219a77da6f7d0d21ab621ce5d42d50}
+      \strng{fullhashraw}{d6219a77da6f7d0d21ab621ce5d42d50}
+      \strng{bibnamehash}{d6219a77da6f7d0d21ab621ce5d42d50}
+      \strng{authorbibnamehash}{d6219a77da6f7d0d21ab621ce5d42d50}
+      \strng{authornamehash}{d6219a77da6f7d0d21ab621ce5d42d50}
+      \strng{authorfullhash}{d6219a77da6f7d0d21ab621ce5d42d50}
+      \strng{authorfullhashraw}{d6219a77da6f7d0d21ab621ce5d42d50}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Abstract Over the last decade, developments in molecular profiling have radically altered the diagnosis, classification, and management of numerous cancer types, with primary brain tumors being no exception. Although historically brain tumors have been classified based on their morphological characteristics, recent advances have allowed refinement of tumor classification based on molecular alterations. This shift toward molecular classification of primary brain tumors is reflected in the 2021 5th edition of the WHO classification of central nervous system tumors (WHO 2021). In this review, we will discuss the most recent updates to the classification of adult-type diffuse gliomas, a group of highly infiltrative and largely incurable CNS malignancies. It is our hope continued that refinement of molecular criteria will improve diagnosis, prognostication, and eventually treatment of these devastating tumors.}
+      \field{journaltitle}{Brain Pathology}
+      \field{number}{4}
+      \field{title}{Classification of adult-type diffuse gliomas: Impact of the World Health Organization 2021 update}
+      \field{volume}{32}
+      \field{year}{2022}
+      \field{pages}{e13062}
+      \range{pages}{-1}
+      \verb{doi}
+      \verb https://doi.org/10.1111/bpa.13062
+      \endverb
+      \verb{eprint}
+      \verb https://onlinelibrary.wiley.com/doi/pdf/10.1111/bpa.13062
+      \endverb
+      \verb{urlraw}
+      \verb https://onlinelibrary.wiley.com/doi/abs/10.1111/bpa.13062
+      \endverb
+      \verb{url}
+      \verb https://onlinelibrary.wiley.com/doi/abs/10.1111/bpa.13062
+      \endverb
+      \keyw{astrocytoma,glioblastoma,glioma,IDH,oligodendroglioma}
+    \endentry
+    \entry{Xu2016}{article}{}{}
+      \name{author}{4}{}{%
+        {{hash=6f2bfefb87334c3287593215647afef8}{%
+           family={Xu},
+           familyi={X\bibinitperiod},
+           given={Yifei},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=f5416e9439205382a1d138d77c1f79a3}{%
+           family={Deng},
+           familyi={D\bibinitperiod},
+           given={Shuiguang},
+           giveni={S\bibinitperiod}}}%
+        {{hash=852cf7810e768fd04fb98c724c4500dc}{%
+           family={Li},
+           familyi={L\bibinitperiod},
+           given={Xiaoli},
+           giveni={X\bibinitperiod}}}%
+        {{hash=802db00c75cab6fd6f17d159239e4c1f}{%
+           family={He},
+           familyi={H\bibinitperiod},
+           given={Yong},
+           giveni={Y\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier BV}%
+      }
+      \strng{namehash}{6bc9acd16d424b6c5a7748c7f5de20db}
+      \strng{fullhash}{68451054193f69dd0c8e4bd57ff572a6}
+      \strng{fullhashraw}{68451054193f69dd0c8e4bd57ff572a6}
+      \strng{bibnamehash}{68451054193f69dd0c8e4bd57ff572a6}
+      \strng{authorbibnamehash}{68451054193f69dd0c8e4bd57ff572a6}
+      \strng{authornamehash}{6bc9acd16d424b6c5a7748c7f5de20db}
+      \strng{authorfullhash}{68451054193f69dd0c8e4bd57ff572a6}
+      \strng{authorfullhashraw}{68451054193f69dd0c8e4bd57ff572a6}
+      \field{sortinit}{X}
+      \field{sortinithash}{1965c258adceecf23ce3d67b05113442}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0925-2312}
+      \field{journaltitle}{Neurocomputing}
+      \field{title}{A sparse unmixing model based on NMF and its application in Raman image}
+      \field{volume}{207}
+      \field{year}{2016}
+      \field{pages}{120\bibrangedash 130}
+      \range{pages}{11}
+      \verb{doi}
+      \verb 10.1016/j.neucom.2016.03.063
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1016/j.neucom.2016.03.063
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1016/j.neucom.2016.03.063
+      \endverb
+    \endentry
+    \entry{Yarotsky2018}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=65f55aedd361a127c8d212fcc78e9278}{%
+           family={Yarotsky},
+           familyi={Y\bibinitperiod},
+           given={Dmitry},
+           giveni={D\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {arXiv}%
+      }
+      \strng{namehash}{65f55aedd361a127c8d212fcc78e9278}
+      \strng{fullhash}{65f55aedd361a127c8d212fcc78e9278}
+      \strng{fullhashraw}{65f55aedd361a127c8d212fcc78e9278}
+      \strng{bibnamehash}{65f55aedd361a127c8d212fcc78e9278}
+      \strng{authorbibnamehash}{65f55aedd361a127c8d212fcc78e9278}
+      \strng{authornamehash}{65f55aedd361a127c8d212fcc78e9278}
+      \strng{authorfullhash}{65f55aedd361a127c8d212fcc78e9278}
+      \strng{authorfullhashraw}{65f55aedd361a127c8d212fcc78e9278}
+      \field{sortinit}{Y}
+      \field{sortinithash}{fd67ad5a9ef0f7456bdd9aab10fe1495}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Universal approximations of invariant maps by neural networks}
+      \field{year}{2018}
+      \verb{doi}
+      \verb 10.48550/ARXIV.1804.10306
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/1804.10306
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/1804.10306
+      \endverb
+      \keyw{Neural and Evolutionary Computing (cs.NE),FOS: Computer and information sciences,FOS: Computer and information sciences}
+    \endentry
+    \entry{zhao2024raman}{article}{}{}
+      \name{author}{5}{}{%
+        {{hash=326e7e67b0b4605a06b13d7b7d37ab75}{%
+           family={Zhao},
+           familyi={Z\bibinitperiod},
+           given={J.},
+           giveni={J\bibinitperiod}}}%
+        {{hash=a1f45776682275ccab9585f21f890f7b}{%
+           family={Lui},
+           familyi={L\bibinitperiod},
+           given={H.},
+           giveni={H\bibinitperiod}}}%
+        {{hash=df861918e426538c60887667fb9b66a7}{%
+           family={Kalia},
+           familyi={K\bibinitperiod},
+           given={S.},
+           giveni={S\bibinitperiod}}}%
+        {{hash=563af25d05c512cba441ce94a8ecf4a2}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={T.\bibnamedelimi K.},
+           giveni={T\bibinitperiod\bibinitdelim K\bibinitperiod}}}%
+        {{hash=194ff0c6285d305c2ea37dccc782a241}{%
+           family={Zeng},
+           familyi={Z\bibinitperiod},
+           given={H.},
+           giveni={H\bibinitperiod}}}%
+      }
+      \strng{namehash}{b61c2a35e46354fd1be77b3a4cdbecd5}
+      \strng{fullhash}{7c7242f78196dbb4f8672c202ca4f381}
+      \strng{fullhashraw}{7c7242f78196dbb4f8672c202ca4f381}
+      \strng{bibnamehash}{7c7242f78196dbb4f8672c202ca4f381}
+      \strng{authorbibnamehash}{7c7242f78196dbb4f8672c202ca4f381}
+      \strng{authornamehash}{b61c2a35e46354fd1be77b3a4cdbecd5}
+      \strng{authorfullhash}{7c7242f78196dbb4f8672c202ca4f381}
+      \strng{authorfullhashraw}{7c7242f78196dbb4f8672c202ca4f381}
+      \field{sortinit}{Z}
+      \field{sortinithash}{96892c0b0a36bb8557c40c49813d48b3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Frontiers in Oncology}
+      \field{title}{Improving skin cancer detection by Raman spectroscopy using convolutional neural networks and data augmentation}
+      \field{volume}{14}
+      \field{year}{2024}
+      \field{pages}{1320220}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.3389/fonc.2024.1320220
+      \endverb
+    \endentry
+    \entry{Zhou2020}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=e33f520e74d2de9f587a4e29df830af7}{%
+           family={Zhou},
+           familyi={Z\bibinitperiod},
+           given={Ding-Xuan},
+           giveni={D\bibinithyphendelim X\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier BV}%
+      }
+      \strng{namehash}{e33f520e74d2de9f587a4e29df830af7}
+      \strng{fullhash}{e33f520e74d2de9f587a4e29df830af7}
+      \strng{fullhashraw}{e33f520e74d2de9f587a4e29df830af7}
+      \strng{bibnamehash}{e33f520e74d2de9f587a4e29df830af7}
+      \strng{authorbibnamehash}{e33f520e74d2de9f587a4e29df830af7}
+      \strng{authornamehash}{e33f520e74d2de9f587a4e29df830af7}
+      \strng{authorfullhash}{e33f520e74d2de9f587a4e29df830af7}
+      \strng{authorfullhashraw}{e33f520e74d2de9f587a4e29df830af7}
+      \field{sortinit}{Z}
+      \field{sortinithash}{96892c0b0a36bb8557c40c49813d48b3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1063-5203}
+      \field{journaltitle}{Applied and Computational Harmonic Analysis}
+      \field{month}{3}
+      \field{number}{2}
+      \field{title}{Universality of deep convolutional neural networks}
+      \field{volume}{48}
+      \field{year}{2020}
+      \field{pages}{787\bibrangedash 794}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1016/j.acha.2019.06.004
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1016/j.acha.2019.06.004
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1016/j.acha.2019.06.004
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

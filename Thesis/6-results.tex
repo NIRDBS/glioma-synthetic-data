@@ -9,33 +9,33 @@ We performed a series of experiments to determine the effects of different desig
 The binary classification is influenced by broad metabolic differences that can be detected using RS. Under the TR/TR setting, the best-performing discriminative models achieved accuracies above $70\%$ (see Table \ref{tab:binary_results}).
 
 \begin{table}[h] 
-\caption{Binary Classification Results}
+\caption{Binary classification results for experiment \texttt{exp\_201} (CVAE with MSE reconstruction loss, latent dimension $d=32$, $\beta=2$).}
 \label{tab:binary_results}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc}
 \toprule
-\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{F1-score}\\
+\emph{Model} & \emph{Regimen} & \emph{Bal. Acc.} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Macro F1}\\
 \midrule
-\multirow{3}{*}{RF + SVM} & TR/TR & $0.688$ & -- & -- & $0.697$ \\
- & TS/TR & $0.431$ & $-0.257$* & $[-0.330, -0.180]$ & $0.340$ \\
- & TSR/TR & $0.699$ & $+0.011$ & $[-0.015, +0.037]$ & $0.720$ \\
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.688$ & -- & -- & $0.765$ \\
+ & TS/TR & $0.431$ & $-0.257$* & $[-0.330, -0.180]$ & $0.926$ \\
+ & TSR/TR & $0.699$ & $+0.011$ & $[-0.015, +0.037]$ & $0.775$ \\
 \midrule
-\multirow{3}{*}{RF} & TR/TR & $0.734$ & -- & -- & $0.724$ \\
- & TS/TR & $0.669$ & $-0.065$ & $[-0.148, +0.017]$ & $0.696$ \\
- & TSR/TR & $0.742$ & $+0.008$ & $[-0.001, +0.019]$ & $0.745$ \\
+\multirow{3}{*}{RF} & TR/TR & $0.734$ & -- & -- & $0.782$ \\
+ & TS/TR & $0.669$ & $-0.065$ & $[-0.148, +0.017]$ & $0.764$ \\
+ & TSR/TR & $0.742$ & $+0.008$ & $[-0.001, +0.019]$ & $0.785$ \\
 \midrule
-\multirow{3}{*}{XGBoost} & TR/TR & $0.742$ & -- & -- & $0.742$ \\
- & TS/TR & $0.622$ & $-0.120$* & $[-0.191, -0.051]$ & $0.653$ \\
- & TSR/TR & $0.746$ & $+0.004$ & $[-0.004, +0.013]$ & $0.749$ \\
+\multirow{3}{*}{XGBoost} & TR/TR & $0.742$ & -- & -- & $0.788$ \\
+ & TS/TR & $0.622$ & $-0.120$* & $[-0.191, -0.051]$ & $0.737$ \\
+ & TSR/TR & $0.746$ & $+0.004$ & $[-0.004, +0.013]$ & $0.792$ \\
 \midrule
-\multirow{3}{*}{1D-CNN} & TR/TR & $0.588$ & -- & -- & $0.445$ \\
- & TS/TR & $0.398$ & $-0.190$* & $[-0.299, -0.077]$ & $0.380$ \\
- & TSR/TR & $0.602$ & $+0.014$ & $[-0.055, +0.086]$ & $0.555$ \\
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.588$ & -- & -- & $0.875$ \\
+ & TS/TR & $0.398$ & $-0.190$* & $[-0.299, -0.077]$ & $0.774$ \\
+ & TSR/TR & $0.602$ & $+0.014$ & $[-0.055, +0.086]$ & $0.730$ \\
 \midrule
-CbR & -- & $0.622$ & -- & $[+0.555, +0.682]$ & $0.644$ \\
+CbR & -- & $0.619$ & -- & $[+0.548, +0.681]$ & $0.727$ \\
 \bottomrule
 \end{tabular*}
-\caption{Regimens: TR/TR (real-only baseline), TS/TR (synthetic-only), TSR/TR (synthetic + real), CbR (Classification by Reconstruction, model-independent). $\Delta$ and 95\% CI are the slide-level bootstrap difference vs.\ TR/TR; (*) marks a 95\% CI excluding zero. F1-score is macro-averaged, spectrum-level pooled across folds. The CbR row reports its own accuracy 95\% CI.}
+\small{Regimens: TR/TR (real-only baseline), TS/TR (synthetic-only), TSR/TR (synthetic + real), CbR (Classification by Reconstruction, model-independent). All figures are slide-level (per-(class, slide) stratified mean, matching the bootstrap): Bal. Acc. is slide-level balanced accuracy and Macro F1 is the slide-level macro-averaged F1. $\Delta$ and 95\% CI are the slide-level bootstrap difference vs.\ TR/TR; (*) marks a 95\% CI excluding zero. The CbR row reports its own accuracy 95\% CI.}
 \end{table}
 
 Across all classifiers, models trained exclusively on synthetic spectra underperformed the corresponding TR/TR baselines, which implies a substantial domain gap between synthetic and real spectra. Nevertheless, the performance degradation remained relatively moderate for RF and XGBoost, suggesting that the generated spectra retain part of the discriminative structure of the original data distribution.

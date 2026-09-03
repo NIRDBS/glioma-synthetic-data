@@ -224,6 +224,70 @@
       \verb http://dx.doi.org/10.1007/s10555-018-9770-9
       \endverb
     \endentry
+    \entry{berisha2021overfitting}{article}{}{}
+      \name{author}{7}{}{%
+        {{hash=16576f253a5267d44cb040a3771a8fb4}{%
+           family={Berisha},
+           familyi={B\bibinitperiod},
+           given={Visar},
+           giveni={V\bibinitperiod}}}%
+        {{hash=be4d4ff0d22a4984bb34cb40836ea5f1}{%
+           family={Krantsevich},
+           familyi={K\bibinitperiod},
+           given={Chelsea},
+           giveni={C\bibinitperiod}}}%
+        {{hash=d765c10fe66e87ea6fb1f184352d659a}{%
+           family={Hahn},
+           familyi={H\bibinitperiod},
+           given={P.\bibnamedelimi Richard},
+           giveni={P\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
+        {{hash=031d8736940971bf1af235221625e3c8}{%
+           family={Hahn},
+           familyi={H\bibinitperiod},
+           given={Shira},
+           giveni={S\bibinitperiod}}}%
+        {{hash=63be3479cfa9f325cf86853beef75679}{%
+           family={Dasarathy},
+           familyi={D\bibinitperiod},
+           given={Gautam},
+           giveni={G\bibinitperiod}}}%
+        {{hash=731e354b98cb9fdede56d4edae562ace}{%
+           family={Turaga},
+           familyi={T\bibinitperiod},
+           given={Pavan},
+           giveni={P\bibinitperiod}}}%
+        {{hash=20d3ec867a1b3ee8ddc77e45f9cdebe4}{%
+           family={Liss},
+           familyi={L\bibinitperiod},
+           given={Julie},
+           giveni={J\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Nature Publishing Group}%
+      }
+      \strng{namehash}{6a2f681e4aee257765ab12515fe78846}
+      \strng{fullhash}{61a6e8ef0cfdd79c02fd23487612d189}
+      \strng{fullhashraw}{61a6e8ef0cfdd79c02fd23487612d189}
+      \strng{bibnamehash}{61a6e8ef0cfdd79c02fd23487612d189}
+      \strng{authorbibnamehash}{61a6e8ef0cfdd79c02fd23487612d189}
+      \strng{authornamehash}{6a2f681e4aee257765ab12515fe78846}
+      \strng{authorfullhash}{61a6e8ef0cfdd79c02fd23487612d189}
+      \strng{authorfullhashraw}{61a6e8ef0cfdd79c02fd23487612d189}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{npj Digital Medicine}
+      \field{number}{1}
+      \field{title}{Digital medicine and the curse of dimensionality}
+      \field{volume}{4}
+      \field{year}{2021}
+      \field{pages}{153}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1038/s41746-021-00521-5
+      \endverb
+    \endentry
     \entry{bishop2006pattern}{book}{}{}
       \name{author}{1}{}{%
         {{hash=9dfd0135a5e80aa6d81cea2c10fb7f73}{%
@@ -1452,6 +1516,52 @@
       \verb http://dx.doi.org/10.1007/BF02551274
       \endverb
     \endentry
+    \entry{Dempster1977}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=09d592a5388131e31704c9c4464439c9}{%
+           family={Dempster},
+           familyi={D\bibinitperiod},
+           given={A.\bibnamedelimi P.},
+           giveni={A\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+        {{hash=fe02498c1cfcd510f8d219a94a103188}{%
+           family={Laird},
+           familyi={L\bibinitperiod},
+           given={N.\bibnamedelimi M.},
+           giveni={N\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=fa537601df11ba114c0c74ca6806de99}{%
+           family={Rubin},
+           familyi={R\bibinitperiod},
+           given={D.\bibnamedelimi B.},
+           giveni={D\bibinitperiod\bibinitdelim B\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Oxford University Press (OUP)}%
+      }
+      \strng{namehash}{8a5d801114e869ed61f35e1fd30408ef}
+      \strng{fullhash}{8a5d801114e869ed61f35e1fd30408ef}
+      \strng{fullhashraw}{8a5d801114e869ed61f35e1fd30408ef}
+      \strng{bibnamehash}{8a5d801114e869ed61f35e1fd30408ef}
+      \strng{authorbibnamehash}{8a5d801114e869ed61f35e1fd30408ef}
+      \strng{authornamehash}{8a5d801114e869ed61f35e1fd30408ef}
+      \strng{authorfullhash}{8a5d801114e869ed61f35e1fd30408ef}
+      \strng{authorfullhashraw}{8a5d801114e869ed61f35e1fd30408ef}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1467-9868}
+      \field{journaltitle}{Journal of the Royal Statistical Society Series B: Statistical Methodology}
+      \field{month}{09}
+      \field{number}{1}
+      \field{title}{Maximum Likelihood from Incomplete Data Via the <i>EM</i> Algorithm}
+      \field{volume}{39}
+      \field{year}{1977}
+      \field{pages}{1\bibrangedash 22}
+      \range{pages}{22}
+      \verb{doi}
+      \verb 10.1111/j.2517-6161.1977.tb01600.x
+      \endverb
+    \endentry
     \entry{esteban2017real}{misc}{}{}
       \name{author}{3}{}{%
         {{hash=517370b327f079c29c38bdc28b81b441}{%
@@ -1774,7 +1884,7 @@
       \field{title}{beta-{VAE}: Learning Basic Visual Concepts with a Constrained Variational Framework}
       \field{year}{2017}
     \endentry
-    \entry{hollon2021raman}{article}{}{}
+    \entry{Hollon2021}{article}{}{}
       \name{author}{2}{}{%
         {{hash=9ff29341cbffa20aaa0fb8d02a217b0f}{%
            family={Hollon},
@@ -1787,8 +1897,9 @@
            given={Daniel\bibnamedelima A.},
            giveni={D\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
       }
-      \list{publisher}{1}{%
-        {Springer}%
+      \list{publisher}{2}{%
+        {Springer Science}%
+        {Business Media LLC}%
       }
       \strng{namehash}{7bc84c8099463b7ac1c6127ce0a079a4}
       \strng{fullhash}{7bc84c8099463b7ac1c6127ce0a079a4}
@@ -1802,7 +1913,9 @@
       \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
+      \field{issn}{1573-7373}
       \field{journaltitle}{Journal of Neuro-Oncology}
+      \field{month}{2}
       \field{number}{3}
       \field{title}{Label-free brain tumor imaging using Raman-based methods}
       \field{volume}{151}
@@ -1811,6 +1924,12 @@
       \range{pages}{10}
       \verb{doi}
       \verb 10.1007/s11060-019-03380-z
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1007/s11060-019-03380-z
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1007/s11060-019-03380-z
       \endverb
     \endentry
     \entry{Hornik1989}{article}{}{}
@@ -2438,7 +2557,7 @@
       \field{pages}{2579\bibrangedash 2605}
       \range{pages}{27}
     \endentry
-    \entry{murugappan2023raman}{article}{}{}
+    \entry{Murugappan2023}{article}{}{}
       \name{author}{3}{}{%
         {{hash=a2a010ff86637c2ab487c85006f31025}{%
            family={Murugappan},
@@ -2456,6 +2575,9 @@
            given={Nanasaheb\bibnamedelima D.},
            giveni={N\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
       }
+      \list{publisher}{1}{%
+        {American Chemical Society (ACS)}%
+      }
       \strng{namehash}{c4b734cd054c00227067de5e353c90b6}
       \strng{fullhash}{c4b734cd054c00227067de5e353c90b6}
       \strng{fullhashraw}{c4b734cd054c00227067de5e353c90b6}
@@ -2468,6 +2590,7 @@
       \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
+      \field{issn}{2470-1343}
       \field{journaltitle}{ACS Omega}
       \field{number}{31}
       \field{title}{Raman Spectroscopy: A Tool for Molecular Fingerprinting of Brain Cancer}
@@ -2477,6 +2600,12 @@
       \range{pages}{17}
       \verb{doi}
       \verb 10.1021/acsomega.3c01848
+      \endverb
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.1021/acsomega.3c01848
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.1021/acsomega.3c01848
       \endverb
     \endentry
     \entry{sklearn2011}{article}{}{}
@@ -2833,6 +2962,46 @@
       \field{year}{2025}
       \verb{doi}
       \verb 10.7759/cureus.79165
+      \endverb
+    \endentry
+    \entry{subramanian2013overfitting}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=d528eeb2b738e62984c62530af4f81d4}{%
+           family={Subramanian},
+           familyi={S\bibinitperiod},
+           given={Jyothi},
+           giveni={J\bibinitperiod}}}%
+        {{hash=6888e07ac8440b3bea794b7843c4229c}{%
+           family={Simon},
+           familyi={S\bibinitperiod},
+           given={Richard},
+           giveni={R\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier}%
+      }
+      \strng{namehash}{e2962415a9ae553c9e5ad2f9a5952c6a}
+      \strng{fullhash}{e2962415a9ae553c9e5ad2f9a5952c6a}
+      \strng{fullhashraw}{e2962415a9ae553c9e5ad2f9a5952c6a}
+      \strng{bibnamehash}{e2962415a9ae553c9e5ad2f9a5952c6a}
+      \strng{authorbibnamehash}{e2962415a9ae553c9e5ad2f9a5952c6a}
+      \strng{authornamehash}{e2962415a9ae553c9e5ad2f9a5952c6a}
+      \strng{authorfullhash}{e2962415a9ae553c9e5ad2f9a5952c6a}
+      \strng{authorfullhashraw}{e2962415a9ae553c9e5ad2f9a5952c6a}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{1551-7144}
+      \field{journaltitle}{Contemporary Clinical Trials}
+      \field{number}{2}
+      \field{title}{Overfitting in prediction models -- is it a problem only in high dimensions?}
+      \field{volume}{36}
+      \field{year}{2013}
+      \field{pages}{636\bibrangedash 641}
+      \range{pages}{6}
+      \verb{doi}
+      \verb https://doi.org/10.1016/j.cct.2013.06.011
       \endverb
     \endentry
     \entry{Trevisi2025}{article}{}{}

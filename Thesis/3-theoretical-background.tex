@@ -191,10 +191,8 @@ $p_\theta(z|x)$. Rezende et al.\ \cite{rezende2014stochastic} show that paramete
 mean and variance of a Gaussian by neural networks in this way is sufficient to approximate
 complex posterior densities, which justifies the Gaussian choice made below.
 
-\TODO{One paragraph of intuition here: the encoder compresses a spectrum into a
-low-dimensional code and the decoder reconstructs it, but unlike a plain autoencoder both
-maps are distributions rather than points. Say why a distribution is what makes sampling
-possible later.}
+The encoder and decoder networks are trained jointly, by feeding in the spectra at input and output, with the reconstruction loss function measuring a distance between the two spectra. Our goal is to use the decoder as a generator, therefore we need a way to draw samples from it. Ideally we would like to sample from a Gaussian distrigution, such as $\mathcal{N}{0,I}$. In order to ensure that the latent space is distributed as such, we need to ensure the encoder maps the inputs to a Gaussian distributed embedding. Hence we need to enforce this as another optimization objective. This can be achieved by using the KL divergence, and formulating it as a loss function.
+
 
 \subsection*{The Kullback--Leibler divergence}
 
@@ -237,11 +235,7 @@ The gap between the bound and the true log-likelihood is itself a KL divergence,
 so maximising the ELBO simultaneously raises a lower bound on the evidence and drives the
 approximate posterior towards the true one.
 
-\TODO{Two or three sentences reading equation \eqref{eq:elbo} back in words: the first term
-rewards faithful reconstruction, the second penalises latent codes that stray from the prior,
-and training balances the two. Connect this to the composite loss in
-Section~\ref{sec:cvae_architecture}, where the reconstruction term is realised as MSE and
-cosine loss and the KL term carries the weight $\beta$.}
+The loss function \eqref{eq:elbo} is composed of two objectives. The regularization term ensures the fidelity of spectra reconstruction. This is minimized and approaches zero as the encoder-decoder is able to faithfully reconstruct the input. The KL regularization term attempts to make the distribution of the input dataset as close to a desired distribution, in our case a standard Gaussian. Note that this loss is imposed on the latent space z, so it will be close to zero if the latent space resembles a standard Gaussian.
 
 \subsection*{The Gaussian case and the reparameterisation trick}
 
@@ -274,20 +268,10 @@ where $\odot$ is the elementwise product. The sample $z$ is now a deterministic,
 function of $\mu_\phi(x)$ and $\sigma_\phi(x)$, and the gradient flows through it while the
 stochasticity is confined to $\epsilon$.
 
-\subsection*{Why the KL term turns the decoder into a generator}
+\subsection*{Using The Decoder as a Generator}
 
-\TODO{This subsection is the conceptual keystone of the thesis and deserves a careful
-paragraph in your own words. The argument to make: to generate a new spectrum we sample
-$z \sim \mathcal{N}(0,I)$ and pass it through the decoder, but this is only meaningful if the
-decoder has actually been trained on inputs distributed that way. A plain autoencoder places
-its codes wherever reconstruction is easiest, leaving regions of latent space the decoder has
-never seen, so a prior sample from such a region decodes to noise. The KL term in
-equation \eqref{eq:elbo} penalises exactly this: it pulls the aggregate distribution of
-encoded spectra towards the prior, so that the region the decoder was trained on and the
-region we sample from coincide. Then state the trade-off: raising $\beta$ tightens that match
-at the cost of reconstruction fidelity \cite{higgins2017betavae}, and note that
-Chapter~\ref{sec:discussion} finds the resulting synthetic spectra to have visibly narrower
-variance than the real ones -- which is this trade-off made visible.}
+The decoder can be used as a generator precisely because the KL term ensures that the latent space has a specific structure, in our case a standard Gaussian. If we know that the latent space resembles a particular distribution, we can sample from that distribution (i.e. generate noise with that distribution), and the decoder would reconstruct meaningful spectra.
+
 
 \subsection*{Conditioning: from VAE to CVAE}
 
@@ -308,12 +292,6 @@ the synthetic training sets of Chapter~\ref{sec:experimental_design}, and, run o
 candidate class, it is also the mechanism behind the Classification by Reconstruction strategy
 of Section~\ref{sec:cbr}.
 
-\TODO{Optional closing paragraph: note that conditioning the decoder does not by itself
-guarantee class-discriminative latent codes, which is the motivation for the auxiliary
-classification head described in Section~\ref{sec:cvae_architecture}. Related applications of
-conditional VAEs to spectral and time-series data: \texttt{Gebran2025} (stellar spectra),
-\texttt{Kavran2022} (beta-VAE augmentation for time series).}
-
 
 \section{Downstream Classifiers}
 \label{sec:classifiers}
@@ -326,10 +304,8 @@ can be found in Hastie et al.\ \cite{hastie2009elements}.
 
 \subsection*{Decision trees and Random Forests}
 
-\TODO{Half a page. Cover: a decision tree as a recursive partition of the feature space;
-the impurity criterion (Gini or entropy) used to choose splits; bagging as variance reduction
-by averaging trees grown on bootstrap resamples; and the random subsetting of features at each
-split that decorrelates the trees. Cite \texttt{hastie2009elements}.}
+A decision tree is a recursive partition of the feature space. At each step, a feature is selected by some criterion, like the Gini impurity or entropy, and that feature is used to separate the dataset. Random Forests are ensamble methods that work by aggregate voting by weak classifiers. Since the decision trees are the simplest classifiers possible, they are the most widely used ensamble method. An ensamble of decision trees is called a random forest. There are a many ways to make decision trees faster and induce variability in an ensamble, such as feature subsampling, where each decision tree has access to a subset of the feature set, data subsampling, where each tree is trained on a smaller subset of the data, pruning the trees, i.e. allowing a small number of decisions, not a perfect classification of the data.
+
 
 The mean decrease in impurity attributable to feature $j$, aggregated over the $T$ trees of the
 forest, gives the importance score
@@ -342,11 +318,7 @@ where the inner sum runs over the nodes $n$ of tree $t$ that split on feature $j
 the feature used at node $n$, $N_n/N$ is the fraction of samples reaching it, and $\Delta i(n)$
 is the resulting decrease in impurity.
 
-\TODO{One sentence tying equation \eqref{eq:rf_importance} to its use in this work: it is the
-criterion behind the top-20 band selection in the RF+SVM model of
-Section~\ref{sec:experimental_design}. Worth noting explicitly that selecting 20 bands out of
-571 is a severe reduction, and that the RF+SVM model is the one that collapses to a single
-class under TS/TR in Table~\ref{tab:binary_results} (sensitivity 0.000, specificity 1.000).}
+The Gini impurity metric \eqref{eq:rf_importance} is used to select the most important features. In case of a Raman spectrum, this means selecting a band, i.e. a wavenumber, or an index of the input spectrum.
 
 \subsection*{Support Vector Machines}
 
@@ -367,19 +339,34 @@ K(x, x') = \exp\!\left(-\gamma \norm{x - x'}^2\right).
 \label{eq:rbf_kernel}
 \end{equation}
 
-\TODO{Two or three sentences: the kernel trick, and what "balanced class weights" does to
-$C$ per class, given the class imbalance documented in Table~\ref{tab:dataset}.}
+The kernel method can be used to treat the feature space as a mapping to a different, usually non-linear transformation of the features. It works by replacing the scalar product with a non-linear function, without performing the feature transformation. Only the distances between points, and correlation are computed through the kernel function.
+
+An important implementation detail is that by using setting class\_weights to "balanced" when training an SVM, the penalty parameters are scaled inversly proportional to its sample frequencies. Hence there is no longer a single $C$ parameter in \eqref{eq:svm_primal}, but a different $C$ for each class.
 
 \subsection*{Gradient boosting and XGBoost}
 
-\TODO{Half a page. Cover: boosting as a stagewise additive expansion
-$F_m(x) = F_{m-1}(x) + \nu h_m(x)$ where each new tree $h_m$ is fitted to the gradient of the
-loss at the current prediction; contrast with bagging (sequential bias reduction vs.\ parallel
-variance reduction); and XGBoost's explicit regularisation of tree complexity. Cite
-\texttt{hastie2009elements}. Mention the histogram-based split finding used here, which is
-what makes 571 continuous bands tractable.}
+Boosting builds an ensemble in a different way than bagging. Instead of training many
+independent trees and averaging their votes, boosting adds trees one at a time, each one
+fitted to correct the errors the ensemble has made so far. The prediction after $m$ rounds is
+a stagewise additive expansion
+\begin{equation}
+F_m(x) = F_{m-1}(x) + \nu \, h_m(x),
+\label{eq:boosting_additive}
+\end{equation}
+where $h_m$ is the tree added at round $m$ and $\nu \in (0,1]$ is a learning rate that shrinks
+its contribution. In gradient boosting, $h_m$ is fitted to the negative gradient of the loss
+evaluated at the current prediction $F_{m-1}(x_i)$, which is why a single algorithm covers any
+differentiable loss \cite{hastie2009elements}.
 
-The regularised objective at boosting round $m$ is
+The contrast with random forests is worth stating explicitly, since both appear among our
+classifiers. Bagging reduces variance: the trees are grown in parallel on resampled data and
+averaging cancels their independent errors. Boosting reduces bias: the trees are grown
+sequentially and each one is deliberately dependent on the previous ones. The consequence is
+that boosting keeps improving on the training set for as long as we let it, so it needs
+explicit regularisation, whereas a random forest is fairly insensitive to adding more trees.
+
+XGBoost adds that regularisation to the objective itself. The regularised objective at
+boosting round $m$ is
 \begin{equation}
 \mathcal{L}^{(m)} = \sum_{i=1}^{N} \ell\big(y_i, \, F_{m-1}(x_i) + h_m(x_i)\big)
                   + \Omega(h_m),
@@ -387,33 +374,48 @@ The regularised objective at boosting round $m$ is
 \Omega(h) = \gamma T + \frac{1}{2}\lambda \norm{w}^2,
 \label{eq:xgb_objective}
 \end{equation}
-where $T$ is the number of leaves of the tree $h$ and $w$ its leaf weights.
+where $T$ is the number of leaves of the tree $h$ and $w$ its leaf weights. The term $\gamma T$
+penalises growing more leaves and the term $\lambda \norm{w}^2$ penalises large leaf values, so
+tree complexity is controlled during training rather than by pruning afterwards.
+
+One implementation detail matters for our data. Finding the best split of a continuous feature
+exactly requires sorting the samples along that feature at every node, which is expensive when
+there are $571$ continuous bands. We use the histogram-based tree method, which buckets the
+values of each band into a fixed number of bins and searches for splits only at the bin edges.
+This turns the split search from a sort into a histogram accumulation and makes the full
+spectral resolution tractable.
+
 
 \subsection*{1D Convolutional Neural Network}
 
-\TODO{Short subsection; the groundwork is already laid in
-Section~\ref{sec:deep_learning}. Cover: the 1D convolution as a shared local operator over
-the wavenumber axis, weight sharing and translation equivariance, and why that inductive bias
-suits Raman spectra, where a band is a local feature whose position may drift slightly between
-acquisitions -- the same drift the spectral-shift augmentation of
-Section~\ref{sec:experimental_design} simulates. Connect to the convolutional universal
-approximation results already cited in Section~\ref{sec:deep_learning}
-(\texttt{Zhou2020}, \texttt{Yarotsky2018}).}
-
-For an input spectrum $x \in \mathbb{R}^{N_\lambda}$ and a kernel $w \in \mathbb{R}^{k}$, the
-convolution at position $i$ with stride $s$ is
+The last classifier we use is a one-dimensional convolutional neural network. A convolutional
+layer replaces the full matrix multiplication of a dense layer with a small kernel that is slid
+along the input. For an input spectrum $x \in \mathbb{R}^{N_\lambda}$ and a kernel
+$w \in \mathbb{R}^{k}$, the convolution at position $i$ with stride $s$ is
 \begin{equation}
 (x * w)_i = \sum_{j=1}^{k} w_j \, x_{\,s \cdot i + j},
 \label{eq:conv1d}
 \end{equation}
 so a layer with $F$ such kernels produces $F$ feature maps, each sharing $k$ parameters across
 all positions rather than the $N_\lambda$ parameters a fully connected layer would require per
-output unit.
+output unit. The universal approximation results for convolutional architectures mentioned in
+Section~\ref{sec:deep_learning} \cite{Zhou2020, Yarotsky2018} apply to exactly this operator.
 
-\TODO{One sentence on the parameter-count argument: with 571 input bands and only a few dozen
-independent slides, weight sharing is not merely convenient but necessary to keep the model
-estimable. This links to the high-dimension / small-$n$ discussion
-(\texttt{berisha2021overfitting}, \texttt{subramanian2013overfitting}).}
+The inductive bias this imposes suits Raman spectra well. A Raman band is a local feature: it
+occupies a narrow range of wavenumbers, and what identifies it is its shape and position, not
+its absolute location in the input vector. Weight sharing means the same kernel detects the
+same band shape wherever it occurs, which gives the layer translation equivariance. This
+matters here because band positions do drift slightly between acquisitions through calibration
+error, and it is the same drift that the spectral-shift augmentation of
+Chapter~\ref{sec:experimental_design} simulates deliberately during training.
+
+Weight sharing is also what keeps the model estimable at all in our setting. With $571$ input
+bands and only a few dozen independent slides, a dense layer would introduce far more free
+parameters than we have independent samples to constrain them, which is the high-dimension,
+small-$n$ regime that makes spectral classifiers prone to overfitting
+\cite{berisha2021overfitting, subramanian2013overfitting}. A convolutional layer with a kernel
+of width $k$ uses $k$ weights per filter regardless of the length of the spectrum, so the
+parameter count is set by the architecture rather than by the input dimension.
 
 
 \section{Low-Dimensional Embeddings}
@@ -444,9 +446,7 @@ variance captured by component $j$ is
 \end{equation}
 the quantity reported on the axes of the PCA panels in Chapter~\ref{sec:discussion}.
 
-\TODO{Two sentences: PCA is linear and variance-driven, so distances and spreads in the
-projection are meaningful but only to the extent the two retained components capture the
-variance -- which is why the EVR values on the axes matter when reading the figure.}
+PCA is a linear projection, therefore distances are meaningful, but only to the extent of the variance captured by the two components plotted. Distances can still vary a lot in the other components, reading projection plots should be accompanied by other plots of different projections.
 
 \subsection*{$t$-Distributed Stochastic Neighbour Embedding}
 
@@ -479,12 +479,6 @@ consequences matter for reading Figure~\ref{fig:pca_tsne}:
         varies with perplexity and initialisation.
 \end{enumerate}
 
-\TODO{Important -- this caveat has a direct consequence for the thesis. The Discussion
-currently argues from the apparent tightness of the synthetic clusters in the $t$-SNE panel,
-which caveat (1) does not support. Either restate that argument on the PCA panel, whose
-spreads are meaningful, and on the mean $\pm \sigma$ figure, which measures variance directly;
-or keep the $t$-SNE observation but state the caveat alongside it. Recommended: the former,
-since the PCA and mean $\pm \sigma$ evidence already makes the point.}
 
 $t$-SNE is applied here to the leading 50 principal components rather than to all 571 bands.
 This is standard practice: it suppresses the noise directions that dominate pairwise distances
@@ -518,29 +512,24 @@ so that points lying \emph{above} the current baseline -- candidate peaks -- rec
 weight, while points lying below it are weighted fully. The baseline is therefore drawn towards
 the lower envelope of the spectrum and does not absorb the Raman bands.
 
-\TODO{One short paragraph: state the parameters used in this work ($\lambda = 100$, difference
-order $p = 1$, see Section~\ref{sec:preprocessing_steps}) and say what they mean in practice
-here. Optionally show a before/after spectrum -- the raw spectrum in
-Figure~\ref{fig:raw_spectrum} makes the fluorescence background very visible and would pair
-well with its corrected counterpart.}
+We decided to fix $\lambda = 100$, difference
+order $p = 1$, see Section~\ref{sec:preprocessing_steps}, as this removed broad fluorescence but kept the relevant peaks. Setting $\lambda$ to a lower value removes more of the peaks, while a larger value preserves more broader signals.
 
-\subsection*{The cluster bootstrap}
+Figure~\ref{fig:airpls_example} shows the procedure applied to one spectrum from our dataset. The fitted baseline is smooth and follows the lower envelope of the signal rather than the peaks, and subtracting it flattens the broad background while leaving the band positions and relative intensities intact. We note that the background in this dataset is moderate rather than overwhelming: the fitted baseline spans roughly a quarter of the intensity range of a typical spectrum, which is consistent with the near-infrared excitation used during acquisition, as fluorescence is much weaker at longer wavelengths.
 
-\TODO{Roughly half a page. This section carries the theory; the protocol as applied stays in
-Section~\ref{sec:statistical_eval}. Points to make, in order:
-(i) the ordinary bootstrap resamples observations independently and estimates the sampling
-distribution of a statistic by resampling with replacement;
-(ii) that requires the observations to be independent, which spectra are emphatically not --
-several thousand come from a single slide and are strongly correlated, so resampling spectra
-would treat correlated measurements as independent evidence and produce confidence intervals
-far too narrow;
-(iii) the cluster bootstrap resamples whole clusters -- here, slides -- keeping each cluster
-intact, so the within-slide correlation structure is preserved and the resampling happens at
-the level at which the units really are independent;
-(iv) the unit of resampling should match the unit of generalisation: the claim being tested is
-about unseen \emph{patients}, not unseen spectra from known patients;
-(v) stratification by class preserves the class proportions of
-Table~\ref{tab:dataset} across resamples, which matters because LGm1 and LGm6 are small enough
-that an unstratified resample could omit them.
-Useful context on high-dimensional small-$n$ inference: \texttt{berisha2021overfitting},
-\texttt{subramanian2013overfitting}.}
+\begin{figure}[htp]
+    \centering
+    \includegraphics[width=\linewidth]{images/airpls_baseline_correction.png}
+    \caption{\footnotesize airPLS baseline correction applied to a single spectrum from slide \texttt{HF-1295\_V3AM\_2.h5\_1}, with the parameters used throughout this work ($\lambda = 100$, $p = 1$). (a) The raw spectrum with the fitted baseline overlaid; the baseline tracks the lower envelope and passes underneath the Raman bands. (b) The same spectrum after subtracting the baseline. The shaded band marks the fingerprint region $700$--$1800$~cm$^{-1}$ to which the spectra are cropped for all experiments (Chapter~\ref{sec:experimental_design}); the strongest feature of the raw signal, the C--H stretch near $2900$~cm$^{-1}$, lies outside it.}
+    \label{fig:airpls_example}
+\end{figure}
+
+\subsection*{The Stratified Cluster Bootstrap}
+
+Bootstrapping is a technique to generate meaningful samples and compute statistic when we have only a single sample and an unknown distribution. It works by drawing samples with replacement, simulating new samples from the distribution. Assuming the original sample is representative, this technique can be used to estimate any statistic of interest. This is a great flexibility offered by bootstrap, as we can compute empirical bootstrap confidence intervals even on complex metrics such as classification accuracy.
+
+Ordinary bootstrap resamples observations independantly, however, in our case, the independent unit of reference is not a spectrum, but a patient (or at the very least a slide). This is what cluster bootstrap means: drawing entire clusters of data points, in this case slides, instead of individual spectra, even though the classifiers operate per spectrum. In this way we simulate a new cohort of patients at every bootstrap draw. 
+
+Stratified sampling refers to drawing in accordance with the proportions of some classes. In our case, the different glioma classes are very unbalanced, with two classes, LGm1 and LGm6 being very poorly represented, by only 5 samples each. Those are small enough that a random sampling could omit one of those classes entirely. By performing a stratified sampling, we ensure that each class is represented according to its proportion in the initial dataset.
+
+By combining all those techniques we obtain the Stratified Cluster Bootstrap statistical framework.

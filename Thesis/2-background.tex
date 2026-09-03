@@ -104,18 +104,11 @@ spectra, and their figures are correspondingly optimistic as estimates of perfor
 unseen patient.}
 \end{table}
 
-\subsection*{Prior Work on the Glioma Dataset used}
+\subsection*{Prior Work on the Glioma Dataset}
 
 This work builds on top of a study on glioma by Lita et al. \cite{apollonov2024raman} that focused on tumour grading as a binary task of discriminating between IDH-mutant and IDH-wildtype. They report 0.82 ROC AUC for this task, which for a balanced dataset usually corresponds to similar accuracy performance. They report other specific grading models, aimed at identifying more specific tumour grading, but they only report results for two out of the 6 tumour grading labels available. Their processing pipeline consists of PCA and DBSCAN for unsupervised tumout separation and they build a custom model that consists of a Random Forest (RF) model as feature selector and a Support Vector Machine (SVM) classifier trained on those features. 
 
 Our study expands on the word by Lita et al. by replacing the preprocessing pipeline of PCA and DBSCAN with NMF and GMM, building a generative model for data augmentation, and addressing the question of what improvements can Deep Learning generative augmentation can bring. We also report results at slide level by designing a cluster bootstrap statistical framework. Finally, we discuss the possibility of using the generative model itself for inference.
-
-\TODO{Optional but valuable: expand the existing paragraph on protocol heterogeneity. It
-currently lists ten Raman variants in a single sentence and then asserts that results are hard
-to compare. Say concretely why -- different excitation wavelengths, integration times,
-normalisation choices and baseline-correction methods change the recorded spectrum, so a model
-trained on one instrument's output does not transfer. This is the same instrument-variability
-argument the introduction makes, and it motivates the augmentation strategy of this work.}
 
 
 \section{Glioma Grading and Molecular Classification}
@@ -125,16 +118,13 @@ Clinical definition and classification criteria of tumours is crucial to this re
 
 As of 2021, brain tumour classification is dependent on isocitrate dehydrogenase mutation status, resulting in the IDH-mutant and IDH-wildtype primary classification, with further more granular classification based on other molecular markers.
 
-The more granular classification we use in this study is explained in a study by Ceccarelli et al. \cite{Ceccarelli2016}, where an unsupervised k-means clustering of DNA methylation profiles of gliomas revealed six distinct clusters, labeled LGm1--6; the prefix stands for lower-grade glioma methylation cluster. These are the labels used throughout this work, and the same study derived a separate, coarser set of clusters from RNA expression profiles. We note that this labeling rests on an epigenetic distinction, which is several steps removed from the molecular composition that a Raman spectrum measures; we therefore cannot guarantee that these six classes are separable by RS at all. This is worth keeping in mind when reading the six-class results of Section~\ref{sec:results_6class}.
+The more granular classification we use in this study is explained in a study by Ceccarelli et al. \cite{Ceccarelli2016}, where an unsupervised k-means clustering of DNA methylation profiles of gliomas revealed six distinct clusters, labeled LGm1--6; the prefix stands for lower-grade glioma methylation cluster. These are the labels used throughout this work, and the same study derived a separate, coarser set of clusters from RNA expression profiles. We note that this labeling rests on an epigenetic distinction, which is several steps removed from the molecular composition that a Raman spectrum measures; we therefore cannot guarantee that these six classes are separable by RS at all. This is a relevant aspect for the six-class results of Section~\ref{sec:results_6class}.
 
-\TODO{Verify the two claims in the preceding paragraph against the Ceccarelli paper itself: that LGm1--6 are the DNA methylation clusters, and that the RNA expression clustering in the same study produced a separate set of clusters. The section previously attributed LGm1--6 to RNA sequence profiles, which contradicted Section~\ref{sec:data_collection} ("6 distinct methylation profiles", "methylome labels"); the correction follows the LGm naming convention and the rest of the thesis, but was made without the paper to hand.}
 
 A final aspect that we draw attention to is the class imbalance, which reflects a clinical
 reality rather than a sampling artefact. Table~\ref{tab:glioma_distribution} places the
 subtype distribution reported by Ceccarelli et al. \cite{Ceccarelli2016} alongside the
-composition of the dataset analysed in this work. The Ceccarelli percentages are expressed as
-shares of the whole cohort, so that all six subtypes sum to $100\%$ and the IDH-mutant and
-IDH-wildtype subtotals ($46\%$ and $54\%$) are directly readable.
+composition of the dataset analysed in this work. Percentages are expressed as shares of the whole cohort. We observe that the proportions in our dataset are not very far from Ceccarelli's stated population distribution, with a possible exception of LGm1, although given the low sample size (5 patients with LGm1 tumour), this is still likely a plausible random sample of the population. This distribution with such a low sample of patients for LGm1 and LGm6 forces the redesign of the cross validation scheme.
 
 \begin{table}[htp]
 \centering
@@ -173,15 +163,7 @@ scheme of Section~\ref{sec:cv_design} splits at the patient level rather than th
 \end{minipage}
 \end{table}
 
-\TODO{Two or three sentences reading Table~\ref{tab:glioma_distribution}. The points worth
-making, all visible in the table: the IDH-mutant/IDH-wildtype balance of this dataset
-($43/57$ by slide) tracks the population figure ($46/54$) closely, and LGm5, LGm6 and LGm3
-are all within a few points of their reference shares, so the cohort is not badly skewed.
-LGm1 is the exception, over-represented roughly threefold ($8.6\%$ against $2.8\%$) --
-convenient for a classifier, but worth stating that this is not a random population sample.
-The important consequence is the last column: LGm1, LGm3 and LGm6 are represented by only
-four or five patients each, and it is this, not any methodological preference, that forces
-the relaxed cross-validation design of Section~\ref{sec:cv_design}.}
+
 
 \section{Synthetic data for Raman Spectroscopy}
 \label{sec:synthetic_rs}
@@ -189,42 +171,15 @@ Data augmentation is a comon technique used especially for Deep Learning (DL) mo
 
 A better approach involves learning the data distribution and constructing a generator of synthetic data. 
 
-Evaluating such a data generator can be difficult, as we would like a quantitative measure of the data generator. Since a quantitative measure on the data itself may not be relevant for a particular task, the methodology of Train Real/Test Real vs. Train Synthetic/Test real was proposed \cite{esteban2017real}, where one trains a classifier on a real data train set, tests on a real data test set; the synthetic data generator is modeled on the train set, such that there is no data leakege from the test set via the generator. The same classifiers are then trained on synthetic data only, and tested on the same real data test set. This setup allows for quantitative measurements of the generator, as the training dataset can be compared against the synthetic data set. Any metric can be compared between the two models, such as accuracy, precision, recall, sensitivity, specificity.
+Evaluating such a data generator can be difficult, as we would like a quantitative measure of the data generator. Since a quantitative measure on the data itself may not be relevant for a particular task, the methodology of Train Real/Test Real vs. Train Synthetic/Test real was proposed \cite{esteban2017real}, where one trains a classifier on a real data train set, tests on a real data test set; the synthetic data generator is modeled on the train set, such that there is no data leakege from the test set via the generator. The same classifiers are then trained on synthetic data only, and tested on the same real data test set. This setup allows for quantitative measurements of the generator, as the training dataset can be compared against the synthetic data set. Any metric can be compared between the two models, such as accuracy, precision, recall, sensitivity, specificity. Synthetic data generators are also evaluated against three criteria: (i) fidelity: evaluates how realistic are the data samples generated by the model; (ii) diversity: measures how well the samples cover the real distribution's spread and (iii) privacy: checks if the generative model memorise training data.
 
 A study of particular interest regarding synthetic data augmentation for RS in medical context was performed by Zhao et al. \cite{zhao2024raman} on in vivo skin cancer classification. They used a dataset of 731 spectra from 644 patients with 340 samples corresponding to cancerous and 391 corresponding to benign samples. They trained a 1D Generative Adversarial Network (GAN) on this data set and reported consistent improvements in accuracy in the range of 2-4\% across all classification models. Their findings suggest that deep generative data augmentation can help improve classification models.
 
-\subsection*{Learned generative models for spectra}
+\subsection*{Learned Generative Models: GAN, VAE, Diffusion Models}
 
-\TODO{Half a page. The current text says only that "a better approach involves learning the
-data distribution and constructing a generator" and then jumps straight to a single GAN study.
-Fill in the families and what distinguishes them:
-(i) GANs -- adversarial training, strong sample fidelity, but unstable to train and prone to
-mode collapse, which is the failure mode this thesis observes in a VAE guise (the narrow
-$\sigma$ envelope of Figure~\ref{fig:mean_std_spectra});
-(ii) VAEs -- explicit likelihood bound, stable training, an interpretable latent space, at the
-cost of blurrier / lower-variance samples. State plainly that this is the trade-off motivating
-the choice made in this work, and forward-reference Section~\ref{sec:cvae};
-(iii) diffusion models -- currently named in the future-work paragraph of
-Chapter~\ref{sec:discussion} without ever having been introduced, which should be fixed here
-even if only in two sentences.
-Directly relevant entries already in the bibliography and uncited: \texttt{Gebran2025}
-(conditional VAEs generating stellar spectra -- the closest published analogue to what this
-work does, a CVAE generating 1-D spectra) and \texttt{Kavran2022} ($\beta$-VAE augmentation
-for time-series classification, which is the same architecture class applied to the same kind
-of sequential signal).}
+Generative Adversarial Networks (GAN) and Variational Autoencoders (VAE) are two diferent models that can be used as generators. GANs are trained with the objective to "fool" a discriminator, i.e. to generate realistic objects that a discriminator can't distinguish a generated sample from a real one. Thus, they achieve high fidelity, but usually require very large amounts of data for training. They frequently suffer from mode collapse, which in this case would mean copying a few real spectra due to the lack of diversity to generate novel spectra.
 
-\subsection*{Evaluating a generator}
+VAEs on the other hand are heavily regularized to follow a particular distribution. They have the opposite problem, in the sense that they smooth out the output, eliminate noise, and a model colapse means a narrow variance around the mean of the data.
 
-\TODO{Extend the existing TS/TR paragraph, which covers the protocol but not what a generator
-can fail at. The standard framing is three-way and worth stating explicitly, because this
-thesis's results separate along exactly these axes:
-(i) \emph{fidelity} -- are samples individually realistic? Here: yes, the mean spectra match
-closely (Figure~\ref{fig:mean_std_spectra});
-(ii) \emph{diversity} -- do samples cover the real distribution's spread? Here: no, and this
-is the central negative finding;
-(iii) \emph{privacy} -- do samples memorise training data? Relevant to the clinical
-data-sharing motivation and worth a sentence even though this thesis does not measure it.
-Uncited entry available: \texttt{jordon2022synthetic}. Note that a generator can score well on
-a TS/TR classifier metric while failing (ii) badly, which is precisely the pattern in
-Table~\ref{tab:binary_results} -- RF reaches 0.669 under TS/TR from a distribution far
-narrower than the real one.}
+Diffusion Models are another generative model that is trained to reverse a process of adding noise. By reversing the process, it can gradually transform noise into meaningful representations. During training, the process of turing an input into noise and back is learned. During inference, noise is fed as input, and the reverse process should convert the noise to some meaningful output.
+

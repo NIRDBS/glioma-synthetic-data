@@ -54,6 +54,7 @@ Thesis/*.toc
 Thesis/*.xdv
 Thesis/*.fdb_latexmk
 Thesis/*.fls
+Thesis/*.synctex*
 Thesis/references/
 Thesis/citations/
 # NOTE: the thesis figures are re-included AFTER the global *.png rule below

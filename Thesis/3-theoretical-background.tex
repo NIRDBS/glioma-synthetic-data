@@ -1,0 +1,175 @@
+\chapter{Theoretical Background}
+\label{ch:theory}
+
+This chapter provides the mathematical background for the methods used in this work. The
+techniques are presented in the order in which the methodology applies them: first the
+matrix factorization and clustering tools used to separate tumor spectra from background
+(Sections~\ref{sec:nmf} and~\ref{sec:gmm}), then the neural network theory underlying the
+generative model (Sections~\ref{sec:deep_learning} and~\ref{sec:cvae}), then the downstream
+classifiers evaluated in Chapter~\ref{sec:results} (Section~\ref{sec:classifiers}), and
+finally the embedding and statistical tools used to analyse the results
+(Sections~\ref{sec:embeddings} and~\ref{sec:airpls_bootstrap}).
+
+
+\section{Non-Negative Matrix Factorization}
+\label{sec:nmf}
+
+We will present here the problem of Non-Negative Matrix Factorization (NMF) with an emphasis on hyperspectral decomposition applications. This is a generic optimization problem with many applications and various theoretical formulations can be found, but we will formulate the problem in our context, as presented by Gillies \cite{Gillis2017,Gillis2020}.
+
+The NMF can be formulated as follows: given a non-negative matrix $M \in \mathbb{R_+^{m \times n}}$, a factorization rank $r$, and a distance measure $D(\cdot,\cdot)$ find two non-negative matrices $W \in \mathbb{R}_+^{m \times r}$ and $H \in \mathbb{R}_+^{r \times n}$ such that $D(M,WH)$ is minimized, i.e. solve:
+$$ \min_{W \in \mathbb{R}_+^{m \times r}, H \in \mathbb{R}_+^{r \times n}} D(M,WH)$$
+
+In practice, we will consider the distance $D$ to be the Frobenius norm of the error matrix $M-WH$, hence the problem can be writen:
+
+$$ \min_{W \in \mathbb{R}_+^{m \times r}, H \in \mathbb{R}_+^{r \times n}} \norm{M-WH}_F^2$$
+
+This is the most natural and common choice as it corresponds to the assumption of i.i.d. Gaussian noise and it leads to a smooth optimization problem which is easy to solve \cite{Gillis2020}
+
+There are many variants of NMF, for example the factorization can be solved exactly, in which case the problem is called Exact NMF, but in most applications we are only interested in an approximate solution. Also, for most solutions, additional constraints can be imposed.
+
+The non-negativity constraints lead to natural physical interpretations of the terms of the factorization. The intuition is that spectral signatures are additive combinations of spectral signatures of the combining elements. For example, in our setting of biological samples, the spectral signature of a probe could be a linear combination of spectral signatures of lipids, proteins, phenilalanine, DNA C-H molecules, etc. This NMF factorization is called endmember unmixing, or more precisely, blind endmember unmixing, where individual components are called endmembers. Due to the additive nature of the signal acquisition process, where Raman bands appear where there is a certain molecule that has an absorbtion energy band of a specific energy level, this formulation of the NMF is well suited for the physical process involved.
+
+\subsection*{Sparsity of factorization}
+
+Non-negativity constraints are linear inequality constraints that naturally enforce sparsity, or solutions that contain lots of zeros. This derives from the first order optimality conditions (Karush-Kuhn-Tucker) of an optimization problem with such constraints \cite{Kuhn1951,Gillis2020}:
+
+$$ \min_{x \in \mathbf{R^n}} f(x) \text{such that} x \ge 0 $$
+giving the conditions:
+$$ x \ge 0, \nabla f(x) \ge 0, \text{and} x_i(\nabla f(x))_i=0 \text{for all i.}$$
+
+This enforces $x_i = 0$ if $(\nabla f(x))_i > 0$, which leads to sparse solutions.
+
+\subsection*{Solution and Convergence}
+Many algorithms have been developed for solving the NMF problem \cite{ChihJenLin2007,Xu2016,Lee2000}. We present here a simple solution by Daniel D. Lee and H. Sebastian Seung \cite{Lee2000}.
+
+\begin{theorem}
+    The distance $\norm{M-WH}_F^2$ is nonincreasing under the update rules
+    $$ H_{a \mu} \leftarrow H_{a \mu} \frac{(W^T M)_{a \mu}}{(W^T W H)_{a \mu}} \qquad
+    W_{i a} \leftarrow W_{i a} \frac{(M H^T)_{i a}}{(W H H^T)_{i a}}$$
+    This distance is invariant under these updates iff $W$ and $H$ are at a stationary point.
+\end{theorem}
+
+The proof of convergence can be found in full in D.D. Lee's article. We can see that the updates alternate, hence it resembles the Expectatio-Maximization algorithm. \cite{Lee2000}.
+
+In our analysis we used the scikit-learn implementation of the NMF \cite{sklearn2011,Cichocki2009}.
+
+\section{Gaussian Mixture Model}
+\label{sec:gmm}
+
+The Gaussian Mixture Model (GMM) is a widely used tool that assigns soft labels to a set of data points. We can consider it a soft clustering technique, where we define a hard clustering as a partition of the set of points and a soft clustering a labeling of the points with a probability distribution over the number of clusters.
+We present here a short description of the method as described by C.H. Bishop in "Pattern Recognition and Machine Learning", Chapter 9 \cite{bishop2006pattern}.
+
+The Gaussian Mixture can be defined as a weighted sum of Gaussian distributions:
+
+$$ p(\mathbf{x}) = \sum_{k=1}^{K}\pi_k \mathcal{N}(\mathbf{x} | \mu_k, \Sigma_k) $$
+
+where $\mathbf{x}$ is the data set $\mathbf{x} = \{x_1, x_2, \dots x_N\}$. In order to assign points to clusters, we will assume there exists this assignment as a latent variable. We will denote this latent variariable with $\mathbf{z}$, as unit vectors of $\mathbb{R}^K$. We can now define the joint distribution $\mathbb{P}(\mathbf{x},\mathbf{z})$, the marginal distribution $\mathbb{P}(\mathbf{z})$, the conditional distribution $\mathbb{P}(\mathbf{x}|\mathbf{z})$. The marginal distribution over $\mathbf{z}$ is:
+$$\mathbb{P}(z_k = 1) = \pi_k$$
+where the parameters $\{\pi_k\}$ form a probability distribution, so they must satisfy the constraints:
+$$0 \le \pi_k \le 1 \quad \sum_{k=1}^{K}\pi_k = 1$$
+Because $z_k \in \{0,1\}$, we can write:
+$$\mathbb{P}(\mathbf{z}) = \prod_{k=1}^K \pi_k^{z_k}$$
+We make the assumption that the conditional distribution of x given z is a Gaussian:
+$$\mathbb{P}(\mathbf{x}|z_k = 1) = \mathcal{N}(\mathbf{x} | \mu_k, \Sigma_k)$$
+
+By summing over all states of z we obtain the marginal distribution of x:
+
+$$ \mathbb{P}(x) = \sum_{\mathbf{z}} \mathbf{P}(\mathbf{z})\mathbf{P}(\mathbf{x}|\mathbf{z}) = \sum_{k=1}^{K} \pi_k \mathcal{N(\mathbf{x}|\mu_k, \Sigma_k)}$$
+
+Of particular interest is also the conditional probability of $\mathbf{z}$ given $\mathbf{x}$. We will use the following notation:
+$$\gamma(z_k) := \mathbb{P}(z_k=1|x) = \frac{\mathbb{P}(z_k = 1) \mathbb{P}(\mathbf{x}|z_k = 1) }{\sum_{j=1}^{K} \mathbb{P}(z_j = 1) \mathbb{P}(\mathbf{x}|z_j = 1} = \frac{\pi_k \mathcal{N}(\mathbf{x}|\mu_k, \Sigma_k)}{\sum_{j=1}^{K} \pi_j \mathcal{N}(\mathbf{x}|\mu_j, \Sigma_j)}$$
+
+We can now view $\pi_k$ as the prior probability and $\gamma(z_k)$ as the posterior after observing $x$.
+
+With $\mathbf{x}$ as our dataset, the log of the likelihood can be written as:
+$$ \ln \mathbb{P}(\mathbf{x}|\pi,\mu,\Sigma) = \sum_{n=1}^{N} \ln \left\{\sum_{k=1}^{K} \pi_k \mathcal{N}(\mathbf{x}_n|\mu_k,\Sigma_k)\right\} $$
+
+To find the maximum of this function, we set the derivatives with respect to $\mu_k$ to 0 and we obtain:
+$$ \mu_k = \frac{1}{N_k} \sum_{n=1}^{N}\gamma(z_{nk})\mathbf{x}_n $$
+where
+$$ N_k = \sum_{n=1}^{N} \gamma(z_{nk}) $$
+
+Next we set the derivatives with respect to $\Sigma_k$ to zero and we obtain:
+
+$$ \Sigma_k = \frac{1}{N_k} \sum_{n=1}^{N}\gamma(z_{nk})(\mathbf{x}_n - \mu_k)(\mathbf{x}_n - \mu_k)^T $$
+
+In order to find the $\pi_k$ coeficients, we take into account the probability constraints over $\pi_k$ and we maximize:
+$$ \ln \mathbb{P}(\mathbf{x}|\pi, \mu, \Sigma) + \lambda \left(\sum_{k=1}^{K} \pi_k - 1 \right)$$
+and we obtain
+$$ \pi_k = \frac{N_k}{N} $$
+
+\subsection*{The Expectation Maximization algorithm}
+
+We cannot find a direct solution to the GMM problem, but we can devise an iterative algorithm by alternating between the cluster assignments and the parameters of the gaussians. The algorithm is called Expectation Maximization (EM):
+
+
+
+\begin{algorithm}
+\caption{The EM Algorithm}
+\begin{algorithmic}[1] 
+    \State \textbf{Initialize:} Randomly initialize $\mu_k$, $\Sigma_k$, $\pi_k$ 
+
+    
+    \While{not converged} 
+        
+        \State \textbf{E step: evaluate the clustering}
+        \vspace{1.5ex} % Spacing before the E-step formula
+        \Statex \hspace{\algorithmicindent} $\displaystyle \gamma(z_{nk}) = \frac{\pi_k \mathcal{N}(\mathbf{x}_n|\mu_k,\Sigma_k)}{\sum_{j=1}^{K} \pi_j \mathcal{N}(\mathbf{x}_n|\mu_j,\Sigma_j)}$
+        \vspace{2.5ex} % Spacing after the E-step formula
+        
+        \State \textbf{M step: estimate parameters using the current clustering}
+        \vspace{1.5ex} % Spacing before the M-step aligned formulas
+        \Statex \hspace{\algorithmicindent} $\begin{aligned}
+            \mu_k^{\text{new}} &= \frac{1}{N_k} \sum_{n=1}^{N} \gamma(z_{nk}) \mathbf{x}_n \\[1.5ex]
+            \Sigma_k^{\text{new}} &= \frac{1}{N_k} \sum_{n=1}^{N} \gamma (z_{nk})(\mathbf{x}_n - \mu_k^{\text{new}})(\mathbf{x}_n - \mu_k^{\text{new}})^T \\[1.5ex]
+            \pi_k^\text{new} &= \frac{N_k}{N} \quad \text{where} \quad N_k = \sum_{n=1}^{N} \gamma(z_{nk})
+        \end{aligned}$
+        \vspace{2.5ex} % Spacing after the M-step formulas
+        
+        \State \textbf{Evaluate the log likelihood for the entire dataset} 
+        \vspace{1.5ex} % Spacing before the log-likelihood formula
+        \Statex \hspace{\algorithmicindent} $\displaystyle \ln \mathbb{P}(\mathbf{x}|\mu, \Sigma, \pi) = \sum_{n=1}^{N} \ln \left( \sum_{k=1}^{K} \pi_k \mathcal{N}(\mathbf{x}_n| \mu_k, \Sigma_k) \right)$
+        \vspace{2ex} % Spacing before the loop ends
+
+    \EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+Note that this is an iterative algorithm and it converges to a local solution. While this works in practice most of the time, there exists the posibility that the solution is not optimal.
+
+\section{Deep Learning}
+\label{sec:deep_learning}
+
+Research in Artificial Neural Networks, or Deep Learning has expanded significantly in the last decades, motivated by advances in computing power, development of software frameworks for easy implementation and testing, as well as theoretical results that offer some guarantees regarding the behaviour of Artificial Neural Networks. 
+
+\subsection*{Early results: ANNs as Universal Function Approximators}
+The first theoretical results were formulated in 1989, with Kurt Hornik et al. \cite{Hornik1989} prooving that a Neural Network with one hidden layer, with a squashing activation function can aproximate arbitrarily well any continuous function on a compact set, provided we let the number of neurons in the hidden layer grow arbitrarily large, and G. Cyabenko proving the Universal Approximator theorem for sigmoid activation functions \cite{Cybenko1989}.
+
+\subsection*{Extending the Universal Function Approximation Theorem}
+Other activation functions were tested, and as the requrements on the function were reduced to continuous, non linear, and differentiable almost everywhere, the function $X^+$ (0 if $x < 0$, $x$ otherwise), known in the Deep Learning comunity as the Rectified Linear Unit (ReLU) activation function became widespread.
+
+The theorem of Universal Approximation was proved for the ReLU activation function as well under some particular geometries \cite{Hanin2019, Lu2017}. 
+
+Other variants of the theorem relevant for our design are the ones regarding the convolution operation \cite{Zhou2020, Yarotsky2018}. This acts as a shared local operator replacing the full matrix multiplication .
+
+We observe that there are many variants of the Universal Approximation Theorem, and many different proofs for various ANNs different geometries, activation function or other components like local operators.
+
+
+\section{Conditional Variational Autoencoder}
+\label{sec:cvae}
+
+Our proposed generative model is a Conditional Variational Autoencoder (CVAE). A variational autoencoder is an autoencoder neural network for which we impose a constraint on the latent space to follow a particular probability distribution, usually a Gaussian distribution. We impose this restriction by adding a KL divergence penalty loss on the latent space.
+
+This formulation changes the model from a pure function approximation to a distribution estimation model. We can describe the encoder and decoder components of the model as:
+ - the encoder: q_Phi(z|x,c) that approximates the true posterior distribution over the latent space, and compresses the input spectrum into a low dimensional latent vector representation
+ - the decoder: p_theta(x|z,c) approximates the true conditional data generated distribution.
+
+ [ to do: cite:
+ The Foundational VAE Paper: Kingma, D. P., & Welling, M. (2013). “Auto-Encoding Variational Bayes.” arXiv:1312.6114.The Foundational CVAE Paper: Sohn, K., Lee, H., & Yan, X. (2015). “Learning Structured Output Representation using Deep Conditional Generative Models.” NeurIPS.The Functional Bounds Proof: Rezende, D. J., Mohamed, S., & Wierstra, D. (2014). “Stochastic Backpropagation and Approximate Inference in Deep Generative Models.” ICML. (This establishes that by parameterizing the mean and variance functions of a Gaussian distribution using neural networks, the system can approximate arbitrarily complex posterior densities)
+ ]
+
+ \subsection*{KL Divergence}
+ [to do: expand on the following aspects]
+ Define and describe the KL div, ELBO function (that we optimize during training the cvae)
+
+ Explain the reconstruction loss and KL regularization loss and why enforcing the KL regularization turns the decoder into a generator (by sampling from a gaussian distribution)

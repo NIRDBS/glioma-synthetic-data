@@ -55,13 +55,6 @@ PCA panel, whose distances are meaningful, shows that they in fact lie inside th
 The correct reading of the two panels together is therefore that the synthetic spectra are
 individually plausible but mutually far too similar.
 
-\TODO{Optional: the real spectra in the PCA panel show a pronounced tail extending away from
-the main mass, and the $t$-SNE panel resolves the real data into many small islands. Both are
-consistent with slide-level batch structure -- spectra from one acquisition session clustering
-together. If you want to make that claim, it is worth confirming by colouring one panel by
-slide ID rather than by source; the machinery is in
-\texttt{plot\_dimensionality\_reduction}. If you would rather not, leave the observation out
-rather than speculating.}
 
 We can visualize the same contraction directly in the spectral domain by plotting the mean
 spectrum of the real and synthetic data with their standard deviation ($\sigma$) envelopes
@@ -90,12 +83,6 @@ The same spectra used as an \emph{addition} to real data (TSR/TR) act as a conce
 mass near the class means, which is a mild regularizer, and produce the small positive shifts
 observed. Both behaviours follow from a generator with good fidelity and poor diversity.
 
-\TODO{Consider whether to state the practical implication for future work: the $\beta=2$
-weighting on the KL term (Section~\ref{sec:cvae_architecture}) buys a well-formed latent space
-at the cost of exactly the variance shown missing here, so a $\beta$ sweep is the most
-obvious next experiment. The latent-dimension ablation (\texttt{exp\_302}/\texttt{exp\_303},
-Tables~\ref{tab:appendix_exp_302}--\ref{tab:appendix_exp_303}) varied $d$ but not $\beta$, so
-this remains untested.}
 
 An important observation is that useful augmentation effects were obtained despite the relatively small number of independent patient samples available for training the generative model. In contrast to conventional deep generative modeling settings involving very large datasets, biomedical Raman spectroscopy typically operates in a data-constrained regime characterized by limited patient cohorts, acquisition variability, and strong intra-sample correlations. The present results indicate that generative models may still capture sufficient spectral structure to improve downstream robustness even when trained under these constraints.
 

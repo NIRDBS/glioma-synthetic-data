@@ -33,32 +33,106 @@ Other types of light scattering exists and do happen in the course of performing
 
 \section{Raman Spectroscopy in Medical Diagnosis}
 \label{sec:rs_medical}
-Many studies have been performed with RS in Medical Diagnosis, especially in oncology for tumor detection \cite{stupak2025raman,Auner2018}. However, given the high variability of protocols of using RS, and for lack of any standard protocol, results vary across study and are difficult to compare. Some examples of Raman usage are: raw sample, frozen section, Surface Enhanced Raman Spectroscopy, Tip Enhanced Raman Spectroscopy, Resonance Raman Scattering, Surface Enhanced Resonance Raman Scattering, Spatially offset Raman Spectroscopy, Transmission Raman Spectroscopy, Coherent Anti-Stokes Raman Scattering, and Stimulated Raman Scattering \cite{Auner2018}. 
+Many studies have been performed with RS in Medical Diagnosis, especially in oncology for tumor detection \cite{stupak2025raman,Auner2018}. However, given the high variability of protocols of using RS, and for lack of any standard protocol, results vary across study and are difficult to compare. Some examples of Raman protocols or techniques are: raw sample, frozen section, Surface Enhanced Raman Spectroscopy, Tip Enhanced Raman Spectroscopy, Resonance Raman Scattering, Surface Enhanced Resonance Raman Scattering, Spatially offset Raman Spectroscopy, Transmission Raman Spectroscopy, Coherent Anti-Stokes Raman Scattering, and Stimulated Raman Scattering \cite{Auner2018}.
 
 RS produces raw spectra that are difficult or even impossible to interpret directly, therefore the standard approach in RS is to apply Machine Learning (ML) tools to map spectra to labels, as mapping the Raman spectrum to a chemical mixture of components is unfeasible, and often times impossible, especially for biological samples 
-\cite{Boateng2025ramanmix}. This approach poses some difficulties in addoption of the method in medicine, as the models may not always be easily interpretable. However, given the high number of studies with promissing results, it is possible that RS will be adopted in medicine in some form.
+\cite{Boateng2025ramanmix}. This approach poses some difficulties in adoption of the method in medicine, as the models may not always be easily interpretable. However, given the high number of studies with promising results, it is possible that RS will be adopted in medicine in some form.
+
+\TODO{A paragraph on the state of the ML side of the field, drawing on Sineesh and Kamsali \cite{sineesh2026raman}, who benchmark deep learning models for RS across open-source datasets and report four problems that recur regardless of application domain: (i) datasets are small; (ii) synthetic data is used extensively, but with unclear benefit in real-world application; (iii) there are few benchmarks, and deep models are seldom compared against classical ML or computer-vision baselines; and (iv) cross-paper performance comparison is difficult. State these in this general form here, since they frame every specific number quoted later: point (i) motivates the augmentation strategy of this work, point (ii) is precisely the question this thesis sets out to answer for glioma RS, point (iii) is why four downstream classifiers are evaluated rather than one, and point (iv) is why Table~\ref{tab:rs_brain_performance} reports validation schemes alongside accuracies. Note the pleasing symmetry: the field-wide critique in (ii) is what Chapter~\ref{sec:discussion} ends up confirming on this dataset.}
+
 
 
 \subsection*{Reported performance in brain tumour applications}
 
-\TODO{Roughly one page, and the most load-bearing addition to this chapter. At present a
-reader reaching the ~74\% binary accuracy of Table~\ref{tab:binary_results} has no way to
-judge whether that is good, ordinary, or poor. Give them the yardstick:
-(i) survey the studies that have applied RS to brain tumour tissue, with the accuracies they
-report and, critically, the cohort size and validation scheme each used -- a 95\% accuracy
-from a study that split spectra rather than patients is not comparable to a 74\% from a
-slide-isolated split, and saying so here prepares the argument made in
-Chapter~\ref{sec:discussion};
-(ii) distinguish ex vivo from intraoperative in vivo work, since the clinical promise claimed
-in the introduction rests on the latter;
-(iii) note where cohort sizes typically sit, which is the point this thesis's 58 slides should
-be measured against.
-Bibliography entries already available and currently uncited:
-\texttt{krafft2009raman} (biomedical RS/IR tissue diagnosis),
-\texttt{bocklitz2016raman} (RS molecular imaging and analytics),
-\texttt{wu2021raman} (deep learning augmentation for RS cancer tissue classification),
-\texttt{sineesh2026raman} (benchmarking DL models for RS across open datasets -- useful for
-the comparability argument), \texttt{gbm\_review\_2025}.}
+\TODO{Write the prose around Table~\ref{tab:rs_brain_performance}; the numbers, cohorts and
+validation schemes in it are taken from the three surveys and need no further checking. The
+argument to build, in four moves:
+
+(1) \emph{RS separates tumour from normal brain very well.} Reported accuracies cluster in
+the 83--99\% range, and a meta-analysis over 1951 spectra puts glioma-vs-normal at 96\%
+sensitivity / 99\% specificity. This is the result that motivates the whole field.
+
+(2) \emph{Molecular classification is harder, and IDH status is the specific case this thesis
+addresses.} Three groups report 87--89\% accuracy for IDH-mutant vs.\ IDH-wildtype, and
+Livermore et al.\ report 91\% sensitivity / 95\% specificity. Note that the finer the
+molecular distinction, the worse it gets: Galli et al.\ separate tumour from normal at
+94--100\% but IDH-mutant oligodendroglioma from astrocytoma at only 81\%, and Zhou et al.\
+fall from 99.6\% (glioma vs.\ normal) to 84.1\% (low- vs.\ high-grade) to 75.1\% overall on a
+three-class problem. That degradation with granularity is the same pattern this work observes
+between the binary task (Table~\ref{tab:binary_results}) and the six-class task
+(Table~\ref{tab:sixclass_results}), and it is worth saying so explicitly.
+
+(3) \emph{Cohorts are small.} The last column of Table~\ref{tab:rs_brain_performance} is the
+one to dwell on: most studies work with fewer than 70 patients, several with fewer than 20.
+The 58 slides used here are unremarkable for this literature -- which is the point, and the
+motivation for the augmentation strategy of Section~\ref{sec:synthetic_rs}.
+
+(4) \emph{Validation schemes differ enough to make the headline numbers hard to compare, and
+this thesis's are conservative.} Most of these studies validate with leave-one-out or $k$-fold
+cross-validation over \emph{spectra}, which places spectra from the same patient on both sides
+of the split; a handful (Livermore et al., Riva et al.) use leave-one-patient-out. Under
+patient-level validation the numbers fall: Riva et al.\ report 83\% for the comparatively easy
+tumour-vs-normal task using random forests and gradient boosting -- the same model families
+used here. Reading the $\sim$74\% of Table~\ref{tab:binary_results} against the 87--89\% IDH
+figures without noting this difference would be misleading, and the honest comparison is the
+one against Riva et al.\ and Livermore et al.
+
+Be careful with attribution: these are three surveys, and Table~\ref{tab:rs_brain_performance}
+credits the primary studies by name. If you want to cite the primary work directly rather
+than the surveys, the DOIs are in the surveys' reference lists; as written, the table cites
+the surveys, which is defensible for a background section.}
+
+\begin{table}[htp]
+\centering
+\scriptsize
+\caption{Reported performance of Raman spectroscopy in brain tumour applications, as collated
+by three recent surveys \cite{hollon2021raman, murugappan2023raman, stupak2025raman}.
+Grouped by task. Accuracy (Acc.), sensitivity (Sens.) and specificity (Spec.) in per cent;
+a dash marks a figure the surveys do not report.}
+\label{tab:rs_brain_performance}
+\begin{tabular}{@{}p{3.3cm}p{3.1cm}p{2.2cm}>{\centering\arraybackslash}p{1.3cm}>{\centering\arraybackslash}p{1.2cm}>{\centering\arraybackslash}p{1.2cm}@{}}
+\toprule
+\emph{Study} & \emph{Cohort} & \emph{Validation} & \emph{Acc.} & \emph{Sens.} & \emph{Spec.}\\
+\midrule
+\multicolumn{6}{l}{\emph{Molecular / genetic classification}}\\
+\midrule
+Uckermann et al. & 36 froz. sect. & 5 bands, Mahal. & $89$ & -- & --\\
+Sciortino et al. & fresh, post-resection & -- & $87$ & -- & --\\
+Livermore et al. (IDH only) & 62 patients & LOPOCV & -- & $91$ & $95$\\
+Livermore et al. (3 subtypes) & 62 patients & LOPOCV & -- & $79$--$94$ & $90$--$100$\\
+Galli et al. (IDH-mut subtypes vs.\ astro) & 209 samples & PCA & $81$ & -- & --\\
+\midrule
+\multicolumn{6}{l}{\emph{Tumour vs.\ normal brain}}\\
+\midrule
+Zhang et al. (meta-analysis) & 1951 spectra & -- & -- & $96$ & $99$\\
+Zhou et al. (VRRS) & -- & CV & $99.6$ & $100$ & $96.3$\\
+Kalkanis et al. & frozen sections & -- & $97.8$ & -- & --\\
+Iturrioz et al. & 4 patients & PCA-LDA & $92.5$ & -- & --\\
+Jermyn et al. (\emph{in vivo}) & 17 pat., 161 spectra & LOOCV & $92$ & $93$ & $91$\\
+Li et al. (KDE augment.) & 205 gl. / 37 norm. & -- & $91.67$ & $91.67$ & $91.67$\\
+Riva et al. & 63 samples, 3450 spectra & LOPOCV, RF/GB & $83$ & -- & --\\
+\midrule
+\multicolumn{6}{l}{\emph{Grading}}\\
+\midrule
+Galli et al. (per subtype) & 209 samples & PCA & $86$--$100$ & -- & --\\
+Zhou et al. (low vs.\,\ high grade) & -- & CV & $84.1$ & $96.3$ & $53.7$\\
+Zhou et al. (normal / LGG / malignant) & -- & CV & $75.1$ & -- & --\\
+Auner et al. (paediatric) & 64 samp., 28 pat. & PCA-DFA & $88.9$--$95.1$ & -- & --\\
+\midrule
+\multicolumn{6}{l}{\emph{Stimulated Raman histology (imaging, for context)}}\\
+\midrule
+Hollon et al. (SRH + CNN) & 278 patients & prosp. trial & $94.6$ & -- & --\\
+Hollon et al. (H\&E comparator) & 278 patients & prosp. trial & $93.9$ & -- & --\\
+Orringer et al. (SRH vs.\ H\&E) & 101 patients & $\kappa > 0.89$ & $>90$ & -- & --\\
+\bottomrule
+\end{tabular}
+\small{LOOCV: leave-one-out cross-validation. LOPOCV: leave-one-patient-out cross-validation.
+RF: random forest. GB: gradient boosting. VRRS: visible resonance Raman spectroscopy.
+KDE: kernel density estimation. Note that only the LOPOCV entries guarantee that spectra from
+one patient do not appear on both sides of the split; the remaining entries validate over
+spectra, and their figures are correspondingly optimistic as estimates of performance on an
+unseen patient.}
+\end{table}
 
 \subsection*{The study this dataset comes from}
 

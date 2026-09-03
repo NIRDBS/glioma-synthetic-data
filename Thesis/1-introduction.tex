@@ -14,19 +14,15 @@ In this work, we aim to address some of these limitations by using synthetic dat
 
 \section*{Contributions}
 
-\TODO{Turn each bullet below into one or two sentences. They are stated here as claims with
-the chapter that substantiates each, so that the list and the body cannot drift apart. Trim
-any you would rather not defend.}
+
+
+Our contributions to the research of the applicability of RS in the context of glioma grading are the following
 
 \begin{itemize}
   \item \emph{A spatio-spectral annotation pipeline} for separating tumour spectra from
         background and non-tissue regions on a per-slide basis, combining median filtering,
         NMF, and GMM clustering under visual inspection
-        (Section~\ref{sec:preprocessing_steps}).
-        \TODO{Say what this offers over the PCA+DBSCAN-over-all-spectra approach of Lita et
-        al., and be honest that the visual inspection step is a limitation as well as a
-        feature -- Chapter~\ref{sec:discussion} already concedes it may introduce selection
-        bias.}
+        (Section~\ref{sec:preprocessing_steps}). Different decomposition and clustering methods exists, and other methods have been used for this task, for example PCA and DBSCAN was used as a preprocessing step by Lita et al. \cite{apollonov2024raman}. However some researchers argue that two processes involved in acquiring a Raman spectrum: light scattering and sample molecular mix are both non-negative and additive in nature. Light scattering involves measuring light intensity, where all intensities are greater than or equal to 0, and the chemical composition mixing suggests that at least partly or at least in some situations, the measured spectrum could be a linear combination of non-negative component spectra corresponding to the constituenting molecules of the sample \cite{Alix2022, Jafari2025}. Hence, we make the case that NMF might allign better for this task. The visual inspection step could be a benefit as one could better control the quality of spectra selected for processing, but it could also induce unintended selection bias.
 
   \item \emph{A conditional generative model for Raman spectra}, a 1D-convolutional
         $\beta$-CVAE trained under a multi-task objective combining reconstruction, KL
@@ -36,10 +32,7 @@ any you would rather not defend.}
         and TSR/TR regimes across four downstream classifiers and two tasks
         (Chapter~\ref{sec:experimental_design}), with uncertainty estimated by a slide-level
         cluster bootstrap rather than at the spectrum level
-        (Section~\ref{sec:statistical_eval}).
-        \TODO{This is arguably the central methodological contribution and worth stating
-        firmly: spectrum-level statistics on this kind of data badly understate uncertainty,
-        because thousands of spectra come from one slide.}
+        (Section~\ref{sec:statistical_eval}). This methodology is required for faithful estimation of real world performance of the models. We treat each sample as the unit of test and not individual spectra.
 
   \item \emph{Classification by Reconstruction}, an inference strategy that classifies a
         spectrum by which class-conditioned reconstruction best matches it, using no
@@ -53,12 +46,20 @@ any you would rather not defend.}
 
 \section*{Outline}
 
-\TODO{One short paragraph, one clause per chapter. Roughly: Chapter~\ref{ch:background}
-reviews Raman spectroscopy, its use in medical diagnostics, glioma grading, and synthetic data
-for spectroscopy; Chapter~\ref{ch:theory} develops the mathematical background for the methods
-used; Chapter~\ref{sec:results}'s methodology chapter describes the data and the preprocessing,
-generative and inference pipelines; Chapter~\ref{sec:experimental_design} defines the
-evaluation protocols and the statistical framework; Chapter~\ref{sec:results} reports results;
-Chapter~\ref{sec:discussion} interprets them and states limitations; and
-Chapter~\ref{ch:conclusion} concludes. Check the chapter cross-references as you write --
-the methodology chapter has no label of its own yet, so add one if you reference it.}
+The rest of this thesis is divided as follows:
+
+Chapter 2 reviews Raman Spectroscopy, its use in medical diagnostics, glioma grading, and synthetic data
+for spectroscopy. We cover the fundamental physics process of RS and highlight its use cases, particularly in medicine, and more specifically in tumour grading of gliomas.
+
+Chapter 3 introduces the theoretical mathematical background of the tools used in this work. It describes each tool and mentions how it is applied in the particular context of this work.
+
+Chapter 4 describes the methodology as a pipeline of the tools used and processing steps applied to the data. This chapter acts as a blueprint of the exact tools and parameters used from preprocessing to the generator definition and training.
+
+Chapter 5 defines the evaluation protocols and statistical framework. It describes the design of the statistical tests, using a clustering sampling and bootstrap design required for this type of data.
+
+Chapter 6 summarizes the main results, while pointing to the extended tables of results in the appendinx.
+
+Chapter 7 interprets the results and states limitations and addresses possible future work.
+
+Chapter 8 concludes the work, highlighting the main insights and limitations of this study.
+

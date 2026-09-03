@@ -116,7 +116,8 @@
 % Inainte de predare: schimba \drafttrue in \draftfalse si toate dispar.
 \usepackage{xcolor}
 \newif\ifdraft\drafttrue
-\newcommand{\TODO}[1]{\ifdraft\textcolor{red}{[TODO: #1]}\fi}
+% Foloseste un grup cu \color ca un TODO sa poata cuprinde paragrafe.
+\newcommand{\TODO}[1]{\ifdraft{\color{red}[TODO: #1]}\fi}
 
 
 \widowpenalties 3 10000 10000 0

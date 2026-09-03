@@ -9,6 +9,7 @@ This section describes the data workflow from preprocessing to evaluation and th
 \end{itemize}
 
 \section{Data Collection}
+\label{sec:data_collection}
 
 We analyzed the dataset of glioma RS biopsies collected for the study performed by Lita et al. \cite{apollonov2024raman}. The data acquizition protocol is described in detail in their study. The biological samples and the corresponding methylome labels were provided by Dr. Houtan Noushmehr; the samples were collected at the Hermelin Brain Tumor Center at Henry Ford Health System. The samples were anonymized and all the patients consented to have their acquired data used for research purposes.
 
@@ -36,9 +37,11 @@ LGm6 & Wildtype & 5   \\
 \end{table}
 
 \subsection{Cross Validation design}
+\label{sec:cv_design}
 For rigurous results, we want to implement a Cross Validation (CV) scheme. Standard CV divides the samples into N subsets of approximately equal size that form a partition of the dataset. Training is performed on N-1 subsets and testing on the subset left out of the training phase. In more complex settups where the classes are imbalanced, the CV split needs to be performed stratified by class to ensure that all classes are represented in each CV split. In cases where some classes are severely underrepresented, like the LGm1 and LGm6 classes, a standard CV split might be impossible to acheive. In our case, we aim to perform a 5 fold CV split at patient level. Out of the 5 samples of class LGm6, some belong to the same patient, which makes a standard CV split impossible. However, we can relax the requirements a bit without losing the rigour of data splitting. We can drop the requirement that the split forms a partition, but keep the train-test separated at patient level for all folds. This is the CV design used by Lita et al. The full detailed CV split can be found in the Appendix.
 
 \section{Data Preprocessing}
+\label{sec:preprocessing_steps}
 
 An important first step in data processing is separating the useful signal from the noisy measurements. We would like to seprate the tumor spectra from the healthy tissue or non-tissue measurements. As each spectrum corresponds to a pixel on the biopsy slide, it is possible that some pixels do not contain tissue and that the laser probe hit the plate material. A lot of slides appear to have some spots where there is no tissue; the cluster assignment maps in Fig.\ \ref{fig:preprocessing_cluster_spectra}(a, c) show such regions as contiguous areas of weak signal at the slide margins. In the absence of a ground truth labeling, we must rely on unsupervised techniques. In previous studies various techniques have been proposed. \TODO{survey the preprocessing/tissue-selection techniques used for RS in oncology and cite them here; candidate starting points already in the bibliography: \texttt{bocklitz2016raman}, \texttt{krafft2009raman}, \texttt{wu2021raman}. This overlaps the survey in Section \ref{sec:rs_medical}.} For example in the study by Lita et al. on this dataset they proposed the use of PCA followed by DBSCAN on all spectra. We decided to take a more conservative approach and to make the decision per slide, and to visually inspect the clusterings to double check the results. The proposed annotation pipeline consists of the following steps:
 

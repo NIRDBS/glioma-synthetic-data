@@ -5,27 +5,97 @@ The experiments show that synthetic augmentation can slightly improve Raman-base
 
 Combining synthetic and real spectra in the TSR/TR setting generally improved downstream classification performance across multiple models. This showcases the potential of synthetic spectra to improve the generalization capabilities of downstream models used in small-cohort settings. Therefore, instead of relying on synthetic spectra as a complete replacement for real measurements, they might be of greater use as a regularization strategy. 
 
-To characterize the relationship between the real and synthetic spectral distributions beyond aggregate classification metrics, we examined two complementary embedding methods: PCA and $t$-SNE. Both were computed on $z$-scored, pooled real and synthetic spectra (up to $2000$ spectra per class per source). $t$-SNE was applied to the top $50$ principal components due to the high dimensionality ($N_\lambda$) of the input space. Each embedding is displayed twice: coloured by source (real vs.\ synthetic) and by diagnostic class (IDH-Mutant vs.\ IDH-Wildtype). The results are shown in Figure~\ref{fig:pca_tsne}.
+To characterize the relationship between the real and synthetic spectral distributions beyond
+aggregate classification metrics, we examined two complementary embedding methods: PCA and
+$t$-SNE (Section~\ref{sec:embeddings}). All embeddings in this section were computed for a
+single generator: the fold-0 CVAE of experiment \texttt{exp\_201} (MSE reconstruction loss,
+latent dimension $d=32$, $\beta=2$), the same model whose downstream results are reported in
+Table~\ref{tab:binary_results}. Three groups of spectra are shown on one shared embedding:
+the real spectra of the 44 training slides of fold~0, which are the data this generator was
+fitted to; the real spectra of the 14 held-out slides of fold~0, which no model in this fold
+ever saw; and the $40{,}000$ synthetic spectra the generator produced. Both embeddings were
+computed on $z$-scored, pooled data, subsampled to at most $2000$ spectra per class per group,
+and $t$-SNE was applied to the top $50$ principal components due to the high dimensionality
+($N_\lambda$) of the input space. Each embedding is displayed twice: coloured by source and by
+diagnostic class (IDH-Mutant vs.\ IDH-Wildtype). The results are shown in
+Figure~\ref{fig:pca_tsne}.
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\textwidth]{images/PCA.png}\\[4pt]
-    \includegraphics[width=\textwidth]{images/TSNE.png}
-    \caption{\footnotesize PCA (top) and $t-$SNE (bottom) embeddings of real and synthetic spectra, coloured by source (left) and class (right).}
+    \includegraphics[width=\textwidth]{images/exp201_fold0_pca.png}\\[4pt]
+    \includegraphics[width=\textwidth]{images/exp201_fold0_tsne.png}
+    \caption{\footnotesize PCA (top) and $t$-SNE (bottom) embeddings of real and synthetic
+    spectra, coloured by source (left) and class (right). Generator: fold-0 CVAE of
+    \texttt{exp\_201}. Real spectra are split into the fold-0 training slides (the generator's
+    own training data) and the fold-0 held-out slides.}
     \label{fig:pca_tsne}
 \end{figure}
 
-Taken together, the PCA and t-SNE plots offer insight into the spatial structure of the spectral data. The PCA plots reveal a variance difference between the real and the synthetic data sets: synthetic data forms two distinct clusters (corresponding to the two classes) with low variance, while the real data shows higher variance, and the two classes overlap to a great extent. Correlating these plots with the t-SNE plots, we can see that synthetic data is structured in two distinct clusters, whereas the raw data has a heterogeneous structure. It is worth noting that both the PCA and the t-SNE plots show the real data being intertwined. We hypothesize that the two classes might overlap (in the initial space) to such an extent that, under a strict, slide-isolated experiment, the possible accuracy for this particular dataset has a definite upper bound. 
+Three observations follow. First, the two real groups are thoroughly intermixed in both
+embeddings: the held-out slides occupy the same region as the training slides, with no visible
+displacement. Whatever gap the synthetic spectra exhibit is therefore a real-versus-synthetic
+gap, not an artefact of the fold split.
 
-We can visualize the spectral variance by plotting the mean spectrum of the real data and that of the synthetic data along with their standard deviation ($\sigma$) envelopes. We observe that the synthetic data standard deviation is much narrower than that of the real data, which suggests that the synthetic data is generally very close to the mean spectrum (Fig. \ref{fig:mean_std_spectra}).
+Second, the PCA embedding shows a severe contraction of variance. The synthetic spectra occupy
+a narrow, elongated sliver embedded well inside the real point cloud, while the real spectra
+spread across a region larger by an order of magnitude in both retained components. Crucially,
+the synthetic sliver lies \emph{within} the real distribution rather than beside it: the
+generator has not drifted to some unrealistic corner of spectral space, it has collapsed onto
+a small neighbourhood of the class means. This is the mode-collapse failure mode rather than a
+fidelity failure.
+
+Third, the $t$-SNE embedding places the synthetic spectra in two arcs, one per class, clearly
+disjoint from the real spectra, which themselves form a single heterogeneous mass in which the
+two classes interpenetrate. The class separation of the synthetic arcs reflects the decoder's
+class conditioning working as intended. Their apparent \emph{distance} from the real spectra,
+however, should not be over-read: as noted in Section~\ref{sec:embeddings}, $t$-SNE preserves
+local neighbourhoods but neither cluster sizes nor inter-cluster distances are meaningful. The
+synthetic spectra are mutually nearest neighbours, so the method necessarily groups them; the
+PCA panel, whose distances are meaningful, shows that they in fact lie inside the real range.
+The correct reading of the two panels together is therefore that the synthetic spectra are
+individually plausible but mutually far too similar.
+
+\TODO{Optional: the real spectra in the PCA panel show a pronounced tail extending away from
+the main mass, and the $t$-SNE panel resolves the real data into many small islands. Both are
+consistent with slide-level batch structure -- spectra from one acquisition session clustering
+together. If you want to make that claim, it is worth confirming by colouring one panel by
+slide ID rather than by source; the machinery is in
+\texttt{plot\_dimensionality\_reduction}. If you would rather not, leave the observation out
+rather than speculating.}
+
+We can visualize the same contraction directly in the spectral domain by plotting the mean
+spectrum of the real and synthetic data with their standard deviation ($\sigma$) envelopes
+(Fig.~\ref{fig:mean_std_spectra}). The two mean spectra track each other closely: the major
+bands appear at the correct positions with approximately the correct relative intensities, so
+the generator has learned the class-average spectral shape well. The envelopes, by contrast,
+are entirely different in scale. The real $\pm 1\sigma$ band is wide across the whole
+fingerprint region, whereas the synthetic envelope is so narrow as to be barely visible. The
+generator reproduces the mean and discards the variation around it.
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.85\textwidth]{images/A_mean_std_spectra_IDH-Mutant.png}
-\includegraphics[width=0.85\textwidth]{images/A_mean_std_spectra_IDH-Wildtype.png}
-\caption{Mean $\pm \sigma$ Raman spectra, real vs. synthetic, per class.}
+\includegraphics[width=\textwidth]{images/exp201_fold0_mean_std.png}
+\caption{\footnotesize Mean $\pm\,1\sigma$ Raman spectra, real vs.\ synthetic, per class,
+for the fold-0 CVAE of \texttt{exp\_201}. Real spectra are the fold-0 training slides.
+Dashed vertical lines mark the biologically relevant Raman bands listed in
+Section~\ref{sec:preprocessing_steps}.}
 \label{fig:mean_std_spectra}
 \end{figure}
+
+This diagnosis explains the pattern of results in Chapter~\ref{sec:results} more precisely
+than the aggregate metrics alone. A classifier trained only on synthetic spectra (TS/TR) sees
+a training distribution far narrower than the test distribution, so it never encounters the
+variation it must generalise over, and it underperforms the real-data baseline in every case.
+The same spectra used as an \emph{addition} to real data (TSR/TR) act as a concentration of
+mass near the class means, which is a mild regularizer, and produce the small positive shifts
+observed. Both behaviours follow from a generator with good fidelity and poor diversity.
+
+\TODO{Consider whether to state the practical implication for future work: the $\beta=2$
+weighting on the KL term (Section~\ref{sec:cvae_architecture}) buys a well-formed latent space
+at the cost of exactly the variance shown missing here, so a $\beta$ sweep is the most
+obvious next experiment. The latent-dimension ablation (\texttt{exp\_302}/\texttt{exp\_303},
+Tables~\ref{tab:appendix_exp_302}--\ref{tab:appendix_exp_303}) varied $d$ but not $\beta$, so
+this remains untested.}
 
 An important observation is that useful augmentation effects were obtained despite the relatively small number of independent patient samples available for training the generative model. In contrast to conventional deep generative modeling settings involving very large datasets, biomedical Raman spectroscopy typically operates in a data-constrained regime characterized by limited patient cohorts, acquisition variability, and strong intra-sample correlations. The present results indicate that generative models may still capture sufficient spectral structure to improve downstream robustness even when trained under these constraints.
 

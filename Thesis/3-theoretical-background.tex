@@ -313,3 +313,234 @@ guarantee class-discriminative latent codes, which is the motivation for the aux
 classification head described in Section~\ref{sec:cvae_architecture}. Related applications of
 conditional VAEs to spectral and time-series data: \texttt{Gebran2025} (stellar spectra),
 \texttt{Kavran2022} (beta-VAE augmentation for time series).}
+
+
+\section{Downstream Classifiers}
+\label{sec:classifiers}
+
+The four classifiers evaluated in Chapter~\ref{sec:results} are standard models, used here
+without hyperparameter tuning: the object of study is the effect of synthetic augmentation,
+not the choice of classifier. This section states what each one optimises, so that the results
+can be read without reference to an external source. A unified treatment of the first three
+can be found in Hastie et al.\ \cite{hastie2009elements}.
+
+\subsection*{Decision trees and Random Forests}
+
+\TODO{Half a page. Cover: a decision tree as a recursive partition of the feature space;
+the impurity criterion (Gini or entropy) used to choose splits; bagging as variance reduction
+by averaging trees grown on bootstrap resamples; and the random subsetting of features at each
+split that decorrelates the trees. Cite \texttt{hastie2009elements}.}
+
+The mean decrease in impurity attributable to feature $j$, aggregated over the $T$ trees of the
+forest, gives the importance score
+\begin{equation}
+\text{Imp}(j) = \frac{1}{T} \sum_{t=1}^{T} \sum_{\substack{n \in t \\ v(n) = j}}
+                 \frac{N_n}{N} \, \Delta i(n),
+\label{eq:rf_importance}
+\end{equation}
+where the inner sum runs over the nodes $n$ of tree $t$ that split on feature $j$, $v(n)$ is
+the feature used at node $n$, $N_n/N$ is the fraction of samples reaching it, and $\Delta i(n)$
+is the resulting decrease in impurity.
+
+\TODO{One sentence tying equation \eqref{eq:rf_importance} to its use in this work: it is the
+criterion behind the top-20 band selection in the RF+SVM model of
+Section~\ref{sec:experimental_design}. Worth noting explicitly that selecting 20 bands out of
+571 is a severe reduction, and that the RF+SVM model is the one that collapses to a single
+class under TS/TR in Table~\ref{tab:binary_results} (sensitivity 0.000, specificity 1.000).}
+
+\subsection*{Support Vector Machines}
+
+For a binary problem with labels $y_i \in \{-1, +1\}$, the soft-margin SVM solves
+\begin{equation}
+\min_{w, b, \xi} \; \frac{1}{2}\norm{w}^2 + C \sum_{i=1}^{N} \xi_i
+\quad \text{subject to} \quad
+y_i\big(w^\top \varphi(x_i) + b\big) \ge 1 - \xi_i, \quad \xi_i \ge 0,
+\label{eq:svm_primal}
+\end{equation}
+where $\varphi$ maps the input into a feature space, $\xi_i$ are slack variables permitting
+margin violations, and $C$ controls the trade-off between margin width and training error.
+The mapping $\varphi$ never appears explicitly: the dual depends on the data only through the
+kernel $K(x, x') = \varphi(x)^\top \varphi(x')$. This work uses the radial basis function
+kernel
+\begin{equation}
+K(x, x') = \exp\!\left(-\gamma \norm{x - x'}^2\right).
+\label{eq:rbf_kernel}
+\end{equation}
+
+\TODO{Two or three sentences: the kernel trick, and what "balanced class weights" does to
+$C$ per class, given the class imbalance documented in Table~\ref{tab:dataset}.}
+
+\subsection*{Gradient boosting and XGBoost}
+
+\TODO{Half a page. Cover: boosting as a stagewise additive expansion
+$F_m(x) = F_{m-1}(x) + \nu h_m(x)$ where each new tree $h_m$ is fitted to the gradient of the
+loss at the current prediction; contrast with bagging (sequential bias reduction vs.\ parallel
+variance reduction); and XGBoost's explicit regularisation of tree complexity. Cite
+\texttt{hastie2009elements}. Mention the histogram-based split finding used here, which is
+what makes 571 continuous bands tractable.}
+
+The regularised objective at boosting round $m$ is
+\begin{equation}
+\mathcal{L}^{(m)} = \sum_{i=1}^{N} \ell\big(y_i, \, F_{m-1}(x_i) + h_m(x_i)\big)
+                  + \Omega(h_m),
+\qquad
+\Omega(h) = \gamma T + \frac{1}{2}\lambda \norm{w}^2,
+\label{eq:xgb_objective}
+\end{equation}
+where $T$ is the number of leaves of the tree $h$ and $w$ its leaf weights.
+
+\subsection*{1D Convolutional Neural Network}
+
+\TODO{Short subsection; the groundwork is already laid in
+Section~\ref{sec:deep_learning}. Cover: the 1D convolution as a shared local operator over
+the wavenumber axis, weight sharing and translation equivariance, and why that inductive bias
+suits Raman spectra, where a band is a local feature whose position may drift slightly between
+acquisitions -- the same drift the spectral-shift augmentation of
+Section~\ref{sec:experimental_design} simulates. Connect to the convolutional universal
+approximation results already cited in Section~\ref{sec:deep_learning}
+(\texttt{Zhou2020}, \texttt{Yarotsky2018}).}
+
+For an input spectrum $x \in \mathbb{R}^{N_\lambda}$ and a kernel $w \in \mathbb{R}^{k}$, the
+convolution at position $i$ with stride $s$ is
+\begin{equation}
+(x * w)_i = \sum_{j=1}^{k} w_j \, x_{\,s \cdot i + j},
+\label{eq:conv1d}
+\end{equation}
+so a layer with $F$ such kernels produces $F$ feature maps, each sharing $k$ parameters across
+all positions rather than the $N_\lambda$ parameters a fully connected layer would require per
+output unit.
+
+\TODO{One sentence on the parameter-count argument: with 571 input bands and only a few dozen
+independent slides, weight sharing is not merely convenient but necessary to keep the model
+estimable. This links to the high-dimension / small-$n$ discussion
+(\texttt{berisha2021overfitting}, \texttt{subramanian2013overfitting}).}
+
+
+\section{Low-Dimensional Embeddings}
+\label{sec:embeddings}
+
+Chapter~\ref{sec:discussion} inspects the relationship between real and synthetic spectra
+through two embeddings, PCA and $t$-SNE. They answer different questions and carry different
+caveats, so both are defined here.
+
+\subsection*{Principal Component Analysis}
+
+Let $X \in \mathbb{R}^{N \times p}$ be the centred data matrix. PCA seeks the direction
+$u \in \mathbb{R}^{p}$, $\norm{u} = 1$, maximising the variance of the projected data:
+\begin{equation}
+u_1 = \arg\max_{\norm{u}=1} \; \frac{1}{N} \norm{X u}^2
+    = \arg\max_{\norm{u}=1} \; u^\top \Sigma u,
+\qquad \Sigma = \frac{1}{N} X^\top X .
+\label{eq:pca_objective}
+\end{equation}
+The solution is the eigenvector of the covariance matrix $\Sigma$ with the largest eigenvalue;
+subsequent components are the remaining eigenvectors in order of decreasing eigenvalue, each
+orthogonal to those before it. Writing $\Sigma = U \Lambda U^\top$ with
+$\Lambda = \operatorname{diag}(\lambda_1 \ge \dots \ge \lambda_p)$, the fraction of total
+variance captured by component $j$ is
+\begin{equation}
+\text{EVR}_j = \frac{\lambda_j}{\sum_{i=1}^{p} \lambda_i},
+\label{eq:evr}
+\end{equation}
+the quantity reported on the axes of the PCA panels in Chapter~\ref{sec:discussion}.
+
+\TODO{Two sentences: PCA is linear and variance-driven, so distances and spreads in the
+projection are meaningful but only to the extent the two retained components capture the
+variance -- which is why the EVR values on the axes matter when reading the figure.}
+
+\subsection*{$t$-Distributed Stochastic Neighbour Embedding}
+
+$t$-SNE \cite{vandermaaten2008tsne} is non-linear and neighbourhood-preserving. In the input
+space it defines symmetrised conditional similarities $p_{ij}$ from Gaussian kernels centred
+on each point, and in the two-dimensional map it defines
+\begin{equation}
+q_{ij} = \frac{\big(1 + \norm{z_i - z_j}^2\big)^{-1}}
+              {\sum_{k \ne l} \big(1 + \norm{z_k - z_l}^2\big)^{-1}},
+\label{eq:tsne_q}
+\end{equation}
+a Student $t$ kernel with one degree of freedom. The embedding minimises
+\begin{equation}
+C = D_{KL}(P \| Q) = \sum_{i \ne j} p_{ij} \log \frac{p_{ij}}{q_{ij}} .
+\label{eq:tsne_objective}
+\end{equation}
+The bandwidth of each input-space Gaussian is set so that the perplexity of the conditional
+distribution matches a user-chosen value, effectively the number of neighbours each point
+attends to; this work uses a perplexity of 50.
+
+\paragraph{Caveats.} The objective in \eqref{eq:tsne_objective} penalises placing similar
+points far apart far more heavily than placing dissimilar points close together. Two
+consequences matter for reading Figure~\ref{fig:pca_tsne}:
+\begin{enumerate}
+  \item \emph{Cluster sizes are not meaningful.} The heavy-tailed kernel expands dense regions
+        and contracts sparse ones, so the visual area of a cluster does not indicate the
+        variance of the underlying data.
+  \item \emph{Distances between clusters are not meaningful.} Only local neighbourhoods are
+        preserved; the global arrangement of well-separated clusters is largely arbitrary and
+        varies with perplexity and initialisation.
+\end{enumerate}
+
+\TODO{Important -- this caveat has a direct consequence for the thesis. The Discussion
+currently argues from the apparent tightness of the synthetic clusters in the $t$-SNE panel,
+which caveat (1) does not support. Either restate that argument on the PCA panel, whose
+spreads are meaningful, and on the mean $\pm \sigma$ figure, which measures variance directly;
+or keep the $t$-SNE observation but state the caveat alongside it. Recommended: the former,
+since the PCA and mean $\pm \sigma$ evidence already makes the point.}
+
+$t$-SNE is applied here to the leading 50 principal components rather than to all 571 bands.
+This is standard practice: it suppresses the noise directions that dominate pairwise distances
+in high dimensions, and reduces the cost of the neighbour computation, without materially
+changing the neighbourhood structure.
+
+
+\section{Baseline Correction and Statistical Inference}
+\label{sec:airpls_bootstrap}
+
+Two further tools are used throughout, one in preprocessing and one in evaluation.
+
+\subsection*{Adaptive iteratively reweighted penalized least squares}
+
+Raman spectra of biological samples sit on a broad fluorescence background that is far stronger
+than the Raman bands themselves and varies between acquisitions. Every spectrum in this work is
+baseline-corrected with airPLS \cite{Zhang2010}.
+
+Given a spectrum $x \in \mathbb{R}^{N_\lambda}$, airPLS fits a smooth baseline $b$ minimising
+\begin{equation}
+Q(b) = \sum_{i=1}^{N_\lambda} w_i \, (x_i - b_i)^2 \; + \; \lambda \norm{D_p \, b}^2,
+\label{eq:airpls}
+\end{equation}
+where $D_p$ is the discrete difference operator of order $p$ and $\lambda$ controls smoothness.
+The two terms trade fidelity to the data against smoothness of the baseline: large $\lambda$
+forces a slowly varying baseline that passes under the peaks, small $\lambda$ lets the baseline
+follow the peaks and remove them.
+
+The weights $w_i$ are what make the method asymmetric. They are re-estimated at each iteration
+so that points lying \emph{above} the current baseline -- candidate peaks -- receive vanishing
+weight, while points lying below it are weighted fully. The baseline is therefore drawn towards
+the lower envelope of the spectrum and does not absorb the Raman bands.
+
+\TODO{One short paragraph: state the parameters used in this work ($\lambda = 100$, difference
+order $p = 1$, see Section~\ref{sec:preprocessing_steps}) and say what they mean in practice
+here. Optionally show a before/after spectrum -- the raw spectrum in
+Figure~\ref{fig:raw_spectrum} makes the fluorescence background very visible and would pair
+well with its corrected counterpart.}
+
+\subsection*{The cluster bootstrap}
+
+\TODO{Roughly half a page. This section carries the theory; the protocol as applied stays in
+Section~\ref{sec:statistical_eval}. Points to make, in order:
+(i) the ordinary bootstrap resamples observations independently and estimates the sampling
+distribution of a statistic by resampling with replacement;
+(ii) that requires the observations to be independent, which spectra are emphatically not --
+several thousand come from a single slide and are strongly correlated, so resampling spectra
+would treat correlated measurements as independent evidence and produce confidence intervals
+far too narrow;
+(iii) the cluster bootstrap resamples whole clusters -- here, slides -- keeping each cluster
+intact, so the within-slide correlation structure is preserved and the resampling happens at
+the level at which the units really are independent;
+(iv) the unit of resampling should match the unit of generalisation: the claim being tested is
+about unseen \emph{patients}, not unseen spectra from known patients;
+(v) stratification by class preserves the class proportions of
+Table~\ref{tab:dataset} across resamples, which matters because LGm1 and LGm6 are small enough
+that an unstratified resample could omit them.
+Useful context on high-dimensional small-$n$ inference: \texttt{berisha2021overfitting},
+\texttt{subramanian2013overfitting}.}

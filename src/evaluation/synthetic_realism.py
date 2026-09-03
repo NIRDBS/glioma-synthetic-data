@@ -1,5 +1,5 @@
 """
-Synthetic realism evaluation for glioma Raman spectra (exp_105).
+Synthetic realism evaluation for glioma Raman spectra.
 
 Analyses:
   A. Mean ± std spectra per class (real vs synthetic)
@@ -12,7 +12,7 @@ Analyses:
   H. Intra-class diversity metrics
 
 CLI usage:
-  python -m src.evaluation.synthetic_realism --config exp_105
+  python -m src.evaluation.synthetic_realism --config exp_201 --fold 0
 
 Module usage:
   from src.evaluation.synthetic_realism import run_all
@@ -63,7 +63,9 @@ RAMAN_PEAKS: Dict[str, int] = {
 
 CLASS_NAMES: Dict[int, str] = {0: "IDH-Mutant", 1: "IDH-Wildtype"}
 
-REAL_COLOR   = "#1f77b4"
+REAL_COLOR   = "#1f77b4"   # real spectra, in the two-group figures
+REAL_TRAIN_COLOR = "#1f77b4"   # slides the generator was fitted to
+REAL_TEST_COLOR  = "#17becf"   # slides held out in this fold
 SYNTH_COLOR  = "#ff7f0e"
 CLASS_COLORS = ["#2ca02c", "#d62728"]
 ALPHA_FILL   = 0.20
@@ -79,9 +81,27 @@ def load_data(
     config: dict,
     fold_idx: int = 0,
     seed: int = 42,
+    split: str = 'all',
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Load real (cropped, renormalised) and synthetic spectra for one fold.
+
+    Parameters
+    ----------
+    config    : experiment config dict
+    fold_idx  : which fold's synthetic pool to load (0-4)
+    seed      : unused here; kept for signature symmetry with the plot functions
+    split     : which real spectra to return.
+                'all'   — every spectrum in the dataset (default; the historical
+                          behaviour, kept so existing callers are unaffected)
+                'train' — only the slides in fold `fold_idx`'s TRAINING split,
+                          i.e. exactly the spectra this fold's CVAE was fitted to
+                'test'  — only the slides held out in fold `fold_idx`
+
+                'all' pools train and test slides of every fold together, which
+                is the wrong comparison for a per-fold figure: it mixes the data
+                the generator saw with data it never saw. Prefer 'train'/'test'
+                when the figure is about one fold's generator.
 
     Returns
     -------
@@ -93,6 +113,9 @@ def load_data(
     """
     import sys
     import os
+
+    if split not in ('all', 'train', 'test'):
+        raise ValueError(f"split must be 'all', 'train' or 'test'; got {split!r}")
 
     project_root = _find_project_root()
     if str(project_root) not in sys.path:
@@ -116,8 +139,28 @@ def load_data(
     print(f"  Loading real spectra from {h5_path.name} ...")
     loader = GliomaDataLoader.from_config(str(h5_path), cfg_eval, memory_mapped=False)
 
-    X_real = loader.X.astype(np.float32)
-    y_raw  = loader.y_class.astype(int).flatten()
+    if split == 'all':
+        X_real = loader.X.astype(np.float32)
+        y_raw  = loader.y_class.astype(int).flatten()
+    else:
+        # Reuse the loader's own fold iteration, so the slide assignment here is
+        # by construction the same one the experiments trained against.
+        # Note the naming: the loader calls the held-out member 'val'; the split
+        # JSON calls it 'test'.
+        member = 'train' if split == 'train' else 'val'
+        fold = None
+        for f in loader:
+            if f['fold'] == fold_idx:
+                fold = f
+                break
+        if fold is None:
+            raise ValueError(f"fold {fold_idx} not found in {loader.split_file}")
+        Xf, yf = fold[member]
+        n_slides = len(fold['train_sample_ids' if split == 'train' else 'val_sample_ids'])
+        print(f"  Fold {fold_idx} '{split}' split: {len(Xf):,} spectra from {n_slides} slides")
+        X_real = np.asarray(Xf).astype(np.float32)
+        y_raw  = np.asarray(yf).astype(int).flatten()
+
     # Binary: Mutant=0 (LGm1-3), Wildtype=1 (LGm4-6)
     y_real = np.where(y_raw < 3, 0, 1) if np.max(y_raw) > 1 else y_raw
 
@@ -276,21 +319,41 @@ def plot_representative_overlay(
 # =============================================================================
 
 def plot_dimensionality_reduction(
-    X_real: np.ndarray, y_real: np.ndarray,
-    X_synth: np.ndarray, y_synth: np.ndarray,
+    sources: List[Tuple[str, np.ndarray, np.ndarray, str]],
     output_dir: Path,
     max_per_class: int = 2000, seed: int = 42,
     class_names: Dict[int, str] = CLASS_NAMES,
 ) -> List[Path]:
-    """Scatter plots coloured by source and by class for PCA, t-SNE, UMAP."""
+    """
+    Scatter plots coloured by source and by class, for PCA and t-SNE (and UMAP).
+
+    Parameters
+    ----------
+    sources : list of (label, X, y, colour), one entry per group to plot.
+        All groups share a single embedding: the reducer is fitted on the pooled,
+        z-scored data so that positions are directly comparable across groups.
+        Two groups reproduce the original real-vs-synthetic figure; three allow
+        real-train / real-test / synthetic, which separates the distribution the
+        generator was fitted to from the one it is evaluated against.
+
+    Each group is subsampled to `max_per_class` spectra per class before pooling.
+    """
     rng   = np.random.RandomState(seed)
     saved: List[Path] = []
 
-    Xr_s, yr_s = _subsample(X_real,  y_real,  max_per_class, rng)
-    Xs_s, ys_s = _subsample(X_synth, y_synth, max_per_class, rng)
-    X_all  = np.vstack([Xr_s, Xs_s])
-    y_all  = np.concatenate([yr_s, ys_s])
-    source = np.array([0] * len(Xr_s) + [1] * len(Xs_s))
+    Xs, ys, src_idx, labels, colours = [], [], [], [], []
+    for i, (label, X, y, colour) in enumerate(sources):
+        Xi, yi = _subsample(X, y, max_per_class, rng)
+        Xs.append(Xi)
+        ys.append(yi)
+        src_idx.append(np.full(len(Xi), i))
+        labels.append(label)
+        colours.append(colour)
+        print(f"    {label}: {len(Xi):,} spectra after subsampling")
+
+    X_all  = np.vstack(Xs)
+    y_all  = np.concatenate(ys)
+    source = np.concatenate(src_idx)
 
     scaler = StandardScaler()
     X_sc   = scaler.fit_transform(X_all)
@@ -301,7 +364,7 @@ def plot_dimensionality_reduction(
     Z   = pca.fit_transform(X_sc)
     ev  = pca.explained_variance_ratio_
     saved.extend(_scatter_pair(
-        Z, source, y_all, class_names,
+        Z, source, y_all, labels, colours, class_names,
         f"PCA  PC1={ev[0]*100:.1f}%  PC2={ev[1]*100:.1f}%",
         output_dir / "C_pca",
     ))
@@ -313,7 +376,7 @@ def plot_dimensionality_reduction(
     tsne = TSNE(n_components=2, random_state=seed,
                 perplexity=50, max_iter=1000, verbose=0)
     Z    = tsne.fit_transform(Z50)
-    saved.extend(_scatter_pair(Z, source, y_all, class_names,
+    saved.extend(_scatter_pair(Z, source, y_all, labels, colours, class_names,
                                "t-SNE", output_dir / "C_tsne"))
 
     # UMAP
@@ -321,7 +384,7 @@ def plot_dimensionality_reduction(
         print("    UMAP ...")
         reducer = umap_lib.UMAP(n_components=2, random_state=seed, verbose=False)
         Z       = reducer.fit_transform(X_sc)
-        saved.extend(_scatter_pair(Z, source, y_all, class_names,
+        saved.extend(_scatter_pair(Z, source, y_all, labels, colours, class_names,
                                    "UMAP", output_dir / "C_umap"))
     else:
         print("    UMAP skipped (umap-learn not installed).")
@@ -331,16 +394,18 @@ def plot_dimensionality_reduction(
 
 def _scatter_pair(
     Z: np.ndarray, source: np.ndarray, y: np.ndarray,
+    source_labels: List[str], source_colours: List[str],
     class_names: Dict[int, str], title: str, base: Path,
 ) -> List[Path]:
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    for s, (lbl, col) in enumerate(
-        zip(["Real", "Synthetic"], [REAL_COLOR, SYNTH_COLOR])
-    ):
+    # Plot the largest group first so smaller ones stay visible on top.
+    order = sorted(range(len(source_labels)),
+                   key=lambda s: -int(np.sum(source == s)))
+    for s in order:
         m = source == s
-        axes[0].scatter(Z[m, 0], Z[m, 1], c=col, alpha=0.35, s=3,
-                         label=lbl, rasterized=True)
+        axes[0].scatter(Z[m, 0], Z[m, 1], c=source_colours[s], alpha=0.35, s=3,
+                        label=source_labels[s], rasterized=True)
     axes[0].set_title(f"{title} — by Source")
     axes[0].legend(markerscale=4, fontsize=9)
     axes[0].set_xticks([])
@@ -648,24 +713,39 @@ def compute_diversity(
 def run_all(
     config: dict,
     figures_dir: str = "figures/synth_eval",
-    metrics_path: str = "results/exp_105/synth_eval_metrics.json",
+    metrics_path: str = "results/synth_eval_metrics.json",
     fold_idx: int = 0,
     seed: int = 42,
+    real_split: str = 'train',
 ) -> dict:
-    """Run the complete synthetic realism evaluation pipeline for exp_105."""
+    """
+    Run the complete synthetic realism evaluation pipeline for one experiment.
+
+    `real_split` selects which real spectra the per-class analyses (A, B, D-H)
+    compare the synthetic pool against:
+      'train' — the slides this fold's CVAE was fitted to (default)
+      'test'  — the slides held out in this fold
+      'all'   — every slide, pooled (the historical behaviour; mixes seen and
+                unseen data and is not recommended for a per-fold figure)
+
+    The embedding plots (C) always show real-train, real-test and synthetic as
+    three separate groups on one shared embedding, regardless of `real_split`.
+    """
+    exp_name = config.get('name', 'unknown')
     out_dir = Path(figures_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'='*70}")
-    print("SYNTHETIC REALISM EVALUATION (exp_105)")
+    print(f"SYNTHETIC REALISM EVALUATION ({exp_name})")
     print(f"{'='*70}")
-    print(f"Fold: {fold_idx}  |  Figures -> {out_dir}  |  Metrics -> {metrics_path}\n")
+    print(f"Fold: {fold_idx}  |  Real split: {real_split}")
+    print(f"Figures -> {out_dir}  |  Metrics -> {metrics_path}\n")
 
     print("Loading data ...")
     X_real, y_real, X_synth, y_synth, wavenumbers = load_data(
-        config, fold_idx=fold_idx, seed=seed
+        config, fold_idx=fold_idx, seed=seed, split=real_split
     )
-    print(f"  Real:  {X_real.shape}  classes={np.unique(y_real)}")
+    print(f"  Real ({real_split}): {X_real.shape}  classes={np.unique(y_real)}")
     print(f"  Synth: {X_synth.shape}  classes={np.unique(y_synth)}\n")
 
     all_metrics: dict = {}
@@ -677,8 +757,25 @@ def run_all(
     plot_representative_overlay(X_real, y_real, X_synth, y_synth, wavenumbers, out_dir)
 
     print("\n[C] Dimensionality reduction (PCA / t-SNE / UMAP) ...")
-    plot_dimensionality_reduction(X_real, y_real, X_synth, y_synth, out_dir,
-                                   max_per_class=2000, seed=seed)
+    # Three groups on one shared embedding: the data the generator was fitted to,
+    # the data it is evaluated against, and the data it produced.
+    # Reuse the already-loaded split rather than re-reading the HDF5 for it.
+    if real_split == 'train':
+        X_tr, y_tr = X_real, y_real
+    else:
+        X_tr, y_tr, _, _, _ = load_data(config, fold_idx=fold_idx, seed=seed, split='train')
+    if real_split == 'test':
+        X_te, y_te = X_real, y_real
+    else:
+        X_te, y_te, _, _, _ = load_data(config, fold_idx=fold_idx, seed=seed, split='test')
+    plot_dimensionality_reduction(
+        [
+            ("Real (train slides)", X_tr,    y_tr,     REAL_TRAIN_COLOR),
+            ("Real (held-out slides)", X_te, y_te,     REAL_TEST_COLOR),
+            ("Synthetic",           X_synth, y_synth,  SYNTH_COLOR),
+        ],
+        out_dir, max_per_class=2000, seed=seed,
+    )
 
     print("\n[D] Raman peak comparison ...")
     _, all_metrics["raman_peaks"] = plot_raman_peak_comparison(
@@ -744,13 +841,24 @@ if __name__ == '__main__':
     from src.utils.config_manager import ConfigManager
 
     parser = argparse.ArgumentParser(description="Synthetic Realism Evaluation")
-    parser.add_argument("--config", default="exp_105",
-                        help="Experiment config name (default: exp_105)")
+    parser.add_argument("--config", default="exp_201",
+                        help="Experiment config name (default: exp_201, the "
+                             "experiment reported in the thesis results table)")
     parser.add_argument("--fold",   type=int, default=0,
                         help="Fold index for synthetic data (default: 0)")
-    parser.add_argument("--out",    default="figures/synth_eval",
-                        help="Output directory for figures")
+    parser.add_argument("--out",    default=None,
+                        help="Output directory for figures "
+                             "(default: <experiment_root>/figures/synth_eval)")
+    parser.add_argument("--real-split", default="train",
+                        choices=["train", "test", "all"], dest="real_split",
+                        help="Which real spectra the per-class analyses compare "
+                             "against (default: train, i.e. the slides this fold's "
+                             "CVAE was fitted to)")
     args = parser.parse_args()
 
     cfg = ConfigManager.load_config(args.config)
-    run_all(cfg, figures_dir=args.out, fold_idx=args.fold)
+    exp_root = cfg['paths']['experiment_root']
+    out_dir  = args.out or f'{exp_root}/figures/synth_eval'
+    run_all(cfg, figures_dir=out_dir,
+            metrics_path=f'{exp_root}/synth_eval_metrics.json',
+            fold_idx=args.fold, real_split=args.real_split)

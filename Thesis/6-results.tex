@@ -44,6 +44,75 @@ In contrast to the TS/TR setting, combining synthetic and real spectra generally
 
 Of particular interest is the CbR inference method, which reached an accuracy of around 62\%. While lower than the other classifiers' accuracies, it is in the same range as the TS/TR models.
 
+\section{Latent Space Dimension}
+\label{sec:results_latent}
+
+We varied the CVAE latent dimension over $d \in \{16, 32, 64\}$, holding every other setting
+fixed, in order to test whether the capacity of the latent bottleneck affects the usefulness of
+the generated spectra. The $d=32$ setting is the one reported in
+Table~\ref{tab:binary_results}; the two others repeat the same binary experiment with the
+bottleneck widened and narrowed. The consolidated results are given in
+Table~\ref{tab:latent_dim}.
+
+We find no trend across $d$. The TSR/TR differences remain small and positive at every setting,
+and with one exception their confidence intervals include zero, so the latent dimension does not
+measurably change the value of the synthetic spectra for downstream classification. Neither does
+it change the domain gap: the TS/TR accuracies move by a few points in no consistent direction,
+and the CbR accuracy is nearly constant at $0.616$, $0.619$ and $0.621$ for $d=16$, $32$ and
+$64$ respectively, despite CbR depending on the latent representation directly. We report this
+negative result rather than omit it, since the absence of a trend is itself informative: within
+this range, the bottleneck is not the binding constraint on generator quality.
+
+The single exception is the 1D-CNN at $d=64$, where the TSR/TR gain of $+0.083$ has a confidence
+interval excluding zero. We are reluctant to read this as a latent-dimension effect. The 1D-CNN
+is the least stable of the four classifiers throughout our experiments, and its TR/TR baseline
+in this particular run is $0.617$ rather than the $0.588$ obtained at $d=16$ and $d=32$, so the
+comparison is made against a different starting point than the other two rows. No such gain
+appears for any other model at $d=64$, and no correction for multiple comparisons is applied
+(Section~\ref{sec:statistical_eval}); with twelve model-by-setting comparisons in this table
+alone, one interval excluding zero is close to what would be expected by chance.
+
+\begin{table}[htp]
+\centering
+\small
+\caption{Latent-dimension ablation on the binary IDH task. The CVAE latent dimension $d$ is
+varied over $\{16, 32, 64\}$ with every other setting held fixed; $d=32$ is the
+configuration reported in Table~\ref{tab:binary_results} (\texttt{exp\_201}), and $d=16$ and
+$d=64$ are \texttt{exp\_302} and \texttt{exp\_303}. All figures are slide-level.}
+\label{tab:latent_dim}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccc}
+\toprule
+\emph{Model} & $d$ & \emph{TR/TR} & \emph{TS/TR} & \emph{TSR/TR} & \emph{$\Delta$ TSR/TR} & \emph{95\% CI}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & $16$ & $0.688$ & $0.466$ & $0.695$ & $+0.007$ & $[-0.020, +0.037]$\\
+  & $32$ & $0.688$ & $0.431$ & $0.699$ & $+0.011$ & $[-0.015, +0.037]$\\
+  & $64$ & $0.688$ & $0.431$ & $0.709$ & $+0.021$ & $[-0.008, +0.053]$\\
+\midrule
+\multirow{3}{*}{RF} & $16$ & $0.734$ & $0.675$ & $0.735$ & $+0.000$ & $[-0.010, +0.013]$\\
+  & $32$ & $0.734$ & $0.669$ & $0.742$ & $+0.008$ & $[-0.001, +0.019]$\\
+  & $64$ & $0.730$ & $0.647$ & $0.734$ & $+0.005$ & $[-0.001, +0.012]$\\
+\midrule
+\multirow{3}{*}{XGBoost} & $16$ & $0.742$ & $0.662$ & $0.745$ & $+0.003$ & $[-0.003, +0.009]$\\
+  & $32$ & $0.742$ & $0.622$ & $0.746$ & $+0.004$ & $[-0.004, +0.013]$\\
+  & $64$ & $0.742$ & $0.616$ & $0.745$ & $+0.003$ & $[-0.001, +0.007]$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & $16$ & $0.588$ & $0.396$ & $0.635$ & $+0.046$ & $[-0.014, +0.107]$\\
+  & $32$ & $0.588$ & $0.398$ & $0.602$ & $+0.014$ & $[-0.055, +0.086]$\\
+  & $64$ & $0.617$ & $0.430$ & $0.700$ & $+0.083$* & $[+0.018, +0.151]$\\
+\midrule
+\multirow{3}{*}{CbR} & $16$ & -- & -- & $0.616$ & -- & $[+0.549, +0.677]$\\
+  & $32$ & -- & -- & $0.619$ & -- & $[+0.548, +0.681]$\\
+  & $64$ & -- & -- & $0.621$ & -- & $[+0.552, +0.681]$\\
+\bottomrule
+\end{tabular*}
+\small{Regimens as in Table~\ref{tab:binary_results}. $\Delta$ and its 95\% CI are the
+slide-level bootstrap difference of TSR/TR against the TR/TR baseline of the same row;
+(*) marks an interval excluding zero. The CbR row reports its own accuracy and 95\% CI, and
+does not depend on a downstream classifier. Note that the TR/TR baseline is not identical
+across the three settings for RF and 1D-CNN: the baseline is retrained per experiment and
+both the per-slide subsampling and the network initialisation are stochastic.}
+\end{table}
+
 \section{6-Class Glioma Sub-Grading}
 \label{sec:results_6class}
 

@@ -68,7 +68,7 @@
 \graphicspath{{figures/}{../Thesis/images/}}
 
 % ---------------------------------------------------------------- title ----
-\title{\bfseries Generative Augmentation of Raman Spectra\\for Glioma Classification}
+\title{\bfseries Optimization, Augmentation, and Statistical Validation for High-Dimensional Spectral Classification in Small Cohort Clinical Datasets}
 \subtitle{Optimization, Augmentation and Statistical Validation\\for High-Dimensional Spectral Classification in Small Cohorts}
 \author{Andrei Iușan}
 \institute{Supervisor: Lect.\ dr.\ Alexandru Amărioarei\\[0.3em]
@@ -110,21 +110,84 @@
 }
 
 % ============================================================ SLIDE 1 ======
-\begin{frame}{The clinical problem}{Why does the speed of a diagnosis matter?}
-  \vspace{1.2em}
-  \begin{itemize}\setlength\itemsep{1.1em}
-    \item Brain tumours have among the \alert{lowest survival rates} of all
-          cancers.
-    \item Grading is done by \textbf{histopathology} --- laboratory processing
-          that takes \alert{days to weeks}.
-    \item Too slow to guide the surgeon \emph{during} the operation, which is
-          when the decision about how much tissue to remove is actually made.
+\begin{frame}{The clinical problem}{Survival is poor, and the diagnosis is slow}
+  \vspace{0.4em}
+  \begin{itemize}\setlength\itemsep{0.42em}
+    \item Glioma survival rates are \alert{among the lowest} of all cancers.
+    \item Grading is done by \textbf{histopathology}: laboratory processing that
+          takes \alert{days to weeks}.
+    \item Raman spectroscopy measures molecular composition directly from raw
+          tissue, in \alert{minutes}.
   \end{itemize}
-  \vspace{1.4em}
-  \begin{block}{The opportunity}
-    Raman spectroscopy measures molecular composition directly from raw,
-    unprocessed tissue --- in \alert{minutes} rather than days.
-  \end{block}
+  \vspace{0.6em}
+
+  \centering
+  \resizebox{0.93\textwidth}{!}{%
+  \begin{tikzpicture}[
+      node distance=0.45cm and 0.85cm,
+      stage/.style={rectangle, rounded corners=2pt, draw=gray!70, fill=gray!8,
+                    text width=2.5cm, align=center, font=\scriptsize,
+                    minimum height=0.95cm},
+      fast/.style={rectangle, rounded corners=2pt, draw=accent!70, fill=accent!10,
+                    text width=2.5cm, align=center, font=\scriptsize,
+                    minimum height=0.95cm},
+      ar/.style={-{Stealth[length=2mm]}, draw=gray!80}]
+
+    \node[font=\scriptsize\bfseries, text=gray] (l1) {today};
+    \node[stage, right=0.5cm of l1] (a1) {biopsy taken\\ in surgery};
+    \node[stage, right=1.9cm of a1] (b1) {histopathology\\ + molecular assay};
+    \node[stage, right=of b1] (c1) {treatment\\ decision};
+    \draw[ar] (a1) -- node[above, font=\tiny, text=warm]{\textbf{days -- weeks}} (b1);
+    \draw[ar] (b1) -- (c1);
+
+    \node[font=\scriptsize\bfseries, text=accent, below=1.15cm of l1] (l2) {with RS};
+    \node[fast, right=0.5cm of l2] (a2) {biopsy taken\\ in surgery};
+    \node[fast, right=1.9cm of a2] (b2) {spectral\\ grading};
+    \node[fast, right=of b2] (c2) {decision \emph{during}\\ the operation};
+    \draw[ar] (a2) -- node[above, font=\tiny, text=accent]{\textbf{minutes}} (b2);
+    \draw[ar] (b2) -- (c2);
+  \end{tikzpicture}}
+
+  \vspace{0.6em}
+  {\small A faster grade means earlier, better-targeted treatment ---
+  and plausibly \alert{better outcomes}.}
+\end{frame}
+
+% ------------------------------------------------------------ SLIDE 1b ----
+% [OPTIONAL] Scoping slide. Drop this if running long -- the same point can be
+% made in one spoken sentence over the previous slide.
+\begin{frame}{Two different tasks --- this work addresses the harder one}
+  \vspace{1.0em}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Tumour identification}
+        \small
+        \emph{Is this tissue tumour or healthy brain?}
+        \vspace{0.4em}
+        \begin{itemize}\setlength\itemsep{0.25em}\small
+          \item already demonstrated intraoperatively
+          \item reported accuracies of \textbf{83--99\%}
+          \item a large biochemical contrast
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Tumour grading \quad\textnormal{\small(this work)}}
+        \small
+        \emph{Which molecular subtype is it?}
+        \vspace{0.4em}
+        \begin{itemize}\setlength\itemsep{0.25em}\small
+          \item decides treatment, not just resection
+          \item a far more subtle spectral difference
+          \item small cohorts make it harder still
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{1.0em}
+  \centering
+  {\small The intraoperative promise rests on the easy task. \alert{Grading is
+  where the difficulty --- and the value --- lies.}}
 \end{frame}
 
 % ============================================================ SLIDE 2 ======

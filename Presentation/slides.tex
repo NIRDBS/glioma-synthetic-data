@@ -96,9 +96,10 @@
   \end{columns}
   \vfill
   \begin{center}
-    {\LARGE\bfseries\color{accent} Generative Augmentation of\\[0.2em]
-     Raman Spectra for Glioma Classification}\\[1.2em]
-    {\small\itshape Dissertation Thesis}\\[1.6em]
+    {\Large\bfseries\color{accent} Optimization, Augmentation, and Statistical Validation\\[0.2em]
+      for High-Dimensional Spectral Classification \\[0.2em]
+      in Small Cohort Clinical Datasets }\\[1.2em]
+    {\small\itshape Dissertation Thesis}\\[1.4em]
     \begin{tabular}{r@{\hskip 1em}l}
       \small\color{gray}Author: & \small\bfseries Andrei Iușan\\[0.35em]
       \small\color{gray}Supervisor: & \small\bfseries Lect.\ dr.\ Alexandru Amărioarei\\
@@ -156,39 +157,39 @@
 % ------------------------------------------------------------ SLIDE 1b ----
 % [OPTIONAL] Scoping slide. Drop this if running long -- the same point can be
 % made in one spoken sentence over the previous slide.
-\begin{frame}{Two different tasks --- this work addresses the harder one}
-  \vspace{1.0em}
-  \begin{columns}[T]
-    \begin{column}{0.48\textwidth}
-      \begin{block}{Tumour identification}
-        \small
-        \emph{Is this tissue tumour or healthy brain?}
-        \vspace{0.4em}
-        \begin{itemize}\setlength\itemsep{0.25em}\small
-          \item already demonstrated intraoperatively
-          \item reported accuracies of \textbf{83--99\%}
-          \item a large biochemical contrast
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \begin{block}{Tumour grading \quad\textnormal{\small(this work)}}
-        \small
-        \emph{Which molecular subtype is it?}
-        \vspace{0.4em}
-        \begin{itemize}\setlength\itemsep{0.25em}\small
-          \item decides treatment, not just resection
-          \item a far more subtle spectral difference
-          \item small cohorts make it harder still
-        \end{itemize}
-      \end{block}
-    \end{column}
-  \end{columns}
-  \vspace{1.0em}
-  \centering
-  {\small The intraoperative promise rests on the easy task. \alert{Grading is
-  where the difficulty --- and the value --- lies.}}
-\end{frame}
+% \begin{frame}{Two different tasks --- this work addresses the harder one}
+%   \vspace{1.0em}
+%   \begin{columns}[T]
+%     \begin{column}{0.48\textwidth}
+%       \begin{block}{Tumour identification}
+%         \small
+%         \emph{Is this tissue tumour or healthy brain?}
+%         \vspace{0.4em}
+%         \begin{itemize}\setlength\itemsep{0.25em}\small
+%           \item already demonstrated intraoperatively
+%           \item reported accuracies of \textbf{83--99\%}
+%           \item a large biochemical contrast
+%         \end{itemize}
+%       \end{block}
+%     \end{column}
+%     \begin{column}{0.48\textwidth}
+%       \begin{block}{Tumour grading \quad\textnormal{\small(this work)}}
+%         \small
+%         \emph{Which molecular subtype is it?}
+%         \vspace{0.4em}
+%         \begin{itemize}\setlength\itemsep{0.25em}\small
+%           \item decides treatment, not just resection
+%           \item a far more subtle spectral difference
+%           \item small cohorts make it harder still
+%         \end{itemize}
+%       \end{block}
+%     \end{column}
+%   \end{columns}
+%   \vspace{1.0em}
+%   \centering
+%   {\small The intraoperative promise rests on the easy task. \alert{Grading is
+%   where the difficulty --- and the value --- lies.}}
+% \end{frame}
 
 % ============================================================ SLIDE 2 ======
 \begin{frame}{What this work does}
@@ -404,6 +405,19 @@
   strong? Here the blue cluster is weak background and is discarded.
 \end{frame}
 
+
+% ============================================================ SLIDE 11 =====
+\begin{frame}{The Generative Model Architecture}{1D convolutions along the wavenumber axis}
+  \vspace{0.2em}
+  \centering
+  \includegraphics[width=0.86\textwidth]{cvae_architecture.png}
+  \vspace{0.6em}
+
+  \small
+  A Raman band is a \alert{local} feature whose position drifts between
+  acquisitions --- weight sharing gives translation equivariance.
+\end{frame}
+
 % ============================================================ SLIDE 10 =====
 \begin{frame}{The generative model: a conditional VAE}{From function approximation to distribution estimation}
   \vspace{0.3em}
@@ -443,17 +457,6 @@
   \end{columns}
 \end{frame}
 
-% ============================================================ SLIDE 11 =====
-\begin{frame}{Architecture}{1D convolutions along the wavenumber axis}
-  \vspace{0.2em}
-  \centering
-  \includegraphics[width=0.86\textwidth]{cvae_architecture.png}
-  \vspace{0.6em}
-
-  \small
-  A Raman band is a \alert{local} feature whose position drifts between
-  acquisitions --- weight sharing gives translation equivariance.
-\end{frame}
 
 % ============================================================ SLIDE 12 =====
 \begin{frame}{Training objective}{Three terms, one network}
@@ -626,6 +629,79 @@
 
 % ============================================================ BACKUP ======
 \appendix
+
+\begin{frame}{Backup --- the training objective in full}
+  \vspace{0.1em}
+  {\setlength{\abovedisplayskip}{4pt}\setlength{\belowdisplayskip}{4pt}%
+   \setlength{\abovedisplayshortskip}{2pt}\setlength{\belowdisplayshortskip}{2pt}%
+  \[
+    \mathcal{L}_{\text{total}} \;=\; \mathcal{L}_{\text{recon}}
+      \;+\; \beta\, D_{KL}\!\left(q_\phi(z|x) \,\middle\|\, p(z)\right)
+      \;+\; \alpha\, \mathcal{L}_{\text{class}}
+  \]
+  \vspace{-0.2em}
+  {\footnotesize
+  \textbf{\color{accent}Reconstruction} --- a convex blend of amplitude and shape agreement:
+  \[
+    \mathcal{L}_{\text{recon}}
+      = \gamma\,\mathrm{MSE}(x,\hat{x}) + (1-\gamma)\,\mathrm{CosineLoss}(x,\hat{x})
+      = \frac{\gamma}{N_\lambda}\lVert x-\hat{x}\rVert_2^2
+        + (1-\gamma)\!\left(1 - \frac{x \cdot \hat{x}}
+                                      {\lVert x\rVert_2\,\lVert \hat{x}\rVert_2}\right)
+  \]
+
+  \textbf{\color{accent}KL divergence} --- closed form for a diagonal Gaussian
+  posterior against $p(z)=\mathcal{N}(0,I)$:
+  \[
+    D_{KL}\!\left(q_\phi(z|x)\,\middle\|\,p(z)\right)
+      = \frac{1}{2}\sum_{i=1}^{d}\left(\mu_i^2 + \sigma_i^2 - \log\sigma_i^2 - 1\right),
+    \qquad
+    z = \mu + \sigma \odot \epsilon,\quad \epsilon \sim \mathcal{N}(0,I)
+  \]
+
+  \textbf{\color{accent}Auxiliary classifier} --- categorical cross-entropy over $C$ classes:
+  \[
+    \mathcal{L}_{\text{class}} = -\sum_{c=1}^{C} y_c \log p_c
+  \]
+  }}
+  \vspace{0.2em}
+  \srcnote{$\beta = 2$ (the $\beta$-VAE regulariser, deliberately $>1$);
+    $\alpha = 0.2$; $\gamma \in \{0, 0.5, 1\}$ tested, $\gamma = 1$ reported;
+    $d \in \{16, 32, 64\}$, $d = 32$ reported; $C \in \{2, 6\}$.
+    The encoder emits $\log \sigma_i^2$ rather than $\sigma_i$, which keeps the
+    variance positive without a constraint.}
+\end{frame}
+
+\begin{frame}{Backup --- where that objective comes from}
+  \vspace{0.6em}
+  {\small
+  The first two terms are the negative ELBO. Starting from the marginal
+  likelihood and introducing the encoder $q_\phi$,
+  \[
+    \log p_\theta(x)
+      = \log \int p_\theta(x|z)\,p(z)\,dz
+      \;\ge\; \mathbb{E}_{q_\phi(z|x)}\!\left[\log \frac{p_\theta(x|z)\,p(z)}{q_\phi(z|x)}\right]
+      \;=\; \mathcal{L}_{\text{ELBO}},
+  \]
+  by Jensen's inequality. Splitting the logarithm gives
+  \[
+    \mathcal{L}_{\text{ELBO}}
+      = \underbrace{\mathbb{E}_{q_\phi(z|x)}\!\left[\log p_\theta(x|z)\right]}_{\text{reconstruction}}
+      \;-\; \underbrace{D_{KL}\!\left(q_\phi(z|x)\,\middle\|\,p(z)\right)}_{\text{regularisation}} ,
+  \]
+  and the gap to the true log-likelihood is itself a KL divergence,
+  \[
+    \log p_\theta(x) - \mathcal{L}_{\text{ELBO}}
+      = D_{KL}\!\left(q_\phi(z|x)\,\middle\|\,p_\theta(z|x)\right) \;\ge\; 0 ,
+  \]
+  so maximising the bound also drives $q_\phi$ towards the true posterior.
+  \par}
+  \vspace{0.6em}
+  \srcnote{Two departures from the plain ELBO: $\beta$ scales the KL term
+    (Higgins et al.), and $\alpha\mathcal{L}_{\text{class}}$ is an auxiliary
+    multi-task term with no variational interpretation --- it exists to make
+    the encoder's features class-discriminative.}
+\end{frame}
 
 \begin{frame}{Backup --- airPLS baseline correction}
   \centering

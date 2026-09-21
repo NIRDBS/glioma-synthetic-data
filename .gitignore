@@ -864,3 +864,6 @@ _archive/
 *\ (3).*
 *\ (4).*
 *\ (5).*
+
+# --- Archived paper versions are tracked in full (overrides *.pdf / *.png above) ---
+!paper/versions/**

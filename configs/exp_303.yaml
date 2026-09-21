@@ -2,7 +2,7 @@
 # Binary classification: Mutant vs Wildtype glioma spectra
 # Suite 200: Isolates reconstruction loss component effects on CVAE performance
 name: exp_303
-description: "Reconstruction Loss Ablation: MSE-only (gamma=1, delta=0) for binary classification"
+description: "Latent Space Dimension Ablation: d = 64"
 version: "1.0"
 
 # ============================================================================
@@ -18,7 +18,7 @@ paths:
   results_root: "results"
   experiment_root: "results/exp_303"
   data_output_dir: "results/exp_303/data"
-  processed_file: "results/exp_102/data/glioma_dataset.h5"  # Shared with exp_102
+  processed_file: "results/exp_201/data/glioma_dataset.h5"  # Shared with exp_201
 
 # Model outputs
   models_baseline_dir: "results/exp_303/models/trtr"
@@ -54,7 +54,7 @@ preprocessing:
 
   # Tumor Mask Strategy
   mask_strategy: "tumor_map"
-  tumor_maps_path: "results/exp_102/tumor_maps.npy"  # Reuse the masks from exp_102 to save time
+  tumor_maps_path: "results/exp_201/data/tumor_maps.npy"  # Reuse the masks from exp_201
   use_precomputed_masks: true
 
 # ============================================================================
@@ -74,8 +74,8 @@ cv_strategy:
   holdout_test_set: true
   n_folds: 5
   # ========== DYNAMIC SAMPLING ==========
-  patient_cap: 500                      # Max spectra per patient/class sampled EACH EPOCH during training
-  cap_strategy: "dynamic_per_epoch"     # Samples different 500-spec subsets per epoch (implicit regularization)
+  patient_cap: 500  # Max spectra per slide; applied to the TRAINING split only
+  cap_strategy: "dynamic_per_epoch"  # CVAE: fresh subsample each epoch (regularisation). Classifiers: one fixed subsample. Descriptive only - code reads patient_cap, not this key.
 
 # ============================================================================
 # TRAINING EXECUTION PARAMETERS
@@ -164,8 +164,9 @@ output:
 # Notes
 # ============================================================================
 notes: |
-  - Suite 200 Ablation Study: Isolates reconstruction loss function effects
-  - exp_201: MSE-only reconstruction (gamma=1.0, delta=0.0)
+  - Suite 300 Ablation Study: Isolates latent space size effects
+  - Check exp_201 for reference.
+  - z latent_dim=64 for this experiment (exp_303)
   - Preprocessing: 3x3 spatial median filter for noise reduction
   - Baseline correction using Asymmetric Least Squares (airPLS) with λ=100 and p=1
   - Crop spectra to 700-1800 cm⁻¹ (fingerprint region)

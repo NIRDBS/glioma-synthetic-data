@@ -18,7 +18,7 @@ paths:
   results_root: "results"
   experiment_root: "results/exp_201"
   data_output_dir: "results/exp_201/data"
-  processed_file: "results/exp_102/data/glioma_dataset.h5"  # Shared with exp_102
+  processed_file: "results/exp_201/data/glioma_dataset.h5"  # Shared with exp_20x
 
 # Model outputs
   models_baseline_dir: "results/exp_201/models/trtr"
@@ -66,7 +66,7 @@ preprocessing:
 
   # Tumor Mask Strategy
   mask_strategy: "tumor_map"
-  tumor_maps_path: "results/exp_102/tumor_maps.npy"  # Reuse the masks from exp_102 to save time
+  tumor_maps_path: "results/exp_201/data/tumor_maps.npy"
   use_precomputed_masks: true
 
 # ============================================================================
@@ -86,8 +86,8 @@ cv_strategy:
   holdout_test_set: true
   n_folds: 5
   # ========== DYNAMIC SAMPLING ==========
-  patient_cap: 500                      # Max spectra per patient/class sampled EACH EPOCH during training
-  cap_strategy: "dynamic_per_epoch"     # Samples different 500-spec subsets per epoch (implicit regularization)
+  patient_cap: 500  # Max spectra per slide; applied to the TRAINING split only
+  cap_strategy: "dynamic_per_epoch"  # CVAE: fresh subsample each epoch (regularisation). Classifiers: one fixed subsample. Descriptive only - code reads patient_cap, not this key.
 
 # ============================================================================
 # TRAINING EXECUTION PARAMETERS

@@ -18,7 +18,7 @@ paths:
   results_root: "results"
   experiment_root: "results/exp_401"
   data_output_dir: "results/exp_401/data"
-  processed_file: "results/exp_102/data/glioma_dataset.h5"
+  processed_file: "results/exp_201/data/glioma_dataset.h5"
 
   # REUSED from exp_201 (do not retrain): CVAE decoder weights + TRTR baseline
   models_baseline_dir: "results/exp_201/models/trtr"
@@ -61,7 +61,7 @@ preprocessing:
   ignore_samples: ['HF-1887_via-t_2_1.h5_3']
 
   mask_strategy: "tumor_map"
-  tumor_maps_path: "results/exp_102/tumor_maps.npy"
+  tumor_maps_path: "results/exp_201/data/tumor_maps.npy"
   use_precomputed_masks: true
 
 # ============================================================================
@@ -80,8 +80,8 @@ cv_strategy:
   use_group_aware_cv: true
   holdout_test_set: true
   n_folds: 5
-  patient_cap: 500
-  cap_strategy: "dynamic_per_epoch"
+  patient_cap: 500  # Max spectra per slide; applied to the TRAINING split only
+  cap_strategy: "dynamic_per_epoch"  # CVAE: fresh subsample each epoch (regularisation). Classifiers: one fixed subsample. Descriptive only - code reads patient_cap, not this key.
 
 # ============================================================================
 # TRAINING EXECUTION PARAMETERS

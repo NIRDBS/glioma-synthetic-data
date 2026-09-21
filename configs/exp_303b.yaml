@@ -1,0 +1,175 @@
+# Loss Function Ablation Study: MSE-Only Reconstruction (Binary)
+# Binary classification: Mutant vs Wildtype glioma spectra
+# Suite 200: Isolates reconstruction loss component effects on CVAE performance
+name: exp_303b
+description: "Reconstruction Loss Ablation: MSE-only (gamma=1, delta=0) for binary classification"
+version: "1.0"
+
+# ============================================================================
+# DATA PATHS
+# ============================================================================
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+  
+  # Reuse preprocessed data from exp_102 (identical preprocessing, cropping/cap at load time)
+  results_root: "results"
+  experiment_root: "results/exp_303b"
+  data_output_dir: "results/exp_303b/data"
+  processed_file: "results/exp_201/data/glioma_dataset.h5"  # Shared with exp_201
+
+# Model outputs
+  models_baseline_dir: "results/exp_303b/models/trtr"
+  models_tstr_dir: "results/exp_303b/models/tstr"
+  models_tsrtr_dir: "results/exp_303b/models/tsrtr"
+  models_cvae_dir: "results/exp_303b/models/cvae"
+  synthetic_dir: "results/exp_303b/synthetic"
+  quality_dir: "results/exp_303b/data_quality"
+  statistical_dir: "results/exp_303b/statistical_eval"
+
+
+# ============================================================================
+# PREPROCESSING CONFIGURATION
+# ============================================================================
+preprocessing:
+  # Spatial smoothing
+  spatial_median_filter: true           
+  spatial_median_filter_size: 3         
+  
+  # Baseline Correction
+  airpls_lambda: 100                    
+  airpls_porder: 1                      
+  
+  # Normalization
+  normalization: "minmax"               
+
+  # ========== BINARY DATA SELECTION (FROM EXP 105) ==========
+  signal_length: 1738
+  crop_region: [700, 1800]              # Focus EXCLUSIVELY on the fingerprint region
+  # NOTE: patient_cap moved to cv_strategy (dynamic sampling during training, not preprocessing)
+  y_tumor: true                         
+  ignore_samples: ['HF-1887_via-t_2_1.h5_3']
+
+  # Tumor Mask Strategy
+  mask_strategy: "tumor_map"
+  tumor_maps_path: "results/exp_201/data/tumor_maps.npy"  # Reuse the masks from exp_201
+  use_precomputed_masks: true
+
+# ============================================================================
+# DYNAMIC AUGMENTATION
+# ============================================================================
+augmentation:
+  enabled: true
+  max_shift: 3                          # Wavenumber shift for calibration drift simulation
+  mixup_alpha: 0.5                      # Beta distribution parameter for intra-class blending
+
+# ============================================================================
+# CROSS-VALIDATION STRATEGY
+# ============================================================================
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  # ========== DYNAMIC SAMPLING ==========
+  patient_cap: 500  # Max spectra per slide; applied to the TRAINING split only
+  cap_strategy: "dynamic_per_epoch"  # CVAE: fresh subsample each epoch (regularisation). Classifiers: one fixed subsample. Descriptive only - code reads patient_cap, not this key.
+
+# ============================================================================
+# TRAINING EXECUTION PARAMETERS
+# ============================================================================
+training:
+  random_seed: 42                       # Global seed for reproducibility (numpy, TensorFlow, random)
+  verbose: 1                            # Verbosity level (0=silent, 1=progress, 2=detailed)
+
+# ============================================================================
+# MODEL HYPERPARAMETERS
+# ============================================================================
+models:
+  # Apollo: RF feature selector + SVM (TRTR & TSTR)
+  apollo:
+    n_features: 20
+    random_state: 42
+    
+
+  # Random Forest (TRTR & TSTR)
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+
+  # XGBoost (TRTR & TSTR)
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+
+  # 1D-CNN (TRTR & TSTR)
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 30
+    early_stopping_patience: 5
+    random_state: 42
+    dropout_rate: 0.6  # Increased dropout for stronger regularization given the dynamic patient capping
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 70
+    learning_rate: 0.001
+    latent_dim: 64     
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights: # Ablation: MSE-only reconstruction loss
+      alpha: 0.2 # Classification loss weight
+      beta: 2.0  # KL divergence weight
+      gamma: 1.0 # Weight for MSE in combined loss - ABLATION: MSE only
+      delta: 0.0 # Weight for cosine similarity in combined loss - ABLATION: disabled
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+    
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+# ============================================================================
+# Notes
+# ============================================================================
+notes: |
+  - Suite 300 Ablation Study: Isolates latent space size effects
+  - Check exp_201 for reference.
+  - z latent_dim=64 for this experiment (exp_303)
+  - Preprocessing: 3x3 spatial median filter for noise reduction
+  - Baseline correction using Asymmetric Least Squares (airPLS) with λ=100 and p=1
+  - Crop spectra to 700-1800 cm⁻¹ (fingerprint region)
+  - Patient cap: 500 spectra per patient/class, dynamically sampled per epoch
+  - Binary classification: Mutant vs Wildtype glioma spectra
+  - Loss weights fixed: alpha=0.2 (classification), beta=2.0 (KL divergence)

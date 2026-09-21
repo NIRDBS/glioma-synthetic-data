@@ -846,3 +846,21 @@ Train_VAE.ipynb
 
 # Publication cleanup: archived clutter (reversible, not for the repo)
 _archive/
+
+# --- LaTeX build artifacts (root, paper/, Thesis/) ---
+*.fdb_latexmk
+*.fls
+*.bcf
+*.run.xml
+*.xdv
+*-SAVE-ERROR
+
+# --- Archives: not source, regenerate on demand ---
+*.zip
+
+# --- Accidental editor/download duplicates, e.g. "appendix (3).tex" ---
+*\ (1).*
+*\ (2).*
+*\ (3).*
+*\ (4).*
+*\ (5).*

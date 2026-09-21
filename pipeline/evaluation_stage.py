@@ -23,9 +23,10 @@ import numpy as np
 import pandas as pd
 
 from src.utils.statistical_evaluation import (
-    find_model_path, load_and_predict,
+    find_model_path, load_and_predict, load_and_predict_proba,
     stratified_slide_accuracy, stratified_slide_bootstrap,
     stratified_slide_bootstrap_cbr,
+    compute_full_metrics, summarize_bootstrap_diffs, build_summary_rows,
 )
 
 # (prefix, file extension, loader type) for the 4 benchmark models
@@ -88,15 +89,28 @@ def _gather_predictions(folds, model_dir, prefix, ext, model_type):
     return (np.concatenate(preds), np.concatenate(y_true), np.concatenate(slide_ids))
 
 
-def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
-    """
-    Classification by Reconstruction (CbR): for each fold, encode the validation
-    spectra with that fold's CVAE encoder, decode under each class label, and
-    predict the class whose reconstruction has the lowest MSE. Returns a result
-    dict with accuracy + slide-level bootstrap CI, or None if weights are missing.
+def _gather_probas(folds, model_dir, prefix, ext, model_type):
+    """Concatenate fold-wise validation probabilities (n_samples, n_classes)."""
+    probas = []
+    for fd in folds:
+        path = find_model_path(str(model_dir), prefix, ext, fd['fold_idx'])
+        probas.append(load_and_predict_proba(path, model_type, fd['X']))
+    return np.concatenate(probas)
 
-    No data leakage: each fold's validation spectra use only that fold's CVAE
-    (trained without them).
+
+def _cbr_predictions(folds, config, n_features, cvae_weights_dir):
+    """
+    Classification by Reconstruction (CbR) predictions, pooled across folds.
+
+    For each fold, encode the validation spectra with that fold's CVAE encoder,
+    decode under each class label, and predict the class whose reconstruction has
+    the lowest MSE. No data leakage: each fold's validation spectra use only that
+    fold's CVAE (trained without them).
+
+    Returns (preds, y_true, slide_ids) concatenated across folds, or None if any
+    fold's CVAE weights are missing. This is the single source of truth for CbR
+    predictions, shared by the bootstrap evaluation (``_compute_cbr``) and the
+    offline metric-patching script (``patch_cbr_metrics.py``).
     """
     import tensorflow as tf
     from pipeline._cvae_gen import build_cvae_config, load_encoder_decoder
@@ -129,18 +143,35 @@ def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
         slide_all.append(fd['slide_ids'])
         tf.keras.backend.clear_session()
 
-    preds = np.concatenate(preds_all)
-    y_true = np.concatenate(y_all)
-    slide_ids = np.concatenate(slide_all)
+    return (np.concatenate(preds_all), np.concatenate(y_all), np.concatenate(slide_all))
+
+
+def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
+    """
+    Classification by Reconstruction (CbR): compute pooled predictions and return
+    a result dict with slide-level accuracy + bootstrap CI, or None if weights are
+    missing.
+    """
+    out = _cbr_predictions(folds, config, n_features, cvae_weights_dir)
+    if out is None:
+        return None
+    preds, y_true, slide_ids = out
     acc = stratified_slide_accuracy(preds, y_true, slide_ids)
     boot = stratified_slide_bootstrap_cbr(preds, y_true, slide_ids, n_boot=n_boot, seed=seed)
-    return {
+    full = compute_full_metrics(y_true, preds, slide_ids=slide_ids)
+    result = {
         'model': 'Classification_by_Reconstruction',
         'cbr_accuracy': acc,
         'cbr_boot_mean': float(np.mean(boot)),
         'cbr_ci_lo': float(np.percentile(boot, 2.5)),
         'cbr_ci_hi': float(np.percentile(boot, 97.5)),
+        'full_metrics': full,
     }
+    # Flat metric keys read by paper/gen_appendix_tables.py (CbR row).
+    for k in ('f1_macro', 'precision_macro', 'recall_macro', 'balanced_accuracy', 'kappa'):
+        if k in full:
+            result[k] = full[k]
+    return result
 
 
 def evaluation_stage(config, output_dir=None, baseline_dir=None, candidate_dir=None,
@@ -178,31 +209,43 @@ def evaluation_stage(config, output_dir=None, baseline_dir=None, candidate_dir=N
             print(f"  [skip {label}] {e}")
             continue
 
+        # Probabilities (best-effort; None if unavailable)
+        try:
+            proba_A = _gather_probas(folds, baseline_dir, prefix, ext, model_type)
+            proba_B = _gather_probas(folds, candidate_dir, prefix, ext, model_type)
+        except Exception:
+            proba_A = proba_B = None
+
         acc_A = stratified_slide_accuracy(preds_A, y_true, slide_ids)
         acc_B = stratified_slide_accuracy(preds_B, y_true, slide_ids)
 
         _, _, diffs = stratified_slide_bootstrap(
             preds_A, preds_B, y_true, slide_ids, n_boot=n_boot, seed=seed)
 
-        ci_lo, ci_hi = float(np.percentile(diffs, 2.5)), float(np.percentile(diffs, 97.5))
-        # Two-sided bootstrap p-value for "no difference"
-        p_boot = float(2.0 * min(np.mean(diffs <= 0), np.mean(diffs >= 0)))
-        p_boot = min(p_boot, 1.0)
+        boot = summarize_bootstrap_diffs(diffs)
+        full_A = compute_full_metrics(y_true, preds_A, proba_A, slide_ids=slide_ids)
+        full_B = compute_full_metrics(y_true, preds_B, proba_B, slide_ids=slide_ids)
 
         row = {
             'model': label,
-            f'acc_{baseline_label}': acc_A,
-            f'acc_{candidate_label}': acc_B,
+            # Slide-level bootstrap comparison (primary inference)
+            f'slide_acc_{baseline_label}': acc_A,
+            f'slide_acc_{candidate_label}': acc_B,
             'delta': acc_B - acc_A,
-            'boot_mean_diff': float(np.mean(diffs)),
-            'ci_diff_lo': ci_lo,
-            'ci_diff_hi': ci_hi,
-            'p_bootstrap': p_boot,
-            'significant_95': bool(ci_lo > 0 or ci_hi < 0),
+            **boot,
+            # Full descriptive metrics for both regimens (macro F1/precision/recall
+            # are slide-level; accuracy/kappa/auroc remain spectrum-level)
+            f'full_metrics_{baseline_label}': full_A,
+            f'full_metrics_{candidate_label}': full_B,
         }
         results.append(row)
         print(f"  {label:>12}: {baseline_label}={acc_A:.4f}  {candidate_label}={acc_B:.4f}  "
-              f"delta={row['delta']:+.4f}  95%CI[{ci_lo:+.4f},{ci_hi:+.4f}]  p={p_boot:.4f}")
+              f"delta={row['delta']:+.4f}  95%CI[{boot['ci_diff_lo']:+.4f},{boot['ci_diff_hi']:+.4f}]  "
+              f"p={boot['p_bootstrap']:.4f}")
+        print(f"  {' ':>12}  F1_macro: {baseline_label}={full_A['f1_macro']:.4f}  "
+              f"{candidate_label}={full_B['f1_macro']:.4f}  "
+              f"prec: {baseline_label}={full_A['precision_macro']:.4f}  "
+              f"rec: {baseline_label}={full_A['recall_macro']:.4f}")
 
     # Classification by Reconstruction (CVAE encoder/decoder MSE matching)
     cbr_result = None
@@ -212,7 +255,10 @@ def evaluation_stage(config, output_dir=None, baseline_dir=None, candidate_dir=N
         cbr_result = _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed)
         if cbr_result:
             print(f"  {'CbR':>12}: slide_acc={cbr_result['cbr_accuracy']:.4f}  "
-                  f"95%CI[{cbr_result['cbr_ci_lo']:.4f},{cbr_result['cbr_ci_hi']:.4f}]")
+                  f"95%CI[{cbr_result['cbr_ci_lo']:.4f},{cbr_result['cbr_ci_hi']:.4f}]  "
+                  f"F1={cbr_result.get('f1_macro', float('nan')):.4f}  "
+                  f"prec={cbr_result.get('precision_macro', float('nan')):.4f}  "
+                  f"rec={cbr_result.get('recall_macro', float('nan')):.4f}")
             results.append(cbr_result)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -231,12 +277,15 @@ def evaluation_stage(config, output_dir=None, baseline_dir=None, candidate_dir=N
         'cbr': cbr_result,
     }
     json_path = out_dir / f"statistical_evaluation_{comparison_tag}_{timestamp}.json"
-    csv_path = out_dir / f"statistical_summary_{comparison_tag}_{timestamp}.csv"
+    csv_path  = out_dir / f"statistical_summary_{comparison_tag}_{timestamp}.csv"
     with open(json_path, 'w') as f:
         json.dump(payload, f, indent=2)
-    pd.DataFrame(results).to_csv(csv_path, index=False)
 
-    print(f"\n Evaluation complete -> {json_path.name}, {csv_path.name}")
+    # Flat CSV: one row per model, key metrics for both regimens side-by-side
+    csv_rows = build_summary_rows(results, baseline_label, candidate_label)
+    pd.DataFrame(csv_rows).to_csv(csv_path, index=False)
+
+    print(f"\n  Evaluation complete -> {json_path.name}, {csv_path.name}")
     return {'json_path': str(json_path), 'csv_path': str(csv_path), 'results': results}
 
 

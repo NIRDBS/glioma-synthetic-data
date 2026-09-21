@@ -72,8 +72,8 @@ cv_strategy:
   holdout_test_set: true
   n_folds: 5
   # ========== EXP 103 DYNAMIC SAMPLING ==========
-  patient_cap: 500                      # Max spectra per patient/class sampled EACH EPOCH during training
-  cap_strategy: "dynamic_per_epoch"     # Samples different 500-spec subsets per epoch (implicit regularization)
+  patient_cap: 500  # Max spectra per slide; applied to the TRAINING split only
+  cap_strategy: "dynamic_per_epoch"  # CVAE: fresh subsample each epoch (regularisation). Classifiers: one fixed subsample. Descriptive only - code reads patient_cap, not this key.
 
 # ============================================================================
 # TRAINING EXECUTION PARAMETERS
@@ -162,7 +162,7 @@ output:
 notes:
   - "Preprocessing: 3x3 spatial median filter for noise reduction (filters cosmic rays, as well as gaussian noise)"
   - "Baseline correction using Asymmetric Least Squares (airPLS) with λ=100 and p=1 for effective background removal"
-  - "Crop spectra to 700-1800 cm⁻¹ to focus on the fingerprint region, which is most informative for glioma classification
+  - "Crop spectra to 700-1800 cm⁻¹ to focus on the fingerprint region, which is most informative for glioma classification"
   - "Number of spectra capping at 500 per patient before training to prevent overfitting to dominant patients and enhance generalization"
   - "Augmentation only for CVAE: random wavenumber shifts (±3 cm⁻¹) to simulate calibration drift and mixup within the same class to create synthetic spectra"
   - "CVAE trained on spectra capped at 500 per patient fixed at load time. Future experiments will explore dynamic patient capping during training for the CVAE"

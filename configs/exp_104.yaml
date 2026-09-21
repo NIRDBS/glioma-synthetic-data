@@ -73,8 +73,8 @@ cv_strategy:
   holdout_test_set: true
   n_folds: 5
   # ========== EXP 103 DYNAMIC SAMPLING ==========
-  patient_cap: 500                      # Max spectra per patient/class sampled EACH EPOCH during training
-  cap_strategy: "dynamic_per_epoch"     # Samples different 500-spec subsets per epoch (implicit regularization)
+  patient_cap: 500  # Max spectra per slide; applied to the TRAINING split only
+  cap_strategy: "dynamic_per_epoch"  # CVAE: fresh subsample each epoch (regularisation). Classifiers: one fixed subsample. Descriptive only - code reads patient_cap, not this key.
 
 # ============================================================================
 # TRAINING EXECUTION PARAMETERS

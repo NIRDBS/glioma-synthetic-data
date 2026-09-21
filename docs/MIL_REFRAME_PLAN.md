@@ -635,7 +635,7 @@ the work, and updated in place as stages complete.
 
 | # | stage | status | notes |
 |---|---|---|---|
-| 0 | Baseline selector | **done** | **Verdict reverses the plan: IARPLS(λ=1e4), not GCV.** GCV pinned at the grid floor in 83% of spectra; IARPLS beats airPLS's best achievable fixed λ and is inert over λ∈[1e2,1e4]. Current λ=100 suppresses amide I by 43% and drifts peak heights 16–55% with fluorescence. See [stage0_findings.md](stage0_findings.md) and the reproduction notebook [00_Stage0_Baseline_Correction.ipynb](../notebooks/00_Stage0_Baseline_Correction.ipynb). `preprocessing.py` surgery deferred to Stage 1. |
+| 0 | Baseline selector | **done** | **Verdict reverses the plan: IARPLS, not GCV.** GCV pinned at the grid floor in 83% of spectra; IARPLS beats an *oracle* airPLS λ and wins 12/12 stress conditions by 2.4–11.5×. Current λ=100 suppresses amide I by 43% and drifts peak heights 16–55% with fluorescence. **λ itself is UNRESOLVED**: the initial "inert over 1e2–1e4" claim was withdrawn after a follow-up study — the inert window is 2.5 decades for smooth baselines but 0.5 for curved ones, and real baselines look more curved than any synthetic family tested (consistent with Kizilov et al. 2026). `IARPLS_LAMBDA=1e4` is provisional; **Stage 1 must carry a λ sensitivity analysis**. See [stage0_findings.md](stage0_findings.md) §5 and the notebook [00_Stage0_Baseline_Correction.ipynb](../notebooks/00_Stage0_Baseline_Correction.ipynb) §10. `preprocessing.py` surgery deferred to Stage 1. |
 | 1 | Data layer + re-export | not started | |
 | 2 | Evaluation reframing + Tier 0 | not started | |
 | 3 | Instance-model hygiene | not started | |
@@ -694,11 +694,19 @@ dependency. Export the §2.2 schema, widening the mask to strong-signal. Add `co
   (`HF-1887_via-t_2_1.h5_3` is in `ignore_samples` but present in the file).
 - Re-run Stage 0's purity assertion.
 
+**Also carried in from Stage 0 — λ is unresolved.** `IARPLS_LAMBDA = 1e4` is provisional
+(stage0_findings.md §5.4). Before this export is treated as final, run a λ sensitivity analysis
+on the *real* corrected spectra and report it: the synthetic study cannot settle it, because its
+baselines are measurably smoother than the real ones. Candidate resolutions: per-spectrum L-curve
+applied to IARPLS, or a small set of manually curated reference baselines to calibrate a combined
+drift-plus-retention criterion. Exporting under a provisional λ is acceptable **only** if the
+export is cheap to repeat — establish that cost before committing to it.
+
 **Docs / paper.** New data-schema doc. Paper → data/preprocessing section, including the honest
-statement that the mask is viability, not tumour.
+statement that the mask is viability, not tumour, plus the λ sensitivity analysis.
 
 **Exit.** Reprojection passes on all bags; the old and new exports agree on the `viable_legacy`
-subset.
+subset; λ sensitivity is reported.
 
 ---
 

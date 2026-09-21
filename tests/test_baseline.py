@@ -229,8 +229,18 @@ def test_iarpls_recovers_peak_heights_better_than_airpls_lambda_100():
     assert np.mean(np.abs(r_iarpls - 1.0)) < np.mean(np.abs(r_airpls - 1.0))
 
 
-def test_iarpls_lambda_is_inert_over_the_documented_range():
-    """If this fails, `lam` has become a real hyperparameter and needs selecting again."""
+def test_iarpls_lambda_is_stable_on_a_SMOOTH_baseline():
+    """Regression guard for the *smooth* baseline case only -- NOT general insensitivity.
+
+    Stage 0 initially reported lambda inert over 1e2-1e4. The follow-up study
+    (scripts/stage0_generator_stress.py) withdrew that as a general claim: the inert
+    window is ~2.5 decades for smooth baselines but only ~0.5 for high-curvature ones,
+    and real baselines appear more curved than any synthetic family tested. See
+    docs/stage0_findings.md section 5.
+
+    `_toy_spectrum` uses a single broad Gaussian background, i.e. the smooth regime, so
+    this asserts only that behaviour there has not drifted.
+    """
     pytest.importorskip("ramanspy")
     from src.preprocessing.baseline import correct_iarpls
 
@@ -244,4 +254,47 @@ def test_iarpls_lambda_is_inert_over_the_documented_range():
                          - sig[m]) ** 2)) / scale
         for lam in (1e2, 1e3, 1e4)
     ]
-    assert max(errs) - min(errs) < 0.01, f"lam is no longer inert: {errs}"
+    assert max(errs) - min(errs) < 0.01, f"smooth-baseline behaviour drifted: {errs}"
+
+
+def test_iarpls_lambda_DOES_matter_on_a_curved_baseline():
+    """The withdrawal in section 5, pinned: curvature makes lambda matter.
+
+    If this ever fails, the stress-test conclusion no longer holds and the provisional
+    IARPLS_LAMBDA default must be revisited.
+    """
+    pytest.importorskip("ramanspy")
+    from src.preprocessing.baseline import correct_iarpls
+
+    rng = np.random.default_rng(14)
+    n = 1200
+    wn = np.linspace(400, 3400, n)
+    sig = sum(
+        amp * np.exp(-0.5 * ((wn - c) / 8.0) ** 2)
+        for c, amp in [(1004, 100), (1440, 120), (1660, 95), (2930, 180)]
+    )
+    scale = np.ptp(sig)
+    t = (wn - wn.min()) / np.ptp(wn)
+    # High-curvature background: two broad lobes plus a narrow one, at 3x signal amplitude.
+    base = 3 * scale * (
+        np.exp(-0.5 * ((t - 0.15) / 0.12) ** 2)
+        + 0.8 * np.exp(-0.5 * ((t - 0.55) / 0.10) ** 2)
+        + 0.6 * np.exp(-0.5 * ((t - 0.40) / 0.040) ** 2)
+    )
+    obs = sig + base + rng.normal(0, 1.0, n)
+
+    m = (wn >= 700) & (wn < 1800)
+
+    def err(lam):
+        c = correct_iarpls(obs, wn, lam=lam, clip_negative=False)["corrected"]
+        return float(np.sqrt(np.mean((c[m] - sig[m]) ** 2)) / scale)
+
+    e3, e4, e5 = err(1e3), err(1e4), err(1e5)
+    # A small lambda still recovers this baseline well ...
+    assert e3 < 0.05, f"low lambda should still work here, got {e3:.4f}"
+    # ... while the provisional default and a larger value both fail badly.
+    assert e5 > 20 * e3, f"lambda should matter: 1e3 -> {e3:.4f}, 1e5 -> {e5:.4f}"
+    assert e4 > 10 * e3, (
+        f"IARPLS_LAMBDA=1e4 is provisional precisely because of this: "
+        f"1e3 -> {e3:.4f}, 1e4 -> {e4:.4f}"
+    )

@@ -320,8 +320,13 @@ def select_lambda(
 #: Above this the corrector is accurate; below it the estimate is unusable.
 IARPLS_VALID_FROM_CM1 = 300.0
 
-#: Stage 0 verdict: IARPLS is flat over 1e2-1e4, so this constant is inert rather than
-#: tuned. Do not treat it as a hyperparameter to fit -- see docs/stage0_findings.md.
+#: PROVISIONAL. Stage 0 initially found lambda inert over 1e2-1e4; the follow-up study
+#: (scripts/stage0_generator_stress.py) withdrew that -- the inert window is 2.5 decades
+#: for smooth baselines but only 0.5 for high-curvature ones, and real baselines appear
+#: *more* curved than any synthetic family tested. This value sits in the low-drift,
+#: reasonable-retention region on real spectra and matches the synthetic oracle, but it
+#: is a documented default awaiting a Stage 1 sensitivity analysis -- NOT a settled
+#: constant, and not evidence of insensitivity. See docs/stage0_findings.md section 5.
 IARPLS_LAMBDA = 1e4
 
 
@@ -333,12 +338,13 @@ def correct_iarpls(
 ) -> dict:
     """Baseline-correct one spectrum with IARPLS -- the Stage 0 recommended path.
 
-    Chosen over a per-spectrum airPLS selector because the Stage 0 study found it
-    both more accurate (10.7x lower fingerprint NRMSE than the inherited airPLS
-    ``lambda = 100``) and effectively **insensitive** to ``lam`` over ``1e2 .. 1e4``,
-    which is a stronger guarantee than selecting a parameter well. It is also
-    verified pure: output is bit-identical whether a spectrum is corrected alone or
-    inside a batch, in any order.
+    Chosen over a per-spectrum airPLS selector because it is markedly more accurate --
+    10.7x lower fingerprint NRMSE than the inherited airPLS ``lambda = 100``, and it
+    beats an *oracle* airPLS lambda chosen against ground truth, so no selector for
+    airPLS closes the gap. Verified pure: output is bit-identical whether a spectrum is
+    corrected alone or inside a batch, in any order.
+
+    ``lam`` is a provisional default, not a settled one -- see :data:`IARPLS_LAMBDA`.
 
     Accurate only above :data:`IARPLS_VALID_FROM_CM1`; the Rayleigh wing below that
     is not modelled and must be cropped downstream.

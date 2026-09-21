@@ -5,7 +5,9 @@
 > lands — including deviations from the plan and why.
 >
 > - **Branch**: `mil-reframe`, cut from `thesis` at `517db47` (dissertation-era state frozen).
-> - **Current stage**: 0 — per-spectrum baseline selector.
+> - **Current stage**: 1 — data layer and re-export. (Stage 0 complete, see
+>   [stage0_findings.md](stage0_findings.md); its verdict changed the corrector, so
+>   §2.1 below records the original reasoning and the findings doc records what won.)
 > - **Thesis is out of scope.** The paper is in scope and is updated stage by stage, never batched.
 
 ## Context
@@ -106,6 +108,12 @@ $\mu$ and $\sigma$ rather than point estimates.
 ## 2. Data layer
 
 ### 2.1 Baseline correction — replace the inherited constant
+
+> **SUPERSEDED by the Stage 0 result.** The reasoning below (per-spectrum GCV, IARPLS
+> "not taken") is kept as the record of why the study was run. The study rejected it:
+> GCV pinned at the grid floor in 83% of spectra, and IARPLS beat airPLS's best
+> achievable fixed λ while being inert over λ∈[1e2,1e4]. Production path is now
+> `correct_iarpls` at λ=1e4. See [stage0_findings.md](stage0_findings.md).
 
 airPLS with `lambda=100, porder=1` is currently inherited from Lita et al. (Apollo) and was tuned
 by eye on a handful of spectra. Since the export is being redone, fix this properly. Baseline
@@ -627,7 +635,7 @@ the work, and updated in place as stages complete.
 
 | # | stage | status | notes |
 |---|---|---|---|
-| 0 | Baseline selector | not started | |
+| 0 | Baseline selector | **done** | **Verdict reverses the plan: IARPLS(λ=1e4), not GCV.** GCV pinned at the grid floor in 83% of spectra; IARPLS beats airPLS's best achievable fixed λ and is inert over λ∈[1e2,1e4]. Current λ=100 suppresses amide I by 43% and drifts peak heights 16–55% with fluorescence. See [stage0_findings.md](stage0_findings.md). `preprocessing.py` surgery deferred to Stage 1. |
 | 1 | Data layer + re-export | not started | |
 | 2 | Evaluation reframing + Tier 0 | not started | |
 | 3 | Instance-model hygiene | not started | |

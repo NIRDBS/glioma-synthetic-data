@@ -1,0 +1,33 @@
+{
+  "n_spectra_per_cell": 40,
+  "lambda_grid": [
+    1.0,
+    100000000.0
+  ],
+  "grid_points": 25,
+  "primary_metric": "nrmse_fingerprint (700-1800 cm-1, the modelled region)",
+  "nrmse_fingerprint_median": {
+    "gcv": 0.10990546401319623,
+    "iarpls": 0.004739889020263178,
+    "lcurve": 0.021338300894776133,
+    "legacy_lam100": 0.05017251557407153,
+    "ref_lam100": 0.05017251557407153
+  },
+  "invariance_drift_median": {
+    "gcv": 0.5651986238518354,
+    "iarpls": 0.0013002003898990372,
+    "lcurve": 0.5442122664981976,
+    "legacy_lam100": 0.2735293670245874,
+    "ref_lam100": 0.2766333991036607
+  },
+  "edge_pinning_rate": {
+    "gcv": 0.8333333333333334,
+    "lcurve": 0.0
+  },
+  "lambda_median": {
+    "gcv": 1.0,
+    "lcurve": 21544.346900318822
+  },
+  "best_by_fingerprint": "iarpls",
+  "best_by_invariance": "iarpls"
+}

@@ -3,6 +3,14 @@
 **Status: complete.** Branch `mil-reframe`. Study: `scripts/stage0_baseline_study.py`,
 results in `results/stage0_baseline/`, figure `stage0_baseline_study.png`.
 
+> **Reproducing this document.** Every number below is reproduced, with the reasoning
+> shown step by step, in
+> [`notebooks/00_Stage0_Baseline_Correction.ipynb`](../notebooks/00_Stage0_Baseline_Correction.ipynb).
+> It runs top to bottom in about a minute (committed with outputs, so it can also just be
+> read). Live cells use small samples; the headline tables in its §8 load the committed
+> full study so they match this document exactly. To regenerate that study:
+> `python scripts/stage0_baseline_study.py --n-spectra 40 --out-dir results/stage0_baseline`
+
 > **The plan's recommendation did not survive contact with the data.** Stage 0 was
 > specified as "per-spectrum λ by GCV, L-curve as fallback; IARPLS kept only as a
 > comparator." GCV fails outright, L-curve works but is unnecessary, and the
@@ -99,10 +107,20 @@ selected sensible λ (median 4.6e3–1e5), confirming the diagnosis is specific 
 
 Three independent reasons, in order of weight:
 
-1. **It beats the best achievable fixed λ.** On a representative high-fluorescence
-   spectrum the optimal airPLS λ (found by exhaustive search against ground truth) gave
-   fingerprint NRMSE 0.0218; IARPLS gave 0.0046. So this is a better *algorithm*, not a
-   better-tuned one — no selector for airPLS can close that gap.
+1. **It beats the best achievable fixed λ.** Searching the whole grid for the λ that
+   minimises true error against known ground truth gives an *oracle* no selector could
+   beat. IARPLS still wins (fingerprint NRMSE, median of 5 spectra per level):
+
+   | fluorescence | airPLS λ=100 | airPLS **oracle** λ | oracle NRMSE | IARPLS | IARPLS better by |
+   |---|---|---|---|---|---|
+   | low | 0.0219 | 2.15e4 | 0.0069 | 0.0048 | 1.5× |
+   | medium | 0.0430 | 4.64e4 | 0.0120 | 0.0048 | 2.5× |
+   | high | 0.0883 | 2.15e4 | 0.0141 | 0.0049 | 2.9× |
+
+   So this is a better *algorithm*, not a better-tuned one — no selector for airPLS can
+   close that gap. Note also that the oracle λ is ~2e4, i.e. **200× larger than the
+   inherited 100**, and that even the oracle degrades with fluorescence while IARPLS does
+   not.
 2. **λ is inert, which is stronger than selecting it well.** Fingerprint NRMSE across
    the sensitivity sweep:
 
@@ -155,6 +173,7 @@ stays fold-independent, so one export still suffices.
 | `src/preprocessing/__init__.py` | **new.** Public surface. |
 | `tests/test_baseline.py` | **new.** 24 tests: banded penalty vs dense, banded solve vs dense, Hutchinson trace vs exact, determinism, purity, peak-fidelity regression, λ-inertness regression. |
 | `scripts/stage0_baseline_study.py` | **new.** The study, reproducible via `--seed`. |
+| `notebooks/00_Stage0_Baseline_Correction.ipynb` | **new.** Reviewer-facing reproduction of every number here, committed with outputs. |
 | `results/stage0_baseline/` | **new.** Raw CSVs, summaries, `stage0_verdict.json`, figure. |
 
 **Deviation from the plan:** the plan put "rewire `_airPLS`, delete

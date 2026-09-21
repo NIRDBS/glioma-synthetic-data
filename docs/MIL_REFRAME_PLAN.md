@@ -635,7 +635,7 @@ the work, and updated in place as stages complete.
 
 | # | stage | status | notes |
 |---|---|---|---|
-| 0 | Baseline selector | **done** | **Verdict reverses the plan: IARPLS(λ=1e4), not GCV.** GCV pinned at the grid floor in 83% of spectra; IARPLS beats airPLS's best achievable fixed λ and is inert over λ∈[1e2,1e4]. Current λ=100 suppresses amide I by 43% and drifts peak heights 16–55% with fluorescence. See [stage0_findings.md](stage0_findings.md). `preprocessing.py` surgery deferred to Stage 1. |
+| 0 | Baseline selector | **done** | **Verdict reverses the plan: IARPLS(λ=1e4), not GCV.** GCV pinned at the grid floor in 83% of spectra; IARPLS beats airPLS's best achievable fixed λ and is inert over λ∈[1e2,1e4]. Current λ=100 suppresses amide I by 43% and drifts peak heights 16–55% with fluorescence. See [stage0_findings.md](stage0_findings.md) and the reproduction notebook [00_Stage0_Baseline_Correction.ipynb](../notebooks/00_Stage0_Baseline_Correction.ipynb). `preprocessing.py` surgery deferred to Stage 1. |
 | 1 | Data layer + re-export | not started | |
 | 2 | Evaluation reframing + Tier 0 | not started | |
 | 3 | Instance-model hygiene | not started | |

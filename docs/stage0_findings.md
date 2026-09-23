@@ -335,3 +335,25 @@ What must **not** be claimed:
    fluorescence-dependent peak heights under slide-grouped CV.
 4. **Crop region needs a note.** Correction runs on the full 1738 bands; output is valid
    only above 300 cm⁻¹.
+
+## Review of Stage 0
+The study is informative, but poorly presented. The findings and notebook need to follow a structure such that the experiments setup and results are easy to read and understand.
+Notebook should be redesigned using the following structure:
+Title: Study on baseline correction methods for our dataset.
+Description: In order to determine the best baseline correction method, we designed a suite of experiments using a synthetic data generator that approximates brain biopsy spectra. We decided to use this approach in order to not overfit the lambda parameter to our particular dataset, but to estimate it for this type of samples. 
+Synthetic data generator: We generate the signal 
+s = peaks + baseline + noise
+where:
+ peaks = sum of 14 bands at fixed position to extimate brain biopsy spectra (use math notation)
+ baseline = fluorescence + rayleigh + poly
+ noise = iid gaussian with sigma = signal_ptp/SNR, with SNR computed from data.
+Experiment 1:
+iarpls lambda fit. (Currently this experiment appears quite late, but it's actually needed early for an acurate comparison of algorithms, as GCV and L curve are algos that fit lambda for airpls. We first run this one to have a good iarpls to compare against.)
+Experiment 2:
+Synthetic data test: GCV, L curve, IARPLS. (Tests the 3 methods on the synthetic generator)
+Experiment 3:
+Invariance test on real data: use real data, perform correction, then add baseline and perform correction again, measure drift. This experiment exists as well.
+Experiment 4: iarpls vs airpls optimal lambda 
+
+We draw conclusions only after all experiments.
+

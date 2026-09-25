@@ -1,325 +1,263 @@
-import os
-import glob
+"""Raman spectrum preprocessing: raw cube -> modelling HDF5.
+
+This is the **single** dataset producer (Stage 1 of the MIL reframe). It replaces
+the previous ``RamanPreprocessor``, which could not run at all -- ``gaussian_filter``
+was used without being imported, ``_build_file_to_map_correspondence`` was called
+but never defined, and the tumour-map key lookup appended ``.npy`` to a key that
+never had it, so the mask was always ``None`` and every slide was skipped. The
+actual producer for every dataset on disk was notebook 01 section 4 (mirrored in
+``_archive/dev_scripts/export_hdf5_section4.py``); that logic is folded in here so
+the notebook goes back to being exploratory rather than a build dependency.
+
+What changed from that notebook logic, deliberately:
+
+* **Mask widened to all strong-signal pixels**, not just the manually-selected
+  "tumour" clusters. That selection was never a tumour label -- it is a
+  biologically-viable-signal mask (NMF(100) -> GMM(3) per slide, then a human
+  picked which of the 3 clusters to call "tumour" in ``file_names.csv``). See
+  ``docs/stage1_data_layer.md`` for the full argument. The old, narrower selection
+  survives as the boolean ``viable_legacy`` column, so anything that depended on
+  the exact old subset still can.
+* **Baseline correction is IARPLS**, not airPLS(lambda=100) -- the Stage 0 finding
+  (``docs/stage0_findings.md``). Still strictly per-spectrum: no statistic is ever
+  computed across spectra, preserving the project's no-global-parameter rule and
+  keeping the export fold-independent.
+* **Clustering is not re-run.** NMF(100)/GMM(3) per slide already exists on disk
+  (``data/processed/<slide>/{hard_labels,strong_signal_mask,tumor_mask}.npy``,
+  produced by notebook 01 sections 2-3) and is expensive (NMF alone is ~500
+  iterations per slide). This module reads those artifacts; it does not recompute
+  them. Regenerate them first if a slide's directory is missing.
+"""
+
+from __future__ import annotations
+
+import json
 import re
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+
+import h5py
 import numpy as np
 import pandas as pd
-import h5py
-from pathlib import Path
-from scipy.ndimage import binary_erosion
-from scipy.sparse import csc_matrix, eye, diags
-from scipy.sparse.linalg import spsolve
+from scipy.ndimage import median_filter
 from tqdm import tqdm
-import natsort
-import ramanspy as rp
+
+from src.preprocessing.baseline import IARPLS_LAMBDA, correct_iarpls
+
+__all__ = ["RamanPreprocessor", "SlideResult"]
+
+_FILENAME_RE = re.compile(r"LGm-(?P<class_id>\d)[/\\]HF-(?P<patient_id>\d+)_")
+_MEDIAN_KERNEL = 3  # matches notebook 01 MEDIAN_KERNEL and the paper's methods text
+
+
+class SlideResult:
+    """Per-slide export payload. Plain container so it survives a process-pool hop."""
+
+    __slots__ = (
+        "sample_name", "patient_id", "class_id", "shape",
+        "spectra", "coords", "tissue_cluster", "viable_legacy",
+    )
+
+    def __init__(self, sample_name, patient_id, class_id, shape,
+                 spectra, coords, tissue_cluster, viable_legacy):
+        self.sample_name = sample_name
+        self.patient_id = patient_id
+        self.class_id = class_id
+        self.shape = shape
+        self.spectra = spectra
+        self.coords = coords
+        self.tissue_cluster = tissue_cluster
+        self.viable_legacy = viable_legacy
+
+
+def _extract_ids(path: Path) -> tuple[int, str]:
+    """(0-indexed class id, 'HF-<N>' patient id string) from a raw file's path."""
+    match = _FILENAME_RE.search(str(path))
+    if not match:
+        raise ValueError(f"path does not match LGm-<k>/HF-<n>_...: {path}")
+    class_id = int(match.group("class_id")) - 1
+    patient_id = f"HF-{match.group('patient_id')}"
+    return class_id, patient_id
+
+
+def process_slide(
+    raw_path: str,
+    processed_dir: str,
+    wavenumbers: np.ndarray,
+    baseline_lambda: float = IARPLS_LAMBDA,
+    median_kernel: int = _MEDIAN_KERNEL,
+) -> SlideResult | None:
+    """Filter, mask, baseline-correct and normalise one slide. Pure function -- safe
+    to run in a worker process; touches no shared state and writes nothing to disk.
+
+    Returns ``None`` if the slide has no precomputed artifacts or no strong-signal
+    pixels (both skip conditions are logged by the caller, not here, since a worker
+    process's prints are not reliably ordered).
+    """
+    raw_path = Path(raw_path)
+    sample_name = raw_path.stem
+    slide_dir = Path(processed_dir) / sample_name
+
+    mask_path = slide_dir / "strong_signal_mask.npy"
+    if not mask_path.exists():
+        return None
+    strong_mask = np.load(mask_path).astype(bool)
+    if strong_mask.sum() == 0:
+        return None
+
+    hard_labels = np.load(slide_dir / "hard_labels.npy")
+    tumor_mask = np.load(slide_dir / "tumor_mask.npy").astype(bool)
+
+    class_id, patient_id = _extract_ids(raw_path)
+
+    cube = np.load(raw_path).astype(np.float32)
+    if cube.shape[:2] != strong_mask.shape:
+        raise ValueError(
+            f"{sample_name}: raw cube {cube.shape[:2]} != mask shape {strong_mask.shape}"
+        )
+    filtered = np.empty_like(cube)
+    for i in range(cube.shape[2]):
+        filtered[:, :, i] = median_filter(cube[:, :, i], size=median_kernel, mode="reflect")
+
+    rows, cols = np.where(strong_mask)  # boolean-index order == np.where order (C-order)
+    raw_spectra = filtered[strong_mask]
+
+    corrected = np.empty_like(raw_spectra, dtype=np.float32)
+    for i, spectrum in enumerate(raw_spectra):
+        res = correct_iarpls(spectrum.astype(np.float64), wavenumbers, lam=baseline_lambda)
+        c = res["corrected"]
+        lo, hi = float(c.min()), float(c.max())
+        corrected[i] = np.zeros_like(c, dtype=np.float32) if hi - lo == 0 else ((c - lo) / (hi - lo)).astype(np.float32)
+
+    return SlideResult(
+        sample_name=sample_name,
+        patient_id=patient_id,
+        class_id=class_id,
+        shape=cube.shape[:2],
+        spectra=corrected,
+        coords=np.column_stack((cols, rows)).astype(np.int32),  # (col, row) convention
+        tissue_cluster=hard_labels[strong_mask].astype(np.int32),
+        viable_legacy=tumor_mask[strong_mask],
+    )
 
 
 class RamanPreprocessor:
+    """Builds the modelling HDF5 from raw cubes plus the precomputed per-slide
+    clustering artifacts in ``processed_dir``.
+
+    Unlike the class this replaces, there is no ``mask_strategy`` branch (strong-
+    signal is now the only export mask -- narrower selections are a load-time
+    filter on ``viable_legacy``, not a separate export), no ``use_ramanspy`` branch
+    (IARPLS is simply the corrector), and no ``config=`` kwarg (the four callers
+    that need config-driven paths resolve them before constructing this class).
     """
-    Optimized Builder class.
-    Major Change: Pre-computes sparse matrices for airPLS to speed up processing.
-    """
-    
-    # Configuration
-    IGNORE_SAMPLES = ["HF-1887_via-t_2_1.h5_3"]
-    AIRPLS_LAMBDA = 100 
-    AIRPLS_PORDER = 1
-    SIGNAL_LENGTH = 1738
-    
-    def __init__(self, raw_data_dir, output_file, 
-                 mask_strategy="tumor_map", 
-                 tumor_maps_path=None, 
-                 calibration_path=None,
-                 use_ramanspy=False):
-        
+
+    def __init__(
+        self,
+        raw_data_dir,
+        processed_dir,
+        output_file,
+        calibration_path,
+        baseline_lambda: float = IARPLS_LAMBDA,
+        median_kernel: int = _MEDIAN_KERNEL,
+        n_workers: int | None = None,
+    ):
         self.raw_data_dir = Path(raw_data_dir)
+        self.processed_dir = Path(processed_dir)
         self.output_file = Path(output_file)
-        self.mask_strategy = mask_strategy
-        self.tumor_maps_path = Path(tumor_maps_path) if tumor_maps_path else None
-        self.calibration_path = Path(calibration_path) if calibration_path else None
-        self.use_ramanspy = use_ramanspy
-        self.CROP_REGION = (700, 1800)
+        self.calibration_path = Path(calibration_path)
+        self.baseline_lambda = baseline_lambda
+        self.median_kernel = median_kernel
+        self.n_workers = n_workers
 
-        self.filename_regex = re.compile(r"LGm-(?P<class_id>\d)[/\\]HF-(?P<patient_id>\d+)_")
-        
-        if self.calibration_path:
-            self._load_calibration()
-            
-        # --- PRE-COMPUTE AIRPLS MATRICES ---
-        # The difference matrix D is constant for a fixed signal length.
-        # Computing it once saves huge time.
-        self.m = self.SIGNAL_LENGTH
-        self.D = np.diff(np.eye(self.m), 2) # Second order difference
-        self.DD = self.D.dot(self.D.T)      # D * D.T (Used in the system)
-        self.DD_sparse = csc_matrix(self.DD) # Convert to sparse once
+        self.wavenumbers = pd.read_csv(self.calibration_path).iloc[:, 1].values.astype(np.float64)
 
-    def _load_calibration(self):
-        """Loads and parses the frequency table."""
-        try:
-            df = pd.read_csv(self.calibration_path)
-            wavenumbers = df.iloc[:, 1].values
-            
-            if len(wavenumbers) < self.SIGNAL_LENGTH:
-                 diff = np.mean(np.diff(wavenumbers[-10:]))
-                 padding = [wavenumbers[-1] + diff * i for i in range(1, self.SIGNAL_LENGTH - len(wavenumbers) + 1)]
-                 wavenumbers = np.concatenate([wavenumbers, padding])
-            
-            self.wavenumbers = wavenumbers
-            
-            # Indices for Bio-Mask
-            self.idx_bio_start = np.argmin(np.abs(wavenumbers - 1050))
-            self.idx_bio_end   = np.argmin(np.abs(wavenumbers - 1130))
-            self.idx_hwn_start = np.argmin(np.abs(wavenumbers - 2800))
-            self.idx_hwn_end   = np.argmin(np.abs(wavenumbers - 3000))
-            
-            print(f" Calibration Loaded. Range: {wavenumbers[0]:.1f} - {wavenumbers[-1]:.1f} cm⁻¹")
-            
-        except Exception as e:
-            print(f" Failed to load calibration: {e}")
-            raise
+    def _discover_slides(self) -> list[Path]:
+        return sorted(self.raw_data_dir.rglob("*.npy"))
 
-    def _create_bio_mask(self, image_data):
-        """Robust Bio-Mask (Phenylalanine/DNA + Lipids)."""
-        # 1. Broad Bio Region (DNA/Lipid/Phe)
-        bio_map = np.sum(image_data[:, :, self.idx_bio_start:self.idx_bio_end], axis=2)
-        # 2. High Wavenumber (Lipids)
-        hwn_map = np.sum(image_data[:, :, self.idx_hwn_start:self.idx_hwn_end], axis=2)
-        
-        # 3. Smart Thresholds (5th percentile floor)
-        bg_bio = np.percentile(bio_map, 5)
-        bg_hwn = np.percentile(hwn_map, 5)
-        
-        if bg_bio > 100: thresh_bio = 50.0 
-        else: thresh_bio = max(bg_bio * 1.5, 20.0)
+    def run(self) -> Path:
+        slide_paths = self._discover_slides()
+        print(f"Found {len(slide_paths)} raw slides under {self.raw_data_dir}")
 
-        if bg_hwn > 100: thresh_hwn = 50.0 
-        else: thresh_hwn = max(bg_hwn * 1.5, 50.0)
+        n_features = len(self.wavenumbers)
+        self.output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        raw_mask = (bio_map > thresh_bio) & (hwn_map > thresh_hwn)
-        clean_mask = binary_erosion(raw_mask, iterations=2)
-        return clean_mask
+        results: list[SlideResult] = []
+        skipped: list[str] = []
 
-    def _airPLS(self, x, lambda_=100, porder=1, itermax=15):
-        """
-        Optimized baseline correction.
-        Uses pre-computed sparse DD matrix.
-        """
-        m = x.shape[0]
-        w = np.ones(m)
-        
-        for i in range(1, itermax + 1):
-            # System: (W + lambda * D'D) z = W x
-            # Since W is diagonal, we can construct it efficiently
-            W = diags(w)
-            # LHS = W + lambda * DD (DD is already computed/sparse)
-            # We assume lambda is scalar, so lambda * DD is fast
-            # Note: airPLS usually uses lambda^order or just lambda. 
-            # Standard paper: (W + lambda * D'D) z = w * x
-            
-            # Construct LHS matrix
-            # We use csc_matrix accumulation which is efficient
-            LHS = W + (lambda_ * self.DD_sparse)
-            
-            # Solve
-            z = spsolve(LHS, w * x)
-            
-            # Update weights
-            d = x - z
-            dssn = np.abs(d[d < 0].sum())
-            if dssn < 0.001 * (np.abs(x).sum()):
-                break
-                
-            w[d >= 0] = 0
-            # Stability check for exp to avoid overflow
-            neg_idx = d < 0
-            if neg_idx.any():
-                factor = i * np.abs(d[neg_idx]) / dssn
-                w[neg_idx] = np.exp(factor)
-            
-            w[0] = np.exp(i * (d[d < 0]).max() / dssn) if (d<0).any() else 0
-            w[-1] = w[0]
-            
-        return z
-
-    def _preprocess_spectrum(self, raw_spectrum):
-        # 1. Baseline
-        baseline = self._airPLS(raw_spectrum, lambda_=self.AIRPLS_LAMBDA, porder=self.AIRPLS_PORDER)
-        corrected = raw_spectrum - baseline
-        
-        # 2. Clip & Norm
-        corrected = np.maximum(corrected, 0)
-        min_val, max_val = np.min(corrected), np.max(corrected)
-        
-        if max_val - min_val == 0:
-            return np.zeros_like(corrected)
-            
-        return (corrected - min_val) / (max_val - min_val)
-    
-    def _preprocess_batch_ramanspy(self, spectra_batch, wavenumbers_axis):
-        """
-        Applies Crop -> Denoise -> Baseline (IARPLS) -> Normalize using RamanSPy.
-        """
-        # 1. Wrap in Container
-        container = rp.SpectralContainer(spectra_batch, wavenumbers_axis)
-        
-        # 2. Define Pipeline
-        pipeline = rp.preprocessing.Pipeline([
-            rp.preprocessing.misc.Cropper(region=self.CROP_REGION),
-            rp.preprocessing.denoise.SavGol(window_length=7, polyorder=3),
-            rp.preprocessing.baseline.IARPLS(lam=10000, p=0.001), 
-            rp.preprocessing.normalise.MinMax(pixelwise=True)
-        ])
-        
-        # 3. Apply
-        processed_container = pipeline.apply(container)
-        return processed_container.spectral_data, processed_container.spectral_axis
-
-    def run(self):
-        """
-        Executes the full preprocessing pipeline.
-        
-        MODES:
-        1. Legacy Mode (use_ramanspy=False):
-           - Keeps original 1738 spectral points.
-           - Uses manual AirPLS and slow row-by-row processing.
-           - Saves 'spectra' and 'spectra_smoothed'.
-           
-        2. RamanSPy Mode (use_ramanspy=True):
-           - CROPS data to Fingerprint region (700-1800 cm-1).
-           - Uses fast batch processing (IARPLS + SavGol).
-           - Saves 'spectra' only (optimized size).
-        """
-        files_to_process = []
-        for class_dir in glob.glob(str(self.raw_data_dir / "LGm-*")):
-            files_to_process.extend(glob.glob(os.path.join(class_dir, "*.npy")))
-        files_to_process = natsort.natsorted(files_to_process)
-        print(f" Found {len(files_to_process)} scan files.")
-        
-        # --- 1. Load Tumor Maps (If needed) ---
-        file_to_map = {}
-        if self.mask_strategy == "tumor_map":
-            print(f" Loading Tumor Maps from {self.tumor_maps_path}...")
-            try:
-                tumor_maps_data = np.load(self.tumor_maps_path, allow_pickle=True)
-                if isinstance(tumor_maps_data, np.ndarray) and tumor_maps_data.dtype == object:
-                     if tumor_maps_data.size == 1: tumor_maps_array = tumor_maps_data.item()
-                     else: tumor_maps_array = tumor_maps_data
-                else: tumor_maps_array = tumor_maps_data
-
-                if isinstance(tumor_maps_array, (list, np.ndarray)):
-                    file_to_map = self._build_file_to_map_correspondence(files_to_process, tumor_maps_array)
+        with ProcessPoolExecutor(max_workers=self.n_workers) as pool:
+            futures = {
+                pool.submit(
+                    process_slide, str(p), str(self.processed_dir), self.wavenumbers,
+                    self.baseline_lambda, self.median_kernel,
+                ): p
+                for p in slide_paths
+            }
+            for fut in tqdm(as_completed(futures), total=len(futures), desc="Exporting slides"):
+                p = futures[fut]
+                r = fut.result()
+                if r is None:
+                    skipped.append(p.stem)
                 else:
-                    file_to_map = {f: tumor_maps_array.get(os.path.basename(f)) for f in files_to_process}
-            except Exception as e:
-                print(f" Error loading maps: {e}")
-                return
+                    results.append(r)
 
-        # --- 2. Determine Output Shape (Legacy vs RamanSPy) ---
-        if self.use_ramanspy:
-            # Create dummy to find new cropped length
-            dummy_container = rp.SpectralContainer(np.zeros((1, len(self.wavenumbers))), self.wavenumbers)
-            cropper = rp.preprocessing.misc.Cropper(region=self.CROP_REGION)
-            dummy_out = cropper.apply(dummy_container)
-            final_wavenumbers = dummy_out.spectral_axis
-            n_features = len(final_wavenumbers)
-            print(f" RamanSPy Mode: Output shape is {n_features} features (Cropped).")
-        else:
-            # Legacy Mode: Keep original full size
-            final_wavenumbers = self.wavenumbers
-            n_features = len(self.wavenumbers)
-            print(f" Legacy Mode: Output shape is {n_features} features (Full).")
+        if skipped:
+            print(f"  [skip] {len(skipped)} slide(s) with no strong-signal pixels or no "
+                  f"precomputed artifacts: {skipped}")
 
-        # --- 3. Create H5 File ---
+        # Deterministic write order regardless of pool completion order.
+        results.sort(key=lambda r: r.sample_name)
+
+        n_total = sum(r.spectra.shape[0] for r in results)
+        print(f"Writing {n_total:,} instances from {len(results)} slides to {self.output_file}")
+
         with h5py.File(self.output_file, "w") as h5f:
-            h5f.create_dataset("wavenumbers", data=final_wavenumbers)
-            
-            # Dynamic shape based on mode
-            dset_spectra = h5f.create_dataset("spectra", shape=(0, n_features), 
-                                              maxshape=(None, n_features), 
-                                              dtype='float32', compression="gzip")
-            
-            # Only create 'spectra_smoothed' if in Legacy mode (RamanSPy pipeline doesn't need it)
-            if not self.use_ramanspy:
-                dset_spectra_smoothed = h5f.create_dataset("spectra_smoothed", shape=(0, n_features), 
-                                                           maxshape=(None, n_features), 
-                                                           dtype='float32', compression="gzip")
+            h5f.create_dataset("wavenumbers", data=self.wavenumbers.astype("float32"))
 
-            dset_class = h5f.create_dataset("y_class", shape=(0,), maxshape=(None,), dtype='int32')
-            dset_patient = h5f.create_dataset("patient_ids", shape=(0,), maxshape=(None,), dtype='int32')
-            dset_samples = h5f.create_dataset("sample_ids", shape=(0,), maxshape=(None,), dtype=h5py.string_dtype(encoding='utf-8'))
-            dset_coords = h5f.create_dataset("coords", shape=(0, 2), maxshape=(None, 2), dtype='int32')
+            dset_spectra = h5f.create_dataset(
+                "spectra", shape=(n_total, n_features), dtype="float32", compression="gzip"
+            )
+            dset_coords = h5f.create_dataset("coords", shape=(n_total, 2), dtype="int32")
+            dset_y_bag = h5f.create_dataset("y_bag", shape=(n_total,), dtype="int32")
+            dset_tissue = h5f.create_dataset("tissue_cluster", shape=(n_total,), dtype="int32")
+            dset_legacy = h5f.create_dataset("viable_legacy", shape=(n_total,), dtype="bool")
+            dset_patient = h5f.create_dataset(
+                "patient_ids", shape=(n_total,), dtype=h5py.string_dtype(encoding="utf-8")
+            )
+            dset_samples = h5f.create_dataset(
+                "sample_ids", shape=(n_total,), dtype=h5py.string_dtype(encoding="utf-8")
+            )
 
-            # --- 4. Processing Loop ---
-            for file_num, filepath in enumerate(tqdm(files_to_process, desc="Processing")):
-                filename = os.path.basename(filepath)
-                if any(ignored in filename for ignored in self.IGNORE_SAMPLES): continue
-                
-                match = self.filename_regex.search(filepath)
-                if not match: continue
-                class_id, patient_id = int(match.group("class_id")) - 1, int(match.group("patient_id"))
-                sample_name = filename.replace(".npy", "")
+            slide_names = [r.sample_name for r in results]
+            slide_shapes = np.array([r.shape for r in results], dtype="int32")
+            h5f.create_dataset(
+                "slide_names", data=np.array(slide_names, dtype=object),
+                dtype=h5py.string_dtype(encoding="utf-8"),
+            )
+            h5f.create_dataset("slide_shapes", data=slide_shapes)
 
-                try:
-                    raw_cube = np.load(filepath)
-                    if isinstance(raw_cube, np.ndarray) and raw_cube.dtype == 'O': 
-                        raw_cube = raw_cube.item().get('data', raw_cube)
-                except: continue
+            cursor = 0
+            for r in results:
+                n = r.spectra.shape[0]
+                sl = slice(cursor, cursor + n)
+                dset_spectra[sl] = r.spectra
+                dset_coords[sl] = r.coords
+                dset_y_bag[sl] = np.full(n, r.class_id, dtype="int32")
+                dset_tissue[sl] = r.tissue_cluster
+                dset_legacy[sl] = r.viable_legacy
+                dset_patient[sl] = np.full(n, r.patient_id)
+                dset_samples[sl] = np.full(n, r.sample_name)
+                cursor += n
 
-                # A. Spatial Smoothing (Always done for mask generation)
-                smoothed_cube = gaussian_filter(raw_cube, sigma=(1.0, 1.0, 0))
+            h5f.attrs["baseline_method"] = "iarpls"
+            h5f.attrs["baseline_lambda"] = float(self.baseline_lambda)
+            h5f.attrs["baseline_lambda_status"] = "provisional"  # see docs/stage0_findings.md 7.1
+            h5f.attrs["median_kernel"] = self.median_kernel
+            h5f.attrs["n_slides"] = len(results)
+            h5f.attrs["n_instances"] = n_total
+            h5f.attrs["schema_version"] = "mil-v1"
 
-                # B. Mask Selection
-                if self.mask_strategy == "tumor_map":
-                    t_map = file_to_map.get(filepath)
-                    valid_mask = (t_map == 1) if t_map is not None else None
-                else:
-                    valid_mask = self._create_bio_mask(smoothed_cube)
-                
-                if valid_mask is None or np.sum(valid_mask) == 0: continue
-                
-                # C. Extract Data
-                y_coords, x_coords = np.where(valid_mask)
-                flat_data_pure = raw_cube[valid_mask]          
-
-                # --- D. Branching Preprocessing Logic ---
-                if self.use_ramanspy:
-                    # OPTION A: New Fast Way (RamanSPy)
-                    # Returns cropped data automatically
-                    batch_spectra_pure, _ = self._preprocess_batch_ramanspy(flat_data_pure, self.wavenumbers)
-                    # We reuse pure data because RamanSPy handles smoothing internally if configured
-                else:
-                    # OPTION B: Old Legacy Way (Original Logic)
-                    flat_data_smoothed = smoothed_cube[valid_mask]
-                    
-                    batch_spectra_pure = [self._preprocess_spectrum(s) for s in flat_data_pure]
-                    batch_spectra_pure = np.array(batch_spectra_pure, dtype='float32')
-                    
-                    batch_spectra_smoothed = [self._preprocess_spectrum(s) for s in flat_data_smoothed]
-                    batch_spectra_smoothed = np.array(batch_spectra_smoothed, dtype='float32')
-
-                n_new = batch_spectra_pure.shape[0]
-                if n_new == 0: continue
-
-                # --- E. Save to H5 ---
-                current_size = dset_spectra.shape[0]
-                new_size = current_size + n_new
-                
-                # Resize datasets
-                dset_spectra.resize(new_size, axis=0)
-                dset_class.resize(new_size, axis=0)
-                dset_patient.resize(new_size, axis=0)
-                dset_samples.resize(new_size, axis=0)
-                dset_coords.resize(new_size, axis=0)
-                
-                # Write data
-                dset_spectra[current_size:] = batch_spectra_pure
-                dset_class[current_size:] = np.full(n_new, class_id, dtype='int32')
-                dset_patient[current_size:] = np.full(n_new, patient_id, dtype='int32')
-                dset_samples[current_size:] = np.full(n_new, sample_name)
-                dset_coords[current_size:] = np.column_stack((x_coords, y_coords))
-                
-                # Only save smoothed data if in Legacy mode
-                if not self.use_ramanspy:
-                    dset_spectra_smoothed.resize(new_size, axis=0)
-                    dset_spectra_smoothed[current_size:] = batch_spectra_smoothed
-
-        print(f" Processing complete. Saved to {self.output_file}")
+        n_legacy = sum(int(r.viable_legacy.sum()) for r in results)
+        print(f"Done. {n_total:,} instances, {len(results)} slides, "
+              f"{n_legacy:,} flagged viable_legacy (old tumour-cluster subset).")
+        return self.output_file

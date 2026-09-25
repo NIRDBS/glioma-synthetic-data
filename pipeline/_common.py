@@ -12,7 +12,9 @@ across regimens.
 import gc
 import os
 import random
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 from sklearn.metrics import accuracy_score
@@ -42,6 +44,32 @@ def make_loader(config):
     )
 
 
+@dataclass
+class FoldArrays:
+    """Return type of :func:`prepare_fold`.
+
+    Iterates as the historical 4-tuple ``(X_train, y_train, X_val, y_val)`` so every
+    existing call site's ``X_train, y_train, X_val, y_val = prepare_fold(...)`` keeps
+    working unchanged. New code (Stage 4+ MIL fitting) reaches the per-instance
+    coords/bag-ids by attribute instead of threading more positional returns:
+    ``fd = prepare_fold(...); fd.train_coords, fd.train_bag_ids``.
+
+    Coords/bag-ids are ``None`` when the source HDF5 predates Stage 1 (no
+    ``coords`` dataset) -- callers that need them should check, not assume.
+    """
+    X_train: np.ndarray
+    y_train: np.ndarray
+    X_val: np.ndarray
+    y_val: np.ndarray
+    train_coords: Optional[np.ndarray] = None
+    val_coords: Optional[np.ndarray] = None
+    train_bag_ids: Optional[np.ndarray] = None
+    val_bag_ids: Optional[np.ndarray] = None
+
+    def __iter__(self):
+        return iter((self.X_train, self.y_train, self.X_val, self.y_val))
+
+
 def prepare_fold(fold_data, config, cap_train=True):
     """
     Prepare one CV fold exactly as notebook 02 does.
@@ -54,9 +82,11 @@ def prepare_fold(fold_data, config, cap_train=True):
          the cap fresh every epoch — see pipeline/cvae_stage.py. The config key
          ``cap_strategy`` documents that CVAE behaviour and is not read here.)
 
-    Returns (X_train_raw, y_train_raw, X_val, y_val). The train arrays are the
-    capped REAL training data; regimen-specific stages decide what to actually
-    train on (real, synthetic, or a mix).
+    Returns a :class:`FoldArrays`. The train arrays are the capped REAL training
+    data; regimen-specific stages decide what to actually train on (real,
+    synthetic, or a mix). Coords/bag-ids (when the loader supplied them) are
+    subset by the exact same index arrays as X/y at every step, so
+    ``fd.train_coords[i]`` always describes ``fd.X_train[i]``.
     """
     nc = num_classes_of(config)
 
@@ -64,6 +94,10 @@ def prepare_fold(fold_data, config, cap_train=True):
     y_val = fold_data['val'][1].copy()
     X_train = fold_data['train'][0].astype(np.float32)
     y_train = fold_data['train'][1].copy()
+    train_coords = fold_data.get('train_coords')
+    val_coords = fold_data.get('val_coords')
+    train_bag_ids = fold_data.get('train_groups')
+    val_bag_ids = fold_data.get('val_groups')
 
     # 1. 0-index fix
     if y_train.size and np.min(y_train) == 1:
@@ -91,9 +125,17 @@ def prepare_fold(fold_data, config, cap_train=True):
             keep = np.sort(np.array(keep))
             X_train = X_train[keep]
             y_train = y_train[keep]
+            if train_coords is not None:
+                train_coords = train_coords[keep]
+            if train_bag_ids is not None:
+                train_bag_ids = train_bag_ids[keep]
             print(f"  Patient cap {patient_cap}/slide -> {len(keep)} train spectra")
 
-    return X_train, y_train, X_val, y_val
+    return FoldArrays(
+        X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val,
+        train_coords=train_coords, val_coords=val_coords,
+        train_bag_ids=train_bag_ids, val_bag_ids=val_bag_ids,
+    )
 
 
 def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_name, seed=42):

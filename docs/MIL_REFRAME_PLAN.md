@@ -5,9 +5,10 @@
 > lands — including deviations from the plan and why.
 >
 > - **Branch**: `mil-reframe`, cut from `thesis` at `517db47` (dissertation-era state frozen).
-> - **Current stage**: 1 — data layer and re-export. (Stage 0 complete, see
->   [stage0_findings.md](stage0_findings.md); its verdict changed the corrector, so
->   §2.1 below records the original reasoning and the findings doc records what won.)
+> - **Current stage**: 2 — evaluation reframing and Tier 0. (Stages 0–1 complete:
+>   [stage0_findings.md](stage0_findings.md) and [stage1_data_layer.md](stage1_data_layer.md).
+>   §2.1 below records the original Stage 0 reasoning; the findings docs record what
+>   actually won and why.)
 > - **Thesis is out of scope.** The paper is in scope and is updated stage by stage, never batched.
 
 ## Context
@@ -636,7 +637,7 @@ the work, and updated in place as stages complete.
 | # | stage | status | notes |
 |---|---|---|---|
 | 0 | Baseline selector | **done** | **Verdict reverses the plan: IARPLS, not GCV.** GCV pinned at the grid floor in 83% of spectra; IARPLS beats an *oracle* airPLS λ and wins 12/12 stress conditions by 2.4–11.5×. Current λ=100 suppresses amide I by 43% and drifts peak heights 16–55% with fluorescence. **λ itself is UNRESOLVED**: the initial "inert over 1e2–1e4" claim was withdrawn after a follow-up study — the inert window is 2.5 decades for smooth baselines but 0.5 for curved ones, and real baselines look more curved than any synthetic family tested (consistent with Kizilov et al. 2026). `IARPLS_LAMBDA=1e4` is provisional; **Stage 1 must carry a λ sensitivity analysis**. See [stage0_findings.md](stage0_findings.md) §2.3 and §7.1, and the notebook [00_Stage0_Baseline_Correction.ipynb](../notebooks/00_Stage0_Baseline_Correction.ipynb) (experiment 1). `preprocessing.py` surgery deferred to Stage 1. |
-| 1 | Data layer + re-export | not started | |
+| 1 | Data layer + re-export | **done** | New `data/processed/glioma_mil.h5`: 288,678 instances (was 227,344), 59 slides (was 58 — the missing slide was never in `ignore_samples`'s active path, resolved not just flagged). Mask widened to all strong-signal pixels; old selection preserved exactly as `viable_legacy` (227,344 True, matches old total exactly). `coords`/`y_bag`/`tissue_cluster` added; `y_tumor` dropped (misnomer, was constant). Producer rewritten (4 defects fixed), loader now carries `coords` through every mask, `prepare_fold` returns a tuple-compatible `FoldArrays` dataclass (zero call-site changes). **λ investigated, not re-deferred**: per-spectrum L-curve for IARPLS tested and rejected (same under-smoothing failure as GCV — median λ picks 10× low, 33% of spectra lose >30% retention); a slide-stratified 1,180-spectrum sweep across all 59 slides shows drift/retention are a genuine trade-off with no single optimum, λ=1e4 kept as the reasoned default. See [stage1_data_layer.md](stage1_data_layer.md). |
 | 2 | Evaluation reframing + Tier 0 | not started | |
 | 3 | Instance-model hygiene | not started | |
 | 4 | Latent store + Tier 1/2 | not started | |
@@ -675,6 +676,12 @@ Preprocessing remains fold-independent.
 ---
 
 ### Stage 1 — Data layer and re-export
+
+> **DONE.** See [stage1_data_layer.md](stage1_data_layer.md) for the full report.
+> The plan below is kept as the record of what was intended; two things came out
+> differently and are worth knowing before reading it as current: `nmf_W` was
+> deferred (no consumer yet), and no experiment-config YAML was touched in this
+> stage (deferred to when each suite is re-run against the new dataset, per §11).
 
 **Goal.** One working producer, new schema, `coords` surviving into modelling.
 

@@ -41,13 +41,14 @@ class GliomaDataLoader:
                 # split_source is relative to project root, resolve it
                 self._resolve_split_path(cv_config['split_source'])
         
-        self.h5_file = None 
+        self.h5_file = None
         self.X = None
-        self.y_class = None 
+        self.y_class = None
         self.y_tumor = None
         self.wavenumbers = None
-        self.groups = None 
-        
+        self.groups = None
+        self.coords = None
+
         self._load_data()
     
     def _resolve_split_path(self, split_source: str) -> None:
@@ -153,25 +154,33 @@ class GliomaDataLoader:
         """Load data from HDF5 file and apply tumor filtering if needed."""
         print(f"Loading data from {self.data_path}...")
         
+        # 'y_bag' is the Stage 1 name (a bag/slide label broadcast to its instances,
+        # never an instance-level label -- see docs/stage1_data_layer.md). Older
+        # exports (pre-MIL-reframe) only have 'y_class'; read that as a fallback so
+        # this loader still opens them, but never write 'y_class' again.
         if self.memory_mapped:
             # Lazy loading (good for low RAM, slightly slower access)
             self.h5_file = h5py.File(self.data_path, 'r')
             self.X = self.h5_file['spectra']
-            self.y_class = self.h5_file['y_class']
+            self.y_class = self.h5_file['y_bag'] if 'y_bag' in self.h5_file else self.h5_file['y_class']
             if 'y_tumor' in self.h5_file:
                 self.y_tumor = self.h5_file['y_tumor']
             if 'wavenumbers' in self.h5_file:
                 self.wavenumbers = self.h5_file['wavenumbers'][:]
+            if 'coords' in self.h5_file:
+                self.coords = self.h5_file['coords'][:]
             raw_groups = self.h5_file['sample_ids'][:]
         else:
             # Load everything into RAM (fastest for training)
             with h5py.File(self.data_path, 'r') as f:
                 self.X = f['spectra'][:]
-                self.y_class = f['y_class'][:]
+                self.y_class = f['y_bag'][:] if 'y_bag' in f else f['y_class'][:]
                 if 'y_tumor' in f:
                     self.y_tumor = f['y_tumor'][:]
                 if 'wavenumbers' in f:
                     self.wavenumbers = f['wavenumbers'][:]
+                if 'coords' in f:
+                    self.coords = f['coords'][:]
                 raw_groups = f['sample_ids'][:]
 
         # Robust String Decoding
@@ -193,6 +202,8 @@ class GliomaDataLoader:
                 self.y_class = self.y_class[mask]
                 self.y_tumor = self.y_tumor[mask]
                 self.groups = self.groups[mask]
+                if self.coords is not None:
+                    self.coords = self.coords[mask]
                 print(f"    Filtered to {self.X.shape[0]} Pure Tumor Spectra.")
             else:
                 print("   ! WARNING: 'y_tumor' not found in HDF5! Using all data.")
@@ -342,7 +353,9 @@ class GliomaDataLoader:
         self.groups = self.groups[keep_indices]
         if self.y_tumor is not None:
             self.y_tumor = self.y_tumor[keep_indices]
-        
+        if self.coords is not None:
+            self.coords = self.coords[keep_indices]
+
         print(f"[OK] Downsampled to {self.X.shape[0]} spectra (was {len(patient_ids)})")
 
     def __iter__(self):
@@ -373,9 +386,9 @@ class GliomaDataLoader:
                 
                 train_mask = np.isin(self.groups, train_samples)
                 test_mask  = np.isin(self.groups, test_samples)
-                
+
                 print(f"   Fold {i}: {np.sum(train_mask)} train samples, {np.sum(test_mask)} val samples")
-                
+
                 yield {
                     'fold': i,
                     'fold_name': fold_name,
@@ -383,7 +396,10 @@ class GliomaDataLoader:
                     'val':   (self.X[test_mask],  self.y_class[test_mask]),
                     'train_sample_ids': np.unique(self.groups[train_mask]),
                     'val_sample_ids': np.unique(self.groups[test_mask]),
-                    'train_groups': self.groups[train_mask]
+                    'train_groups': self.groups[train_mask],
+                    'val_groups': self.groups[test_mask],
+                    'train_coords': self.coords[train_mask] if self.coords is not None else None,
+                    'val_coords': self.coords[test_mask] if self.coords is not None else None,
                 }
         else:
             print("\n Split file not found or not configured.")
@@ -397,7 +413,11 @@ class GliomaDataLoader:
                     'train': (self.X[train_idx], self.y_class[train_idx]),
                     'val':   (self.X[val_idx],   self.y_class[val_idx]),
                     'train_sample_ids': np.unique(self.groups[train_idx]),
-                    'val_sample_ids': np.unique(self.groups[val_idx])
+                    'val_sample_ids': np.unique(self.groups[val_idx]),
+                    'train_groups': self.groups[train_idx],
+                    'val_groups': self.groups[val_idx],
+                    'train_coords': self.coords[train_idx] if self.coords is not None else None,
+                    'val_coords': self.coords[val_idx] if self.coords is not None else None,
                 }
 
     def __len__(self):

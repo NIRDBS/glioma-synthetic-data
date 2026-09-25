@@ -357,7 +357,7 @@ LGm-6 & IDH-Wildtype & 5   \\
 \end{table}
 
 
-To ensure that spectra from the same tissue sample never appear in both training and testing sets, data splitting was performed at the \textit{slide level} using the stratified subject-disjoint five-fold evaluation protocol by Lita et al \cite{apollonov2024raman}. All recordings from a given subject were assigned exclusively to either the training or the test partition within each fold, preventing subject-level data leakage. A strictly non-overlapping partition, where each class was represented across all five folds, was not achievable due to dataset imbalance. Fold assignments were therefore determined manually to ensure that each class contributed no less than 15\% of its samples to each fold's test partition (see Appendix B). Five models were trained independently, each evaluated on its corresponding test partition, and performance metrics were aggregated across all five partitions.
+To ensure that spectra from the same tissue sample never appear in both training and testing sets, data splitting was performed at the \textit{slide level} using the stratified subject-disjoint five-fold evaluation protocol by Lita et al \cite{apollonov2024raman}. All recordings from a given subject were assigned exclusively to either the training or the test partition within each fold, preventing subject-level data leakage. A strictly non-overlapping partition, where each class was represented across all five folds, was not achievable due to dataset imbalance. Fold assignments were therefore determined manually to ensure that each class contributed no less than 15\% of its samples to each fold's test partition (see Appendix~\ref{app:cv_schema}). Five models were trained independently, each evaluated on its corresponding test partition, and performance metrics were aggregated across all five partitions.
 
 
 \subsection{Data Preprocessing}
@@ -555,7 +555,7 @@ Statistical significance was evaluated using bootstrap $p$-value estimates. Conf
 \section{Results}
 \label{sec:results}
 
-We performed a series of experiments to determine the effects of different design choices on the domain gap metric. Specifically, we tested (a) the reconstruction loss function (MSE, CosineLoss, or a combination of them), (b) the latent space dimension, and (c) the real-to-synthetic data ratio. Detailed results can be found in Appendix A. The main findings are presented below.
+We performed a series of experiments to determine the effects of different design choices on the domain gap metric. Specifically, we tested (a) the reconstruction loss function (MSE, CosineLoss, or a combination of them), (b) the latent space dimension, and (c) the real-to-synthetic data ratio. Detailed results can be found in Appendix~\ref{app:extended_results}. The main findings are presented below.
 
 \subsection{Binary IDH Classification}
 
@@ -603,7 +603,7 @@ Of particular interest is the CbR inference method, which reached an accuracy of
 \label{sec:results_6class}
 
 
-The 6-class glioma sub-grading task proved more challenging than binary IDH-status classification. Under the TR/TR setting, the best-performing models achieved accuracies of approximately $30\%$. Such results pinpoint the difficulty of detecting spectral differences at glioma sub-grades granularity. The outcomes of the 6-class experiments can be found in Appendix A (see Tables \ref{tab:appendix_exp_204}--\ref{tab:appendix_exp_206}).
+The 6-class glioma sub-grading task proved more challenging than binary IDH-status classification. Under the TR/TR setting, the best-performing models achieved accuracies of approximately $30\%$. Such results pinpoint the difficulty of detecting spectral differences at glioma sub-grades granularity. The outcomes of the 6-class experiments can be found in Appendix~\ref{app:extended_results} (see Tables \ref{tab:appendix_exp_204}--\ref{tab:appendix_exp_206}).
 
 Across all classifiers, training exclusively on synthetic spectra resulted in lower performance than the corresponding TR/TR baselines, reiterating the gap between generated and real spectra. The reduction in performance was more pronounced than in the binary setting, suggesting that subtle inter-class biological differences are more difficult to reproduce through synthetic generation in this small cohort setting.
 

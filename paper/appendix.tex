@@ -1,5 +1,189 @@
 \appendix
+\section{Baseline Correction: Method Selection}
+\label{app:baseline_correction}
+\setcounter{table}{0}
+\renewcommand{\thetable}{\Alph{section}.\arabic{table}}
+
+We compared four baseline correctors — airPLS \cite{Zhang2010} at the inherited $\lambda=100$, airPLS with $\lambda$ selected per spectrum by generalized cross-validation (GCV) \cite{CravenWahba1979}, airPLS with $\lambda$ selected per spectrum at the L-curve corner \cite{Hansen1992}, and IARPLS \cite{Ye2020} — using a synthetic generator approximating brain-biopsy Raman spectra, plus a ground-truth-free invariance test on real spectra. Four experiments were run in sequence: (1) fitting $\lambda$ for IARPLS, (2) comparing all four correctors against known ground truth, (3) an invariance test on real spectra, (4) IARPLS against an oracle airPLS $\lambda$.
+
+\subsection*{Synthetic Data Generator}
+Each generated spectrum is $s(\tilde\nu) = p(\tilde\nu) + b(\tilde\nu) + \varepsilon(\tilde\nu)$ on the real wavenumber axis $\tilde\nu$ (1738 points, $50$--$3400\text{ cm}^{-1}$).
+
+\[
+p(\tilde\nu) = \sum_{k=1}^{14} A_k \exp\!\left(-\frac{(\tilde\nu-\mu_k)^2}{2\sigma_k^2}\right), \qquad \sigma_k=\frac{w_k}{2\sqrt{2\ln 2}}
+\]
+\[
+A_k = a\,r_k\,u_k,\quad u_k\sim\mathcal U(0.75,1.25), \qquad w_k = f_k\,v_k,\quad v_k\sim\mathcal U(0.85,1.15), \qquad a=400
+\]
+
+\begin{table}[H]
+\centering
+\small
+\caption{Synthetic band positions $\mu_k$, relative amplitudes $r_k$, and FWHM $f_k$.}
+\label{tab:baseline_generator_bands}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\toprule
+Region & Bands ($\text{cm}^{-1}$) & $r_k$ & $f_k$ ($\text{cm}^{-1}$) \\
+\midrule
+Protein / nucleic acid & 1004, 1032, 1128, 1230, 1260, 1300, 1340 & $0.30$--$1.00$ & $8$--$18$ \\
+Lipid / protein & 1440, 1550, 1660 & $0.35$--$1.20$ & $14$--$20$ \\
+Lipid CH stretch & 2850, 2885, 2930 & $1.45$--$1.80$ & $18$--$22$ \\
+Aromatic & 3060 & $0.30$ & $20$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+With $t=(\tilde\nu-\tilde\nu_{\min})/\mathrm{ptp}(\tilde\nu)\in[0,1]$,
+\[
+g(t) = \exp\!\left(-\frac{(t-c)^2}{2w^2}\right) + 0.6\,e^{-t/\tau} + c_1t+c_2t^2+c_3t^3, \qquad b = \alpha\,\frac{g-\min g}{\max(g-\min g)}
+\]
+with $c\sim\mathcal U(-0.1,0.45)$, $w\sim\mathcal U(0.15,0.45)$, $\tau\sim\mathcal U(0.01,0.04)$, $c_1\sim\mathcal U(-0.3,0.3)$, $c_2\sim\mathcal U(-0.25,0.25)$, $c_3\sim\mathcal U(-0.15,0.15)$, and $\alpha \in \{2,8,25\}\times\mathrm{ptp}(p)$ (low/medium/high fluorescence).
+\[
+\varepsilon(\tilde\nu)\sim\mathcal N(0,\sigma_n^2), \qquad \sigma_n=\frac{\mathrm{ptp}(p)}{\mathrm{SNR}}, \qquad \mathrm{SNR}=235
+\]
+
+\subsection*{Experiment 1: IARPLS $\lambda$ Selection}
+Fingerprint-region ($700$--$1800\text{ cm}^{-1}$) NRMSE against $\lambda$, nominal generator, median of 6 spectra per level.
+
+\begin{table}[H]
+\centering
+\small
+\caption{IARPLS NRMSE vs.\ $\lambda$, nominal generator.}
+\label{tab:baseline_lambda_fit}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\toprule
+$\lambda$ & Low & Medium & High \\
+\midrule
+$10^2$ & $0.0052$ & $0.0052$ & $0.0052$ \\
+$10^3$ & $0.0049$ & $0.0049$ & $0.0049$ \\
+$10^4$ & $0.0046$ & $0.0046$ & $0.0046$ \\
+$10^5$ & $0.0046$ & $0.0047$ & $0.0269$ \\
+$10^6$ & $0.0050$ & $0.1791$ & $2.7035$ \\
+$10^7$ & $0.0495$ & $2.7456$ & $3.0016$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+Fingerprint NRMSE vs.\ $\lambda$ across three synthetic baseline curvature families (smooth, structured, sharp), median over lineshape and noise conditions, $n=12$ per cell.
+
+\begin{table}[H]
+\centering
+\small
+\caption{IARPLS NRMSE vs.\ $\lambda$, by baseline curvature family.}
+\label{tab:baseline_curvature_family}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\toprule
+$\lambda$ & Smooth & Structured & Sharp \\
+\midrule
+$10^2$ & $0.0169$ & $0.0113$ & $0.0309$ \\
+$3.2\times10^2$ & $0.0121$ & $0.0108$ & $0.0290$ \\
+$10^3$ & $0.0115$ & $0.0127$ & $0.0400$ \\
+$3.2\times10^3$ & $0.0111$ & $0.0114$ & $0.4942$ \\
+$10^4$ & $0.0107$ & $0.0122$ & $0.7950$ \\
+$10^5$ & $0.0119$ & $0.2313$ & $1.2984$ \\
+$10^6$ & $0.8861$ & $1.7073$ & $2.4629$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Width of the near-optimal $\lambda$ window (within 25\% of the family's minimum NRMSE).}
+\label{tab:baseline_curvature_window}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
+\toprule
+Family & Best $\lambda$ & Best NRMSE & Window & Decades \\
+\midrule
+Smooth & $10^4$ & $0.0107$ & $3.2\times10^2$--$10^5$ & $2.5$ \\
+Structured & $3.2\times10^2$ & $0.0108$ & $10^2$--$3.2\times10^4$ & $2.5$ \\
+Sharp & $3.2\times10^2$ & $0.0290$ & $10^2$--$3.2\times10^2$ & $0.5$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\subsection*{Experiment 2: Comparison Against Ground Truth}
+Synthetic spectra, $n=40$ per fluorescence level, $\lambda=10^4$ for IARPLS.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Recovered/true peak height (median over fluorescence levels).}
+\label{tab:baseline_peak_fidelity}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
+\toprule
+Method & 1004 & 1440 & 1660 & 2930 \\
+\midrule
+airPLS $\lambda=100$ & $0.900$ & $0.691$ & $0.574$ & $0.584$ \\
+airPLS+GCV & $0.126$ & $0.025$ & $0.017$ & $0.011$ \\
+airPLS+L-curve & $1.002$ & $0.997$ & $0.987$ & $0.927$ \\
+IARPLS & $1.003$ & $1.003$ & $1.004$ & $1.003$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Fingerprint-region NRMSE by fluorescence level.}
+\label{tab:baseline_nrmse_level}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\toprule
+Method & Low & Medium & High \\
+\midrule
+airPLS $\lambda=100$ & $0.0267$ & $0.0512$ & $0.0967$ \\
+airPLS+GCV & $0.0476$ & $0.1178$ & $0.1134$ \\
+airPLS+L-curve & $0.0110$ & $0.0264$ & $0.0245$ \\
+IARPLS & $0.0048$ & $0.0047$ & $0.0047$ \\
+\bottomrule
+\end{tabular*}
+\note{GCV pinned $\lambda$ at the grid floor in $83.3\%$ of spectra; L-curve pinned in $0\%$.}
+\end{table}
+
+\subsection*{Experiment 3: Invariance on Real Spectra}
+Peak-height drift on real spectra when synthetic fluorescence is added ($0$ = invariant); no ground truth required.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Peak-height drift under added fluorescence, real spectra.}
+\label{tab:baseline_invariance}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\toprule
+Method & Low & Medium & High \\
+\midrule
+airPLS+GCV & $0.473$ & $0.546$ & $0.848$ \\
+airPLS+L-curve & $0.467$ & $0.545$ & $0.632$ \\
+airPLS $\lambda=100$ & $0.161$ & $0.274$ & $0.553$ \\
+IARPLS & $0.0004$ & $0.0014$ & $0.0030$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\subsection*{Experiment 4: IARPLS vs.\ Oracle airPLS $\lambda$}
+Per-level airPLS $\lambda$ chosen against known ground truth (oracle); fingerprint NRMSE, median of 5 spectra per level.
+
+\begin{table}[H]
+\centering
+\small
+\caption{IARPLS vs.\ oracle airPLS $\lambda$.}
+\label{tab:baseline_oracle}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Fluorescence & airPLS $\lambda=100$ & Oracle $\lambda$ & Oracle NRMSE & IARPLS & Ratio \\
+\midrule
+Low & $0.0219$ & $2.15\times10^4$ & $0.0069$ & $0.0048$ & $1.5\times$ \\
+Medium & $0.0430$ & $4.64\times10^4$ & $0.0120$ & $0.0048$ & $2.5\times$ \\
+High & $0.0883$ & $2.15\times10^4$ & $0.0141$ & $0.0049$ & $2.9\times$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+IARPLS ($\lambda=10^4$) was adopted as the production baseline corrector. The near-optimal $\lambda$ window narrows from $2.5$ to $0.5$ decades as baseline curvature increases (Table \ref{tab:baseline_curvature_window}); curvature estimated from real spectra exceeds all three synthetic families tested, so $\lambda=10^4$ is retained as a documented default rather than a validated constant. Kizilov et al.\ \cite{Kizilov2026} report a similar $\lambda$-sensitivity for IARPLS on non-biological samples.
+
+\newpage
 \section{Extended Experiment Results}
+\label{app:extended_results}
 \setcounter{table}{0}
 \renewcommand{\thetable}{\Alph{section}.\arabic{table}}
 

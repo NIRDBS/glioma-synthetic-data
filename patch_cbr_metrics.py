@@ -47,10 +47,12 @@ EXPERIMENTS = ['exp_201', 'exp_202', 'exp_203', 'exp_204', 'exp_205', 'exp_206',
 
 RESULTS = PROJECT_ROOT / 'results'
 # Metric keys copied from the CbR full_metrics dict into the top-level cbr dict
-# (flat keys are what the appendix generator reads).
-FLAT_METRIC_KEYS = ['f1_macro', 'precision_macro', 'recall_macro',
-                    'balanced_accuracy', 'kappa']
-ACC_TOL = 0.02  # slide-acc sanity-check tolerance (resampling-free, should be tiny)
+# (flat keys are what the appendix generator reads). Bag-level (bag_*) since
+# Stage 2 -- see docs/MIL_REFRAME_PLAN.md §7; _slide_level_metrics no longer
+# returns bare f1_macro/precision_macro/recall_macro/balanced_accuracy/kappa.
+FLAT_METRIC_KEYS = ['bag_f1_macro', 'bag_precision_macro', 'bag_recall_macro',
+                    'bag_balanced_accuracy', 'bag_kappa']
+ACC_TOL = 0.02  # bag-acc sanity-check tolerance (resampling-free, should be tiny)
 
 
 def _latest_json(exp, candidate):
@@ -85,7 +87,7 @@ def main():
     from src.notebooks.experiment_utils import setup_experiment
     from pipeline.evaluation_stage import _build_fold_val_sets, _cbr_predictions
     from src.utils.statistical_evaluation import (
-        stratified_slide_accuracy, compute_full_metrics,
+        within_bag_instance_recall, compute_full_metrics,
     )
 
     # Cache: CVAE weights dir -> (full_metrics, recomputed_slide_acc). Shared
@@ -113,8 +115,8 @@ def main():
             if not cbr:
                 summary.append(f'  {exp}/{candidate}: no cbr block')
                 continue
-            if 'f1_macro' in cbr and not args.dry_run:
-                summary.append(f'  {exp}/{candidate}: already patched (f1={cbr["f1_macro"]:.3f})')
+            if 'bag_f1_macro' in cbr and not args.dry_run:
+                summary.append(f'  {exp}/{candidate}: already patched (bag_f1={cbr["bag_f1_macro"]:.3f})')
                 continue
 
             weights_dir = payload.get('cvae_weights_dir')
@@ -137,7 +139,10 @@ def main():
                     continue
                 preds, y_true, slide_ids = out
                 full_metrics = compute_full_metrics(y_true, preds, slide_ids=slide_ids)
-                recomputed_acc = stratified_slide_accuracy(preds, y_true, slide_ids)
+                # Sanity-check target is within_bag_instance_recall (the old
+                # 'cbr_accuracy' name's actual meaning, unchanged by Stage 2 --
+                # see docs/MIL_REFRAME_PLAN.md §7), not the new bag_accuracy.
+                recomputed_acc = within_bag_instance_recall(preds, y_true, slide_ids)
                 cache[weights_dir] = (full_metrics, recomputed_acc)
 
             stored_acc = cbr.get('cbr_accuracy')

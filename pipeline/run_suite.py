@@ -31,12 +31,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_STAGES     = ['trtr', 'cvae', 'tstr', 'tsrtr', 'stats_eval']
+DEFAULT_STAGES     = ['trtr', 'cvae', 'tstr', 'tsrtr', 'stats_eval', 'mil_eval']
 CLASSIFIER_STAGES  = {'trtr', 'tstr', 'tsrtr'}
 STAGE_ALIASES = {
     'preprocess': 'preprocessing', 'preprocessing': 'preprocessing',
     'trtr': 'trtr', 'cvae': 'cvae', 'tstr': 'tstr', 'tsrtr': 'tsrtr',
     'eval': 'stats_eval', 'evaluation': 'stats_eval', 'stats_eval': 'stats_eval',
+    'mil_eval': 'mil_eval', 'mil': 'mil_eval', 'tier0': 'mil_eval',
 }
 
 
@@ -77,6 +78,13 @@ def _stage_outputs_exist(stage, config):
         if stage == 'stats_eval':
             d = Path(paths['statistical_dir'])
             return d.exists() and any(d.glob('statistical_evaluation_*.json'))
+        if stage == 'mil_eval':
+            # Distinct filename prefix (mil_tier0_*) from stats_eval's
+            # (statistical_evaluation_*) in the same statistical_dir -- each
+            # stage's skip-check globs only its own prefix, so neither fires
+            # spuriously off the other's output.
+            d = Path(paths['statistical_dir'])
+            return d.exists() and any(d.glob('mil_tier0_*.json'))
     except Exception:
         return False
     return False
@@ -134,6 +142,28 @@ def _run_stage(stage, config, output_dir, cvae_backend, epochs):
             )
         if not results:
             print("  [stats_eval] No candidate model dirs found — skipping.")
+        return results
+    if stage == 'mil_eval':
+        from pipeline.mil_eval_stage import mil_eval_stage
+
+        paths = config['paths']
+        n_folds = _n_folds(config)
+        fold_names = [f"fold_{i}" for i in range(n_folds)]
+
+        def _has_models(d):
+            if not d:
+                return False
+            p = Path(d)
+            return p.exists() and any((p / f"apollo_{fn}.joblib").exists() for fn in fold_names)
+
+        results = {}
+        for label, key in (('TRTR', 'models_baseline_dir'), ('TSTR', 'models_tstr_dir'),
+                           ('TSRTR', 'models_tsrtr_dir')):
+            d = paths.get(key) or (paths.get('models_trtr_dir') if label == 'TRTR' else None)
+            if _has_models(d):
+                results[label] = mil_eval_stage(config, output_dir, regimen_dir=d, regimen_label=label)
+        if not results:
+            print("  [mil_eval] No regimen model dirs found — skipping.")
         return results
     raise ValueError(f"Unknown stage: {stage}")
 

@@ -24,8 +24,9 @@ import pandas as pd
 
 from src.utils.statistical_evaluation import (
     find_model_path, load_and_predict, load_and_predict_proba,
-    stratified_slide_accuracy, stratified_slide_bootstrap,
+    within_bag_instance_recall, stratified_slide_bootstrap,
     stratified_slide_bootstrap_cbr,
+    bag_decisions, bag_level_bootstrap, bag_level_bootstrap_cbr,
     compute_full_metrics, summarize_bootstrap_diffs, build_summary_rows,
 )
 
@@ -149,26 +150,46 @@ def _cbr_predictions(folds, config, n_features, cvae_weights_dir):
 def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
     """
     Classification by Reconstruction (CbR): compute pooled predictions and return
-    a result dict with slide-level accuracy + bootstrap CI, or None if weights are
+    a result dict with bag-level accuracy + bootstrap CI (primary), plus the
+    within-bag instance diagnostic under its own name, or None if weights are
     missing.
     """
     out = _cbr_predictions(folds, config, n_features, cvae_weights_dir)
     if out is None:
         return None
     preds, y_true, slide_ids = out
-    acc = stratified_slide_accuracy(preds, y_true, slide_ids)
-    boot = stratified_slide_bootstrap_cbr(preds, y_true, slide_ids, n_boot=n_boot, seed=seed)
     full = compute_full_metrics(y_true, preds, slide_ids=slide_ids)
+
+    bag_ids, bag_pred, bag_true = bag_decisions(preds, slide_ids, y_true)
+    bag_acc = full['bag_accuracy']
+    bag_boot = bag_level_bootstrap_cbr(bag_pred, bag_true, n_boot=n_boot, seed=seed)
+
+    wbir = within_bag_instance_recall(preds, y_true, slide_ids)
+    wbir_boot = stratified_slide_bootstrap_cbr(preds, y_true, slide_ids, n_boot=n_boot, seed=seed)
+
     result = {
         'model': 'Classification_by_Reconstruction',
-        'cbr_accuracy': acc,
-        'cbr_boot_mean': float(np.mean(boot)),
-        'cbr_ci_lo': float(np.percentile(boot, 2.5)),
-        'cbr_ci_hi': float(np.percentile(boot, 97.5)),
+        'n_bags': len(bag_ids),
+        'cbr_bag_accuracy': bag_acc,
+        'cbr_bag_boot_mean': float(np.mean(bag_boot)),
+        'cbr_bag_ci_lo': float(np.percentile(bag_boot, 2.5)),
+        'cbr_bag_ci_hi': float(np.percentile(bag_boot, 97.5)),
+        # Diagnostic (demoted): kept under the old key names for continuity,
+        # but this is within-bag instance recall, NOT a bag accuracy.
+        'cbr_accuracy': wbir,
+        'cbr_boot_mean': float(np.mean(wbir_boot)),
+        'cbr_ci_lo': float(np.percentile(wbir_boot, 2.5)),
+        'cbr_ci_hi': float(np.percentile(wbir_boot, 97.5)),
         'full_metrics': full,
     }
-    # Flat metric keys read by paper/gen_appendix_tables.py (CbR row).
-    for k in ('f1_macro', 'precision_macro', 'recall_macro', 'balanced_accuracy', 'kappa'):
+    # Flat metric keys read by paper/gen_appendix_tables.py (CbR row). _slide_
+    # level_metrics no longer returns bare accuracy/f1_macro/precision_macro/
+    # recall_macro/balanced_accuracy/kappa at all (Stage 2 retired the
+    # degenerate within-bag-instance versions of these); only the bag_* and
+    # within_bag_instance_recall/f1_weighted names exist now.
+    for k in ('bag_f1_macro', 'bag_precision_macro', 'bag_recall_macro',
+             'bag_balanced_accuracy', 'bag_kappa', 'within_bag_instance_recall',
+             'f1_weighted'):
         if k in full:
             result[k] = full[k]
     return result
@@ -216,36 +237,59 @@ def evaluation_stage(config, output_dir=None, baseline_dir=None, candidate_dir=N
         except Exception:
             proba_A = proba_B = None
 
-        acc_A = stratified_slide_accuracy(preds_A, y_true, slide_ids)
-        acc_B = stratified_slide_accuracy(preds_B, y_true, slide_ids)
-
-        _, _, diffs = stratified_slide_bootstrap(
-            preds_A, preds_B, y_true, slide_ids, n_boot=n_boot, seed=seed)
-
-        boot = summarize_bootstrap_diffs(diffs)
+        # Full metric sets -- _slide_level_metrics computes BOTH the genuine
+        # bag-level metrics (bag_accuracy etc., one majority-vote decision per
+        # bag) and the within-bag instance diagnostics in one pass, already
+        # correctly merging duplicated bags (docs/MIL_REFRAME_PLAN.md §7.1) via
+        # bag_decisions's own pooling.
         full_A = compute_full_metrics(y_true, preds_A, proba_A, slide_ids=slide_ids)
         full_B = compute_full_metrics(y_true, preds_B, proba_B, slide_ids=slide_ids)
 
+        # Primary inference: bag-level accuracy + bootstrap CI over bag decisions.
+        bag_ids, bag_pred_A, bag_true = bag_decisions(preds_A, slide_ids, y_true)
+        _, bag_pred_B = bag_decisions(preds_B, slide_ids)
+        bag_acc_A, bag_acc_B = full_A['bag_accuracy'], full_B['bag_accuracy']
+        _, _, bag_diffs = bag_level_bootstrap(
+            bag_pred_A, bag_pred_B, bag_true, n_boot=n_boot, seed=seed)
+        bag_boot = summarize_bootstrap_diffs(bag_diffs)
+
+        # Diagnostic (demoted): within-bag instance recall + its own CI, kept
+        # for continuity with pre-reframe reporting -- not a bag decision.
+        wbir_A = within_bag_instance_recall(preds_A, y_true, slide_ids)
+        wbir_B = within_bag_instance_recall(preds_B, y_true, slide_ids)
+        _, _, wbir_diffs = stratified_slide_bootstrap(
+            preds_A, preds_B, y_true, slide_ids, n_boot=n_boot, seed=seed)
+        wbir_boot = summarize_bootstrap_diffs(wbir_diffs)
+
         row = {
             'model': label,
-            # Slide-level bootstrap comparison (primary inference)
-            f'slide_acc_{baseline_label}': acc_A,
-            f'slide_acc_{candidate_label}': acc_B,
-            'delta': acc_B - acc_A,
-            **boot,
-            # Full descriptive metrics for both regimens (macro F1/precision/recall
-            # are slide-level; accuracy/kappa/auroc remain spectrum-level)
+            'n_bags': len(bag_ids),
+            # Bag-level bootstrap comparison (primary inference)
+            f'bag_acc_{baseline_label}': bag_acc_A,
+            f'bag_acc_{candidate_label}': bag_acc_B,
+            'bag_delta': bag_acc_B - bag_acc_A,
+            **{f'bag_{k}': v for k, v in bag_boot.items()},
+            # Within-bag instance recall (diagnostic; NOT a bag accuracy)
+            f'within_bag_instance_recall_{baseline_label}': wbir_A,
+            f'within_bag_instance_recall_{candidate_label}': wbir_B,
+            'within_bag_instance_recall_delta': wbir_B - wbir_A,
+            **{f'wbir_{k}': v for k, v in wbir_boot.items()},
+            # Full descriptive metrics for both regimens (bag_* keys are
+            # bag-level; the rest are within-bag instance diagnostics)
             f'full_metrics_{baseline_label}': full_A,
             f'full_metrics_{candidate_label}': full_B,
         }
         results.append(row)
-        print(f"  {label:>12}: {baseline_label}={acc_A:.4f}  {candidate_label}={acc_B:.4f}  "
-              f"delta={row['delta']:+.4f}  95%CI[{boot['ci_diff_lo']:+.4f},{boot['ci_diff_hi']:+.4f}]  "
-              f"p={boot['p_bootstrap']:.4f}")
-        print(f"  {' ':>12}  F1_macro: {baseline_label}={full_A['f1_macro']:.4f}  "
-              f"{candidate_label}={full_B['f1_macro']:.4f}  "
-              f"prec: {baseline_label}={full_A['precision_macro']:.4f}  "
-              f"rec: {baseline_label}={full_A['recall_macro']:.4f}")
+        print(f"  {label:>12}: BAG  {baseline_label}={bag_acc_A:.4f}  {candidate_label}={bag_acc_B:.4f}  "
+              f"delta={row['bag_delta']:+.4f}  "
+              f"95%CI[{bag_boot['ci_diff_lo']:+.4f},{bag_boot['ci_diff_hi']:+.4f}]  "
+              f"p={bag_boot['p_bootstrap']:.4f}  (n={len(bag_ids)} bags)")
+        print(f"  {' ':>12}  [diagnostic] within_bag_instance_recall: "
+              f"{baseline_label}={wbir_A:.4f}  {candidate_label}={wbir_B:.4f}")
+        print(f"  {' ':>12}  bag_F1_macro: {baseline_label}={full_A['bag_f1_macro']:.4f}  "
+              f"{candidate_label}={full_B['bag_f1_macro']:.4f}  "
+              f"bag_prec: {baseline_label}={full_A['bag_precision_macro']:.4f}  "
+              f"bag_rec: {baseline_label}={full_A['bag_recall_macro']:.4f}")
 
     # Classification by Reconstruction (CVAE encoder/decoder MSE matching)
     cbr_result = None
@@ -254,11 +298,15 @@ def evaluation_stage(config, output_dir=None, baseline_dir=None, candidate_dir=N
         print(f"\n  Classification by Reconstruction (CVAE weights: {cvae_weights_dir})")
         cbr_result = _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed)
         if cbr_result:
-            print(f"  {'CbR':>12}: slide_acc={cbr_result['cbr_accuracy']:.4f}  "
-                  f"95%CI[{cbr_result['cbr_ci_lo']:.4f},{cbr_result['cbr_ci_hi']:.4f}]  "
-                  f"F1={cbr_result.get('f1_macro', float('nan')):.4f}  "
-                  f"prec={cbr_result.get('precision_macro', float('nan')):.4f}  "
-                  f"rec={cbr_result.get('recall_macro', float('nan')):.4f}")
+            print(f"  {'CbR':>12}: BAG bag_acc={cbr_result['cbr_bag_accuracy']:.4f}  "
+                  f"95%CI[{cbr_result['cbr_bag_ci_lo']:.4f},{cbr_result['cbr_bag_ci_hi']:.4f}]  "
+                  f"(n={cbr_result['n_bags']} bags)  "
+                  f"bag_F1={cbr_result.get('bag_f1_macro', float('nan')):.4f}  "
+                  f"bag_prec={cbr_result.get('bag_precision_macro', float('nan')):.4f}  "
+                  f"bag_rec={cbr_result.get('bag_recall_macro', float('nan')):.4f}")
+            print(f"  {' ':>12}  [diagnostic] within_bag_instance_recall="
+                  f"{cbr_result['cbr_accuracy']:.4f}  "
+                  f"95%CI[{cbr_result['cbr_ci_lo']:.4f},{cbr_result['cbr_ci_hi']:.4f}]")
             results.append(cbr_result)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

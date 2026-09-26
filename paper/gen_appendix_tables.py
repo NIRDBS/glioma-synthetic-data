@@ -1,17 +1,39 @@
-"""
+r"""
 Generate the extended per-experiment results tables for paper/appendix.tex.
 
 Reads the latest statistical_eval JSONs (schema:
 statistical_evaluation_TRTR_vs_{TSTR,TSRTR}_<ts>.json) for each experiment and
-emits one LaTeX table per experiment.
+emits one LaTeX table per experiment, written to
+paper/appendix_extended_results.tex, which paper/appendix.tex \input{}s in
+place -- this script does NOT own the \section{} placement or the hand-written
+appendices (A: baseline correction, C: CV schema) around it, only the
+generated middle section, and it always writes to the same file so a re-run
+updates the one file the build actually uses (previously this wrote to a
+disconnected "appendix (5).tex" that \input{appendix} never read -- a stale
+generator whose output was never wired into the document).
 
 Fixed columns: Model | Regimen | Accuracy | Delta | 95% CI
 Configurable extra columns: defined by METRIC_COLUMNS below.
 
+Bag-level only (docs/MIL_REFRAME_PLAN.md §7): every column in these tables is
+now a genuine per-bag decision statistic -- one majority-vote decision per
+bag, standard metrics over the n_bags decisions, single unit of analysis
+throughout a row. This replaces the pre-Stage-2 tables, which mixed two units
+in one row: bag-level sensitivity/specificity for multiclass experiments were
+derived from the slide-*count* confusion matrix while the neighbouring F1
+column was a within-bag instance average -- gen_appendix_tables.py:53-81's old
+_derive_sens_spec (docs/MIL_REFRAME_PLAN.md §7's third bug). There is nothing
+left to derive: bag_sensitivity/bag_specificity are computed directly (binary)
+or via the (now-always-bag-level) confusion matrix (multiclass), by the same
+function either way.
+
 To change the columns re-run the script with a different METRIC_COLUMNS list:
     python paper/gen_appendix_tables.py
 
-Re-run this after stats_eval finishes to refresh the tables.
+Re-run this after stats_eval (and mil_eval, for the Tier-0 comparison) finish
+to refresh the tables. Running it against stale, pre-Stage-2 JSONs is safe --
+they carry no bag_* keys, so every cell reads NA ('--') rather than a wrong
+number; this is what the "unavailable" summary line at the end reports.
 """
 import json
 import glob
@@ -22,7 +44,7 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS = os.path.join(ROOT, 'results')
 REGISTRY = os.path.join(ROOT, 'configs', 'EXPERIMENT_REGISTRY.json')
-OUT = os.path.join(ROOT, 'paper', 'appendix (5).tex')
+OUT = os.path.join(ROOT, 'paper', 'appendix_extended_results.tex')
 
 # Experiments to include.
 EXPERIMENTS = ['exp_201', 'exp_202', 'exp_203', 'exp_204', 'exp_205', 'exp_206',
@@ -33,30 +55,34 @@ MODEL_LABEL = {'Apollo': 'RF + SVM', 'RF_Standard': 'RF',
                'XGBoost': 'XGBoost', '1D_CNN': '1D-CNN'}
 
 # ── Configurable metric columns ───────────────────────────────────────────────
-# Each entry is (json_key, latex_header).
-# json_key is looked up in full_metrics_<label> for the 4 models and at the
-# top level of the cbr dict for the CbR row.
-# 'accuracy' is already the fixed primary column; don't repeat it here.
-# Available keys (all slide-level): accuracy, balanced_accuracy, f1_macro,
-#   f1_weighted, precision_macro, recall_macro, kappa, sensitivity,
-#   specificity, auroc, auprc, confusion_matrix (not suitable as a column).
+# Each entry is (json_key, latex_header). json_key is looked up in
+# full_metrics_<label> for the 4 models and at the top level of the cbr dict
+# for the CbR row. 'bag_accuracy' is already the fixed primary column; don't
+# repeat it here. Available bag-level keys: bag_accuracy, bag_balanced_accuracy,
+# bag_f1_macro, bag_precision_macro, bag_recall_macro, bag_kappa,
+# bag_sensitivity, bag_specificity (binary only), bag_auroc, bag_auprc,
+# confusion_matrix (not suitable as a column, always bag-level now).
 METRIC_COLUMNS = [
-    ('f1_macro',    r'Macro F1'),
-    ('sensitivity', r'Sensitivity'),
-    ('specificity', r'Specificity'),
+    ('bag_f1_macro',    r'Macro F1'),
+    ('bag_sensitivity', r'Sensitivity'),
+    ('bag_specificity', r'Specificity'),
 ]
 # ─────────────────────────────────────────────────────────────────────────────
 
 NA = '--'
 
 
-def _derive_sens_spec(fm):
-    """Derive sensitivity/specificity from the slide-level confusion matrix.
-
-    Used for multi-class experiments where these are not written directly.
-    For binary experiments the explicit values take precedence.
-    sensitivity_c = recall_c = CM[c,c] / row_sum[c]  → macro mean = recall_macro
-    specificity_c = TN_c / (TN_c + FP_c) via one-vs-rest decomposition of CM
+def _derive_bag_sens_spec(fm):
+    """Derive bag_sensitivity/bag_specificity from the bag-level confusion
+    matrix, for multiclass experiments where _slide_level_metrics only writes
+    them directly for binary tasks. Safe post-Stage-2 specifically because
+    ``confusion_matrix`` is unconditionally bag-level now (majority-vote
+    decisions, n_bags total) -- there is no other unit of analysis in this
+    dict to accidentally mix it with.
+        bag_sensitivity_c = bag_recall_c = CM[c,c] / row_sum[c] -> macro mean
+            equals bag_recall_macro, already computed directly; this fills in
+            the per-class breakdown that's otherwise binary-only.
+        bag_specificity_c = TN_c / (TN_c + FP_c), one-vs-rest decomposition.
     """
     cm = fm.get('confusion_matrix')
     if not cm:
@@ -75,10 +101,10 @@ def _derive_sens_spec(fm):
         fp = col_sum - tp
         if (tn + fp) > 0:
             spec_list.append(tn / (tn + fp))
-    if fm.get('sensitivity') is None and sens_list:
-        fm['sensitivity'] = float(np.mean(sens_list))
-    if fm.get('specificity') is None and spec_list:
-        fm['specificity'] = float(np.mean(spec_list))
+    if fm.get('bag_sensitivity') is None and sens_list:
+        fm['bag_sensitivity'] = float(np.mean(sens_list))
+    if fm.get('bag_specificity') is None and spec_list:
+        fm['bag_specificity'] = float(np.mean(spec_list))
 
 
 def latest(exp, candidate):
@@ -106,30 +132,30 @@ def fci(lo, hi):
 
 
 def acc_of(r, label):
-    """Slide-level accuracy under `label`, handling both schemas."""
+    """Bag-level accuracy under `label`."""
     if r is None:
         return None
-    v = r.get(f'slide_acc_{label}')
-    return v if v is not None else r.get(f'acc_{label}')
+    return r.get(f'bag_acc_{label}')
 
 
 def metrics_of(r, label):
     """Return list of formatted metric values from full_metrics_<label>."""
     fm = dict((r or {}).get(f'full_metrics_{label}') or {})
-    _derive_sens_spec(fm)
+    _derive_bag_sens_spec(fm)
     return [fnum(fm.get(key)) for key, _ in METRIC_COLUMNS]
 
 
 def cbr_metrics_of(cbr):
     """Return list of formatted metric values from the flat cbr dict.
 
-    Sensitivity/specificity are derived from full_metrics.confusion_matrix
-    when not present as flat keys (always the case for current JSONs).
+    bag_sensitivity/bag_specificity are derived from
+    full_metrics.confusion_matrix when not present as flat keys (always the
+    case for current JSONs).
     """
     fm = dict((cbr.get('full_metrics') or {}))
-    _derive_sens_spec(fm)
+    _derive_bag_sens_spec(fm)
     flat = dict(cbr)
-    for key in ('sensitivity', 'specificity'):
+    for key in ('bag_sensitivity', 'bag_specificity'):
         if flat.get(key) is None and fm.get(key) is not None:
             flat[key] = fm[key]
     return [fnum(flat.get(key)) for key, _ in METRIC_COLUMNS]
@@ -149,7 +175,7 @@ def rows_for_model(m, tstr_res, tsrtr_res):
     rr = find(tsrtr_res, m)
 
     def star(r):
-        return '*' if (r and r.get('significant_95')) else ''
+        return '*' if (r and r.get('bag_significant_95')) else ''
 
     n_extra = len(METRIC_COLUMNS)
     blank = [NA] * n_extra
@@ -165,8 +191,8 @@ def rows_for_model(m, tstr_res, tsrtr_res):
     # TS/TR
     if rt:
         out.append(('TS/TR', fnum(acc_of(rt, 'TSTR')),
-                    fnum(rt.get('delta'), signed=True) + star(rt),
-                    fci(rt.get('ci_diff_lo'), rt.get('ci_diff_hi')),
+                    fnum(rt.get('bag_delta'), signed=True) + star(rt),
+                    fci(rt.get('bag_ci_diff_lo'), rt.get('bag_ci_diff_hi')),
                     *metrics_of(rt, 'TSTR')))
     else:
         out.append(('TS/TR', NA, NA, NA, *blank))
@@ -174,8 +200,8 @@ def rows_for_model(m, tstr_res, tsrtr_res):
     # TSR/TR
     if rr:
         out.append(('TSR/TR', fnum(acc_of(rr, 'TSRTR')),
-                    fnum(rr.get('delta'), signed=True) + star(rr),
-                    fci(rr.get('ci_diff_lo'), rr.get('ci_diff_hi')),
+                    fnum(rr.get('bag_delta'), signed=True) + star(rr),
+                    fci(rr.get('bag_ci_diff_lo'), rr.get('bag_ci_diff_hi')),
                     *metrics_of(rr, 'TSRTR')))
     else:
         out.append(('TSR/TR', NA, NA, NA, *blank))
@@ -192,8 +218,8 @@ def cbr_row(tstr_res, tsrtr_res):
     blank = [NA] * len(METRIC_COLUMNS)
     if not cbr:
         return ('CbR', NA, NA, NA, *blank)
-    return ('CbR', fnum(cbr.get('cbr_accuracy')), NA,
-            fci(cbr.get('cbr_ci_lo'), cbr.get('cbr_ci_hi')),
+    return ('CbR', fnum(cbr.get('cbr_bag_accuracy')), NA,
+            fci(cbr.get('cbr_bag_ci_lo'), cbr.get('cbr_bag_ci_hi')),
             *cbr_metrics_of(cbr))
 
 
@@ -235,11 +261,14 @@ def latex_table(exp, desc, tstr_res, tsrtr_res):
     metric_names = ', '.join(h for _, h in METRIC_COLUMNS)
     L.append(r'\note{Regimens: TR/TR (real-only baseline), TS/TR (synthetic-only), '
              r'TSR/TR (synthetic + real), CbR (Classification by Reconstruction, '
-             r'model-independent). $\Delta$ and 95\% CI are the slide-level bootstrap '
-             r'difference vs.\ TR/TR; (*) marks a 95\% CI excluding zero. '
-             rf'{metric_names} are slide-level (per-(class, slide) stratified mean, '
-             r'matching the bootstrap). '
-             r'The CbR row reports its own accuracy 95\% CI '
+             r'model-independent). Accuracy and all extra columns are bag-level: '
+             r'one majority-vote decision per bag (biopsy slide), standard '
+             r'metrics over the $n$ bag decisions -- see Appendix~\ref{app:baseline_correction}'
+             r"'s sibling methods discussion for the full derivation. "
+             r'$\Delta$ and 95\% CI are the bag-level bootstrap '
+             r'difference vs.\ TR/TR (class-stratified resampling of bag decisions, '
+             r'1000 iterations); (*) marks a 95\% CI excluding zero. '
+             r'The CbR row reports its own bag-level accuracy 95\% CI '
              r'(not a difference vs.\ TR/TR), so its $\Delta$ column is left blank.}')
     L.append(r'\end{table}')
     L.append('')
@@ -249,13 +278,19 @@ def latex_table(exp, desc, tstr_res, tsrtr_res):
 def main():
     reg = json.load(open(REGISTRY))
     metric_names = ', '.join(h for _, h in METRIC_COLUMNS)
-    parts = [r'\appendix', r'\section{Extended Experiment Results}', '',
+    parts = [r'\section{Extended Experiment Results}',
+             r'\label{app:extended_results}',
+             r'\setcounter{table}{0}',
+             r'\renewcommand{\thetable}{\Alph{section}.\arabic{table}}', '',
              r'This appendix reports the per-experiment, per-model results in full. '
-             r'Each table lists the slide-level balanced accuracy under each training '
-             r'regimen, the bootstrap difference $\Delta$ relative to the TR/TR baseline '
-             rf'with its 95\% confidence interval, and the slide-level {metric_names}. '
+             r'Each table lists the bag-level accuracy under each training '
+             r'regimen -- one majority-vote decision per bag (biopsy slide), '
+             r'standard metrics over the resulting bag decisions -- the '
+             r'bootstrap difference $\Delta$ relative to the TR/TR baseline '
+             rf'with its 95\% confidence interval, and the bag-level {metric_names}. '
              r'Unavailable entries are marked with a dash.', '']
     summary = []
+    n_unavailable = 0
     for exp in EXPERIMENTS:
         tstr = latest(exp, 'TSTR')
         tsrtr = latest(exp, 'TSRTR')
@@ -264,12 +299,22 @@ def main():
             continue
         desc = reg.get(exp, {}).get('description', '')
         parts.append(latex_table(exp, desc, tstr, tsrtr))
+        has_bag = any(
+            (res and any('bag_acc_TRTR' in r or 'cbr_bag_accuracy' in r for r in res['results']))
+            for res in (tstr, tsrtr) if res
+        )
+        if not has_bag:
+            n_unavailable += 1
         summary.append(f'  {exp}: TSTR={"y" if tstr else "-"} TSRTR={"y" if tsrtr else "-"} '
-                       f'CbR={"y" if (tsrtr and tsrtr.get("cbr")) or (tstr and tstr.get("cbr")) else "-"}')
+                       f'CbR={"y" if (tsrtr and tsrtr.get("cbr")) or (tstr and tstr.get("cbr")) else "-"} '
+                       f'{"[STALE: pre-Stage-2 JSON, bag_* absent -> all dashes]" if not has_bag else ""}')
     with open(OUT, 'w', encoding='utf-8') as f:
         f.write('\n'.join(parts))
     print(f'Wrote {OUT}  [{len(METRIC_COLUMNS)} extra column(s): {metric_names}]')
     print('\n'.join(summary))
+    if n_unavailable:
+        print(f'\n{n_unavailable} experiment(s) have only pre-Stage-2 JSONs -- re-run '
+              f'stats_eval (pipeline/run_suite.py) to populate bag-level numbers.')
 
 
 if __name__ == '__main__':

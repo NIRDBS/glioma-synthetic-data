@@ -158,65 +158,141 @@ def get_fold_specific_predictions(preds_by_fold, patient_ids, patient_to_fold):
     return preds
 
 
-def stratified_slide_accuracy(preds, y_true, slide_ids):
+def within_bag_instance_recall(preds, y_true, bag_ids):
     """
-    Compute accuracy as the mean of per-(slide, class) accuracies — exactly the
-    statistic that stratified_slide_bootstrap accumulates in each iteration.
+    Mean of per-(bag, class) instance accuracies — E_bag[fraction of a bag's
+    instances predicted as the bag's own label]. Exactly the statistic
+    ``within_bag_instance_recall_bootstrap`` accumulates each iteration.
 
-    Using this for the observed point estimate ensures the reported delta and its
-    bootstrap CI are derived from the same statistic, so the CI is centred around
-    the delta.  Slides contribute equally (not weighted by spectrum count), and
-    classes contribute equally (macro-averaged over classes), matching the
-    clinical motivation of treating each patient slide as one observation.
+    **This is a diagnostic, not a bag-level accuracy.** It answers "how much of
+    a bag's spectra get the bag's own label under the naive assumption that
+    every instance in a bag carries that bag's label" — which is precisely the
+    assumption the MIL reframing exists to retire (docs/MIL_REFRAME_PLAN.md §7).
+    No instance-level ground truth exists in this dataset, so this number is not
+    validated against anything; it is a property of the naive pooling, kept for
+    continuity with pre-reframe results. For the actual clinical claim (one
+    decision per bag), use ``bag_decisions`` / ``_slide_level_metrics``'s
+    ``bag_*`` keys.
+
+    Bags contribute equally (not weighted by spectrum count); within that, class
+    contributes equally (flattened over (class, bag) pairs — see
+    ``_slide_level_metrics`` for why this is a bag-macro, not a class-macro).
     """
     unique_classes = np.unique(y_true)
 
-    slide_to_indices = {}
-    for idx, sid in enumerate(slide_ids):
-        slide_to_indices.setdefault(sid, []).append(idx)
-    for sid in slide_to_indices:
-        slide_to_indices[sid] = np.array(slide_to_indices[sid])
+    bag_to_indices = {}
+    for idx, bid in enumerate(bag_ids):
+        bag_to_indices.setdefault(bid, []).append(idx)
+    for bid in bag_to_indices:
+        bag_to_indices[bid] = np.array(bag_to_indices[bid])
 
-    class_to_slides = {
-        cls: np.unique(slide_ids[y_true == cls]) for cls in unique_classes
+    class_to_bags = {
+        cls: np.unique(bag_ids[y_true == cls]) for cls in unique_classes
     }
 
     accs = []
     for cls in unique_classes:
-        for slide in class_to_slides[cls]:
-            idx = slide_to_indices[slide]
+        for bag in class_to_bags[cls]:
+            idx = bag_to_indices[bag]
             cls_idx = idx[y_true[idx] == cls]
             if len(cls_idx) > 0:
                 accs.append(accuracy_score(y_true[cls_idx], preds[cls_idx]))
     return float(np.mean(accs)) if accs else 0.0
 
 
+# Deprecated name -- kept only because notebooks/09_Statistical_evaluation.ipynb
+# (exploratory, not a build dependency) still imports it. New code must use
+# within_bag_instance_recall, which is the same computation under an honest name.
+stratified_slide_accuracy = within_bag_instance_recall
+
+
+def bag_decisions(preds, bag_ids, y_true=None, rule='majority'):
+    """
+    Collapse per-instance predictions to one hard decision per bag.
+
+    ``rule='majority'``: each bag's decision is the mode of its instances'
+    predicted labels (ties broken by ``np.bincount().argmax()``, i.e. lowest
+    label index). This is Tier 0's majority-vote pooling
+    (docs/MIL_REFRAME_PLAN.md §4); it was previously computed inline in
+    ``_slide_level_metrics`` only to build the confusion matrix and discarded
+    otherwise -- this is that same computation, factored out and reused for the
+    genuine bag-level metrics below.
+
+    Bags spanning more than one CV fold (duplicated in ``manual_splits.json`` --
+    docs/stage1_data_layer.md, or MIL_REFRAME_PLAN.md §7.1) need no special
+    handling under majority vote specifically: pooling every instance from every
+    fold a bag appears in and voting once is mathematically identical to voting
+    per fold and averaging the fold-level vote-count vectors, whenever the bag
+    has the same instance count in each fold it appears in -- which duplicated
+    bags always do here, since it is the same physical slide scored twice by
+    different fold models. (This equivalence does NOT hold for non-linear rules
+    like top-q; see ``aggregate_bag_scores_across_folds`` for those.)
+
+    Returns ``(bag_ids_sorted, bag_pred)``, or ``(bag_ids_sorted, bag_pred, bag_true)``
+    when ``y_true`` is given -- ``bag_true`` is each bag's single label (every
+    instance in a bag is asserted to share one label; this is a bag-level
+    dataset, so a mismatch means the caller passed something wrong).
+    Bags are sorted by id (Python's default string/number ordering) so two calls
+    on data covering the same bags always align positionally without a join.
+    """
+    if rule != 'majority':
+        raise ValueError(f"bag_decisions only implements 'majority'; got {rule!r}")
+    preds = np.asarray(preds)
+    bag_ids = np.asarray(bag_ids)
+    y_true = np.asarray(y_true) if y_true is not None else None
+
+    bag_to_indices = {}
+    for idx, bid in enumerate(bag_ids):
+        bag_to_indices.setdefault(bid, []).append(idx)
+
+    bags_sorted = sorted(bag_to_indices)
+    bag_pred, bag_true = [], []
+    for bid in bags_sorted:
+        ix = np.array(bag_to_indices[bid])
+        bag_pred.append(int(np.bincount(preds[ix]).argmax()))
+        if y_true is not None:
+            yt = y_true[ix]
+            assert np.all(yt == yt[0]), (
+                f"bag {bid!r} has mixed instance labels {np.unique(yt)} -- every "
+                "instance in a bag must share the bag's label"
+            )
+            bag_true.append(int(yt[0]))
+
+    if y_true is not None:
+        return np.array(bags_sorted), np.array(bag_pred), np.array(bag_true)
+    return np.array(bags_sorted), np.array(bag_pred)
+
+
 def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
     """
-    Full slide-level metric set, every number consistent with the slide-level bootstrap.
+    Two separate metric sets in one dict, at two different units of analysis --
+    do not mix them when reading this (docs/MIL_REFRAME_PLAN.md §7):
 
-    All slides in this dataset are single-class (one biopsy section = one label),
-    so metrics are aggregated *across* slides, not within them:
+    **Bag-level** (``bag_*`` keys, plus ``confusion_matrix``) -- the actual
+    clinical claim. One majority-vote decision per bag (``bag_decisions``), then
+    standard sklearn metrics (accuracy, balanced accuracy, macro F1/precision/
+    recall, kappa) computed on those ``n_bags`` decisions against the ``n_bags``
+    true labels. These are genuine, non-degenerate multiclass metrics -- no
+    instance-level ground truth is assumed or required. ``auroc``/``auprc`` use
+    per-bag mean-pooled probabilities (Tier 0's mean-posterior rule) ranked
+    against the bag labels.
 
-    Class-decomposable metrics — per-(class, slide) stratified mean, the exact
-    statistic the bootstrap accumulates:
-        recall(slide, c)    = fraction of true-c spectra in slide predicted as c
-        precision(slide, c) = fraction of pred-c spectra in slide that are true c
-        f1(slide, c)        = harmonic mean of the above
-    recall_macro == stratified_slide_accuracy by construction; accuracy and
-    balanced_accuracy are set equal to it. For binary tasks sensitivity /
-    specificity are the mean recalls of the positive / negative class.
+    **Within-bag instance diagnostics** (``within_bag_instance_recall``,
+    ``f1_weighted``) -- NOT accuracy against a bag decision; the fraction of a
+    bag's own instances that carry the bag's own label under the naive
+    assumption every instance does. Kept for continuity with pre-reframe
+    reporting; do not treat as evidence about per-instance predictions, since no
+    instance-level ground truth exists to validate them against.
 
-    kappa and f1_weighted are also aggregated per slide and averaged.
-
-    confusion_matrix uses majority-vote to collapse each slide to one prediction,
-    so the cell counts are slide counts (total = n_slides, not n_spectra).
-
-    AUROC / AUPRC: since slides are single-class, a within-slide AUROC is
-    undefined. Instead we compute a *slide-level* AUROC / AUPRC by averaging each
-    slide's spectra into a single probability vector (mean pooling), then running
-    roc_auc_score across slides. This gives a proper discrimination score over the
-    58 slides and is the correct slide-as-unit analog.
+    Superseded, no longer computed the old way: ``precision_macro`` (was a
+    constant ~0.5 by construction -- every bag is single-class, so a bag's own-
+    class instance precision is always exactly 1.0), ``kappa`` (was always 0.0,
+    ``cohen_kappa_score`` on a constant ``y_true``), and the old ``f1_macro``
+    (was upward-biased and non-monotone in accuracy -- it silently dropped bags
+    with 0% within-bag accuracy, e.g. ``results/exp_401``'s
+    ``f1_macro=0.926`` beside ``accuracy=0.431``). All three now name genuine
+    bag-level quantities instead (see docs/stage0_findings.md-style writeup at
+    docs/MIL_REFRAME_PLAN.md §7 for the derivation of each bug).
     """
     y_true = np.asarray(y_true)
     preds = np.asarray(preds)
@@ -231,74 +307,79 @@ def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
     slide_to_indices = {s: np.array(ix) for s, ix in slide_to_indices.items()}
 
     per_class_recall = {c: [] for c in classes}
-    precisions, f1s = [], []
-    per_slide_kappa, per_slide_f1w = [], []
-    # for slide-level AUROC: one row per slide
-    slide_true_labels, slide_mean_proba, slide_majority_pred, slide_true_for_cm = [], [], [], []
+    per_bag_f1w = []
+    bag_mean_proba_by_id = {}
 
     for sid, ix in slide_to_indices.items():
         yt, yp = y_true[ix], preds[ix]
+        assert np.all(yt == yt[0]), (
+            f"bag {sid!r} has mixed instance labels {np.unique(yt)} -- every instance "
+            "in a bag must share the bag's label (this is a bag-level dataset)"
+        )
 
-        majority = int(np.bincount(yp, minlength=len(classes)).argmax())
-        slide_majority_pred.append(majority)
-        slide_true_for_cm.append(int(yt[0]))   # all same label; validated by design
-
-        try:
-            k = cohen_kappa_score(yt, yp)
-            if not np.isnan(k):
-                per_slide_kappa.append(k)
-        except Exception:
-            pass
-        per_slide_f1w.append(f1_score(yt, yp, average='weighted', zero_division=0))
+        per_bag_f1w.append(f1_score(yt, yp, average='weighted', zero_division=0))
 
         for c in classes:
-            true_c, pred_c = yt == c, yp == c
-            n_true, n_pred = int(true_c.sum()), int(pred_c.sum())
-            tp = int(np.sum(true_c & pred_c))
-            rec = tp / n_true if n_true > 0 else None
-            prec = tp / n_pred if n_pred > 0 else None
-            if rec is not None:
-                per_class_recall[c].append(rec)
-            if prec is not None:
-                precisions.append(prec)
-            if rec is not None and prec is not None:
-                f1s.append(0.0 if (prec + rec) == 0 else 2 * prec * rec / (prec + rec))
+            true_c = yt == c
+            n_true = int(true_c.sum())
+            if n_true > 0:
+                tp = int(np.sum(true_c & (yp == c)))
+                per_class_recall[c].append(tp / n_true)
 
         if proba is not None:
-            slide_mean_proba.append(proba[ix].mean(axis=0))
-            slide_true_labels.append(int(yt[0]))
+            bag_mean_proba_by_id[sid] = proba[ix].mean(axis=0)
 
+    # ---- within-bag instance diagnostics (NOT bag-level; see docstring) ----
     all_recalls = [r for c in classes for r in per_class_recall[c]]
-    recall_macro = float(np.mean(all_recalls)) if all_recalls else 0.0
+    within_bag_recall = float(np.mean(all_recalls)) if all_recalls else 0.0
+
+    # ---- genuine bag-level metrics: one decision per bag, standard sklearn ----
+    bag_ids_sorted, bag_pred, bag_true = bag_decisions(preds, slide_ids, y_true, rule='majority')
 
     m = {
-        'accuracy':          recall_macro,
-        'balanced_accuracy': recall_macro,
-        'f1_macro':          float(np.mean(f1s)) if f1s else 0.0,
-        'f1_weighted':       float(np.mean(per_slide_f1w)) if per_slide_f1w else 0.0,
-        'precision_macro':   float(np.mean(precisions)) if precisions else 0.0,
-        'recall_macro':      recall_macro,
-        'kappa':             float(np.mean(per_slide_kappa)) if per_slide_kappa else 0.0,
+        'within_bag_instance_recall': within_bag_recall,
+        'f1_weighted':                float(np.mean(per_bag_f1w)) if per_bag_f1w else 0.0,
+        'n_bags':                     int(len(bag_ids_sorted)),
+
+        'bag_accuracy':          float(accuracy_score(bag_true, bag_pred)),
+        'bag_balanced_accuracy': float(balanced_accuracy_score(bag_true, bag_pred)),
+        'bag_f1_macro':          float(f1_score(bag_true, bag_pred, average='macro',
+                                                zero_division=0, labels=classes)),
+        'bag_precision_macro':   float(precision_score(bag_true, bag_pred, average='macro',
+                                                        zero_division=0, labels=classes)),
+        'bag_recall_macro':      float(recall_score(bag_true, bag_pred, average='macro',
+                                                     zero_division=0, labels=classes)),
+        'bag_kappa':             float(cohen_kappa_score(bag_true, bag_pred))
+                                  if len(np.unique(bag_true)) > 1 else float('nan'),
     }
     if is_binary:
         pos, neg = classes[1], classes[0]
+        # Bag-level sensitivity/specificity: per-class recall of the bag decisions.
+        bag_recall_per_class = recall_score(bag_true, bag_pred, average=None,
+                                            zero_division=0, labels=classes)
+        m['bag_sensitivity'] = float(bag_recall_per_class[1])
+        m['bag_specificity'] = float(bag_recall_per_class[0])
+        # Diagnostic-level sensitivity/specificity (within-bag instance recall,
+        # split by class) -- kept for continuity, same caveat as within_bag_instance_recall.
         m['sensitivity'] = float(np.mean(per_class_recall[pos])) if per_class_recall[pos] else 0.0
         m['specificity'] = float(np.mean(per_class_recall[neg])) if per_class_recall[neg] else 0.0
 
-    # Slide-level confusion matrix (majority-vote, n_slides total, not n_spectra).
-    m['confusion_matrix'] = confusion_matrix(
-        slide_true_for_cm, slide_majority_pred, labels=classes).tolist()
+    # Bag-level confusion matrix (n_bags total, not n_spectra) -- majority-vote decisions.
+    m['confusion_matrix'] = confusion_matrix(bag_true, bag_pred, labels=classes).tolist()
 
-    if proba is not None and slide_mean_proba:
-        sl_y = np.array(slide_true_labels)
-        sl_p = np.vstack(slide_mean_proba)
+    if proba is not None and bag_mean_proba_by_id:
+        # Look up by bag_ids_sorted (bag_decisions' own order) rather than
+        # re-deriving a sort order -- avoids relying on a second sort agreeing
+        # with the first for whatever type bag ids happen to be.
+        bl_y = bag_true
+        bl_p = np.vstack([bag_mean_proba_by_id[bid] for bid in bag_ids_sorted])
         try:
             if is_binary:
-                m['auroc'] = float(roc_auc_score(sl_y, sl_p[:, 1]))
-                m['auprc'] = float(average_precision_score(sl_y, sl_p[:, 1]))
+                m['bag_auroc'] = float(roc_auc_score(bl_y, bl_p[:, 1]))
+                m['bag_auprc'] = float(average_precision_score(bl_y, bl_p[:, 1]))
             else:
-                m['auroc'] = float(roc_auc_score(
-                    sl_y, sl_p, multi_class='ovr', average='macro', labels=classes))
+                m['bag_auroc'] = float(roc_auc_score(
+                    bl_y, bl_p, multi_class='ovr', average='macro', labels=classes))
         except Exception:
             pass
 
@@ -306,14 +387,166 @@ def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
 
 
 def stratified_slide_metrics(preds, y_true, slide_ids):
-    """
-    Slide-level macro F1 / precision / recall (per-(class, slide) stratified mean).
-
-    Thin wrapper over ``_slide_level_metrics`` returning only the three macro
-    metrics; ``recall_macro`` equals ``stratified_slide_accuracy`` by construction.
-    """
+    """Deprecated: use ``_slide_level_metrics(...)``'s ``bag_f1_macro`` /
+    ``bag_precision_macro`` / ``bag_recall_macro`` keys directly. Kept only so
+    nothing importing this name at module load time breaks; not used by the
+    live pipeline (grepped: no callers outside this module)."""
     full = _slide_level_metrics(y_true, preds, slide_ids)
-    return {k: full[k] for k in ('f1_macro', 'precision_macro', 'recall_macro')}
+    return {
+        'f1_macro': full['bag_f1_macro'],
+        'precision_macro': full['bag_precision_macro'],
+        'recall_macro': full['bag_recall_macro'],
+    }
+
+
+# ============================================================================
+# SECTION 1c: Tier 0 -- naive-MIL aggregation baselines
+# (docs/MIL_REFRAME_PLAN.md §4). Pools per-instance probabilities the existing
+# TRTR/TSTR/TSRTR models already emit -- no new training. Everything else in
+# the MIL programme must beat these.
+# ============================================================================
+
+def pool_instance_scores(proba, bag_ids, rule='mean', topq_fraction=0.1, lse_temperature=1.0):
+    """
+    Pool per-instance class probabilities into one (K,) score vector per bag,
+    WITHOUT taking a final argmax -- returning scores (not decisions) lets
+    ``aggregate_bag_scores_across_folds`` average a duplicated bag's per-fold
+    scores before deciding once, per docs/MIL_REFRAME_PLAN.md §7.1.
+
+    rule:
+      'mean'     -- mean-posterior: bag score = mean of instance probabilities.
+      'majority' -- vote-fraction: score[k] = fraction of instances whose own
+                    argmax is k. argmax of this equals plain majority vote
+                    (``bag_decisions``); expressing it as a score vector is
+                    what makes the cross-fold averaging well-defined for it too.
+      'lse'      -- log-sum-exp (smooth max) over each class's log-probability,
+                    temperature-scaled, then softmax-renormalised across
+                    classes so the result is a valid probability vector.
+      'topq'     -- mean of the ``topq_fraction`` highest-scoring instances per
+                    class (the "witness fraction" baseline). A **fraction** of
+                    the bag's own instance count, not a fixed count -- a fixed
+                    count would favour large bags (more chances at one
+                    high-scoring instance); MIL_REFRAME_PLAN.md §4.
+
+    Returns ``(bag_ids_sorted, scores)``, ``scores`` shape ``(n_bags, K)``, each
+    row summing to 1 so different bags'/rules'/folds' scores are comparable and
+    can be averaged.
+    """
+    proba = np.asarray(proba, dtype=np.float64)
+    bag_ids = np.asarray(bag_ids)
+    n_classes = proba.shape[1]
+
+    bag_to_indices = {}
+    for idx, bid in enumerate(bag_ids):
+        bag_to_indices.setdefault(bid, []).append(idx)
+    bags_sorted = sorted(bag_to_indices)
+
+    scores = np.zeros((len(bags_sorted), n_classes), dtype=np.float64)
+    for row, bid in enumerate(bags_sorted):
+        ix = np.array(bag_to_indices[bid])
+        p = proba[ix]
+
+        if rule == 'mean':
+            s = p.mean(axis=0)
+        elif rule == 'majority':
+            votes = np.bincount(p.argmax(axis=1), minlength=n_classes).astype(np.float64)
+            s = votes / max(votes.sum(), 1.0)
+        elif rule == 'lse':
+            from scipy.special import logsumexp
+            log_p = np.log(np.clip(p, 1e-12, 1.0))
+            lse = logsumexp(log_p / lse_temperature, axis=0)
+            s = np.exp(lse - logsumexp(lse))  # softmax over classes -> sums to 1
+        elif rule == 'topq':
+            q = max(1, int(np.ceil(topq_fraction * len(ix))))
+            s = np.array([np.sort(p[:, k])[-q:].mean() for k in range(n_classes)])
+            total = s.sum()
+            s = s / total if total > 0 else np.full(n_classes, 1.0 / n_classes)
+        else:
+            raise ValueError(f"unknown pooling rule {rule!r}")
+
+        scores[row] = s
+
+    return np.array(bags_sorted), scores
+
+
+def aggregate_bag_scores_across_folds(fold_data, rule='mean', **rule_kwargs):
+    """
+    Tier 0 pooling with the duplicate-bag cross-fold averaging rule
+    (docs/MIL_REFRAME_PLAN.md §7.1): 4 bags in ``manual_splits.json`` appear in
+    two CV folds' validation sets each (forced by 6-class stratification over
+    classes with only 4 patients). Each gets one score per fold it appears in;
+    those per-fold scores are averaged before the final decision, so it is not
+    double-counted and its decision reflects both folds' models.
+
+    For the 'mean' and 'majority' rules this is provably identical to simply
+    pooling every instance from every fold a bag appears in and aggregating
+    once -- a duplicated bag has the same instance count in every fold it
+    appears in (same physical slide, scored by a different fold's model each
+    time), so per-fold averaging of a *linear* statistic equals pooling then
+    computing it once. This function still does genuine per-fold aggregation
+    for all four rules, both because 'lse' and 'topq' are not linear in this
+    sense (top-q over pooled instances != averaging two folds' top-q means) and
+    because that equivalence is meant as a validation check on this function
+    (tests/test_stage2_evaluation.py), not as the implementation strategy.
+
+    Args:
+        fold_data: list of dicts, each with 'proba' (n_i, K), 'y_true' (n_i,),
+            'bag_ids' (n_i,) -- one entry per CV fold's validation set.
+
+    Returns ``(bag_ids_sorted, scores, bag_true)``: ``scores`` is
+    ``(n_bags, K)``, each row a valid probability vector (renormalised after
+    cross-fold averaging); ``bag_true`` is each bag's label, asserted
+    consistent across every fold/instance it appears in.
+    """
+    per_fold_scores = {}   # bag_id -> list of (K,) score vectors, one per fold
+    bag_true = {}
+    for fd in fold_data:
+        ids, scores = pool_instance_scores(fd['proba'], fd['bag_ids'], rule=rule, **rule_kwargs)
+        _, _, fold_bag_true = bag_decisions(
+            np.argmax(fd['proba'], axis=1), fd['bag_ids'], fd['y_true'], rule='majority')
+        for bid, sc, yt in zip(ids, scores, fold_bag_true):
+            per_fold_scores.setdefault(bid, []).append(sc)
+            if bid in bag_true:
+                assert bag_true[bid] == yt, (
+                    f"bag {bid!r} has inconsistent labels across folds: "
+                    f"{bag_true[bid]} vs {yt} -- a bag's label must not change "
+                    "between the folds it appears in"
+                )
+            else:
+                bag_true[bid] = yt
+
+    bags_sorted = sorted(per_fold_scores)
+    scores = np.array([np.mean(per_fold_scores[b], axis=0) for b in bags_sorted])
+    row_sums = scores.sum(axis=1, keepdims=True)
+    scores = scores / np.where(row_sums > 0, row_sums, 1.0)
+    y_true_arr = np.array([bag_true[b] for b in bags_sorted])
+    return np.array(bags_sorted), scores, y_true_arr
+
+
+def bag_level_bootstrap(bag_pred_A, bag_pred_B, bag_true, n_boot=1000, seed=42):
+    """
+    Class-stratified bootstrap over BAG decisions (not instances, not the
+    within-bag-instance-recall statistic) -- the primary-inference CI for the
+    reframed metrics (docs/MIL_REFRAME_PLAN.md §7.1's "CI from the existing
+    stratified_slide_bootstrap, now resampling bag decisions").
+
+    Implemented by reusing ``stratified_slide_bootstrap`` with each bag as its
+    own singleton "slide" (``bag_ids = np.arange(len(bag_true))``): that
+    function resamples groups with replacement within class and averages
+    per-group accuracy, which for singleton groups is exactly a class-
+    stratified bootstrap over the bag decisions themselves -- no new resampling
+    logic needed, just fed genuine bag-level (not instance-level) arrays.
+    """
+    dummy_ids = np.arange(len(bag_true))
+    return stratified_slide_bootstrap(bag_pred_A, bag_pred_B, bag_true, dummy_ids,
+                                      n_boot=n_boot, seed=seed)
+
+
+def bag_level_bootstrap_cbr(bag_pred_cbr, bag_true, n_boot=1000, seed=42):
+    """Bag-level bootstrap for a single model (CbR) -- see ``bag_level_bootstrap``."""
+    dummy_ids = np.arange(len(bag_true))
+    return stratified_slide_bootstrap_cbr(bag_pred_cbr, bag_true, dummy_ids,
+                                          n_boot=n_boot, seed=seed)
 
 
 def stratified_slide_bootstrap(preds_A, preds_B, y_true, slide_ids, n_boot=1000, seed=42):
@@ -403,11 +636,19 @@ def stratified_slide_bootstrap(preds_A, preds_B, y_true, slide_ids, n_boot=1000,
 # produce identical statistics and an identical output schema.
 # ============================================================================
 
-# Scalar metrics emitted (in order) to the flat CSV, per regimen.
+# Scalar metrics emitted (in order) to the flat CSV, per regimen. Bag-level
+# (bag_*) is the headline; the rest are within-bag instance diagnostics, kept
+# for continuity with pre-reframe reporting (docs/MIL_REFRAME_PLAN.md §7).
+# 'accuracy'/'balanced_accuracy' no longer appear here: pre-Stage-2 they were
+# aliases of the diagnostic 'within_bag_instance_recall' (the three were
+# literally the same float); that ambiguity is exactly what the rename fixes,
+# so the bare names are retired rather than quietly repointed to a bag-level
+# value under the reader's old assumption.
 SCALAR_METRIC_KEYS = [
-    'accuracy', 'balanced_accuracy', 'f1_macro', 'f1_weighted',
-    'precision_macro', 'recall_macro', 'kappa',
-    'sensitivity', 'specificity', 'auroc', 'auprc',
+    'bag_accuracy', 'bag_balanced_accuracy', 'bag_f1_macro', 'bag_precision_macro',
+    'bag_recall_macro', 'bag_kappa', 'bag_sensitivity', 'bag_specificity',
+    'bag_auroc', 'bag_auprc',
+    'within_bag_instance_recall', 'f1_weighted', 'sensitivity', 'specificity',
 ]
 
 
@@ -416,18 +657,25 @@ def compute_full_metrics(y_true, preds, proba=None, slide_ids=None):
     Full metric set for one model/regimen.
 
     When ``slide_ids`` is supplied (the default in both the pipeline and notebook
-    09) **every** metric is computed at the slide level via ``_slide_level_metrics``
-    so the whole table is consistent with the slide-level bootstrap that drives the
-    primary inference — class-decomposable metrics use the per-(class, slide)
-    stratified mean, the rest are per-slide values averaged over slides.
+    09) metrics are computed at **two separate levels** via ``_slide_level_metrics``
+    (docs/MIL_REFRAME_PLAN.md §7) -- see that function's docstring for the full
+    split. In short: ``bag_*`` keys (``bag_accuracy``, ``bag_balanced_accuracy``,
+    ``bag_f1_macro``, ``bag_precision_macro``, ``bag_recall_macro``, ``bag_kappa``,
+    ``bag_sensitivity``/``bag_specificity`` for binary tasks,
+    ``bag_auroc``/``bag_auprc`` with probabilities) plus ``confusion_matrix`` are
+    the genuine bag-level clinical claim -- one majority-vote decision per bag,
+    standard sklearn metrics on those decisions, non-degenerate. Everything else
+    (``within_bag_instance_recall``, ``f1_weighted``, and for binary tasks the bare
+    ``sensitivity``/``specificity``) is a within-bag instance diagnostic: it is NOT
+    validated against any instance-level ground truth (none exists in this
+    dataset) and must not be read as an accuracy.
 
     Without ``slide_ids`` the legacy spectrum-level (pooled across folds) metrics
-    are returned, for backward compatibility only.
+    are returned, for backward compatibility only -- dead code in the live
+    pipeline, which always supplies ``slide_ids``.
 
-    Returns a flat, JSON-serialisable dict: accuracy, balanced_accuracy, f1_macro,
-    f1_weighted, precision_macro, recall_macro, kappa, confusion_matrix, and -- for
-    binary tasks (with probabilities, for auroc/auprc) -- sensitivity, specificity,
-    auroc, auprc; one-vs-rest macro AUROC for multiclass with probabilities.
+    Returns a flat, JSON-serialisable dict; see ``SCALAR_METRIC_KEYS`` for the
+    canonical key list emitted to the summary CSV.
     """
     if slide_ids is not None:
         return _slide_level_metrics(y_true, preds, slide_ids, proba)
@@ -498,23 +746,34 @@ def build_summary_rows(results, baseline_label, candidate_label):
     Flatten a list of canonical result rows into flat dicts for a paper-ready
     CSV: one row per model, all scalar metrics for both regimens side-by-side.
 
-    Each model row is expected to contain the slide-level comparison fields
-    (slide_acc_{label}, delta, boot_mean_diff, ci_diff_lo/hi, p_bootstrap,
-    significant_95) plus full_metrics_{label} dicts. A Classification by
-    Reconstruction row (model == 'Classification_by_Reconstruction') is handled
-    separately with blanks for the comparison-only columns.
+    Bag-level columns (``bag_acc_*``, ``bag_delta``, ``bag_boot_mean_diff``,
+    ``bag_ci_diff_lo/hi``, ``bag_p_bootstrap``, ``bag_significant_95``) are the
+    primary inference. ``within_bag_instance_recall_*`` columns are the demoted
+    diagnostic, kept for continuity with pre-reframe reporting -- not a bag
+    accuracy (docs/MIL_REFRAME_PLAN.md §7). Each model row is expected to carry
+    both sets plus ``full_metrics_{label}`` dicts (see
+    ``pipeline/evaluation_stage.py``). A Classification by Reconstruction row
+    (model == 'Classification_by_Reconstruction') is handled separately with
+    blanks for the comparison-only columns, since it is a single, model-
+    independent regimen rather than a baseline-vs-candidate pair.
     """
     rows = []
     for r in results:
         if r.get('model') == 'Classification_by_Reconstruction':
             cbr_flat = {
-                'model': r['model'],
-                f'slide_acc_{baseline_label}': '',
-                f'slide_acc_{candidate_label}': r.get('cbr_accuracy', ''),
-                'delta': '', 'boot_mean_diff': '',
-                'ci_diff_lo': r.get('cbr_ci_lo', ''),
-                'ci_diff_hi': r.get('cbr_ci_hi', ''),
-                'p_bootstrap': '', 'significant_95': '',
+                'model': r['model'], 'n_bags': r.get('n_bags', ''),
+                f'bag_acc_{baseline_label}': '',
+                f'bag_acc_{candidate_label}': r.get('cbr_bag_accuracy', ''),
+                'bag_delta': '', 'bag_boot_mean_diff': '',
+                'bag_ci_diff_lo': r.get('cbr_bag_ci_lo', ''),
+                'bag_ci_diff_hi': r.get('cbr_bag_ci_hi', ''),
+                'bag_p_bootstrap': '', 'bag_significant_95': '',
+                f'within_bag_instance_recall_{baseline_label}': '',
+                f'within_bag_instance_recall_{candidate_label}': r.get('cbr_accuracy', ''),
+                'within_bag_instance_recall_delta': '', 'wbir_boot_mean_diff': '',
+                'wbir_ci_diff_lo': r.get('cbr_ci_lo', ''),
+                'wbir_ci_diff_hi': r.get('cbr_ci_hi', ''),
+                'wbir_p_bootstrap': '', 'wbir_significant_95': '',
             }
             # CbR is model-independent (single regimen); surface its scalar metrics
             # under the candidate columns, leaving the baseline columns blank.
@@ -525,15 +784,25 @@ def build_summary_rows(results, baseline_label, candidate_label):
             rows.append(cbr_flat)
             continue
         flat = {
-            'model': r['model'],
-            f'slide_acc_{baseline_label}': r.get(f'slide_acc_{baseline_label}', ''),
-            f'slide_acc_{candidate_label}': r.get(f'slide_acc_{candidate_label}', ''),
-            'delta': r.get('delta', ''),
-            'boot_mean_diff': r.get('boot_mean_diff', ''),
-            'ci_diff_lo': r.get('ci_diff_lo', ''),
-            'ci_diff_hi': r.get('ci_diff_hi', ''),
-            'p_bootstrap': r.get('p_bootstrap', ''),
-            'significant_95': r.get('significant_95', ''),
+            'model': r['model'], 'n_bags': r.get('n_bags', ''),
+            f'bag_acc_{baseline_label}': r.get(f'bag_acc_{baseline_label}', ''),
+            f'bag_acc_{candidate_label}': r.get(f'bag_acc_{candidate_label}', ''),
+            'bag_delta': r.get('bag_delta', ''),
+            'bag_boot_mean_diff': r.get('bag_boot_mean_diff', ''),
+            'bag_ci_diff_lo': r.get('bag_ci_diff_lo', ''),
+            'bag_ci_diff_hi': r.get('bag_ci_diff_hi', ''),
+            'bag_p_bootstrap': r.get('bag_p_bootstrap', ''),
+            'bag_significant_95': r.get('bag_significant_95', ''),
+            f'within_bag_instance_recall_{baseline_label}':
+                r.get(f'within_bag_instance_recall_{baseline_label}', ''),
+            f'within_bag_instance_recall_{candidate_label}':
+                r.get(f'within_bag_instance_recall_{candidate_label}', ''),
+            'within_bag_instance_recall_delta': r.get('within_bag_instance_recall_delta', ''),
+            'wbir_boot_mean_diff': r.get('wbir_boot_mean_diff', ''),
+            'wbir_ci_diff_lo': r.get('wbir_ci_diff_lo', ''),
+            'wbir_ci_diff_hi': r.get('wbir_ci_diff_hi', ''),
+            'wbir_p_bootstrap': r.get('wbir_p_bootstrap', ''),
+            'wbir_significant_95': r.get('wbir_significant_95', ''),
         }
         for key in SCALAR_METRIC_KEYS:
             flat[f'{key}_{baseline_label}'] = r.get(f'full_metrics_{baseline_label}', {}).get(key, '')

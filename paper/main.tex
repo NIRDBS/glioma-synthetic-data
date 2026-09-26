@@ -541,9 +541,27 @@ We present here the specific details of our training setup. We note that the ML 
 
 \subsection{Statistical Evaluation}
 \label{sec:statistical_eval}
-Due to the hierarchical structure of the dataset, individual spectra originating from the same biopsy sample are strongly correlated. Consequently, statistical evaluation at the individual-spectrum level violates the independent and identically distributed (I.I.D.) assumption and may artificially underestimate uncertainty. Conversely, estimating variance solely across the five cross-validation folds yields limited statistical power.
+Each biopsy slide is a \emph{bag} carrying one label; the individual spectra within it
+are \emph{instances} with no ground-truth label of their own. Accordingly, we report every classification result as a genuine bag-level decision, not
+an average over instances: for each slide, the four classifiers' per-spectrum
+predictions are collapsed to a single decision by majority vote, and standard accuracy,
+F1, precision, recall and Cohen's $\kappa$ are computed on these $n=58$ bag decisions
+against the 58 true slide labels. Four slides are assigned to two cross-validation test
+folds each, an unavoidable consequence of stratifying six classes across a cohort where
+two classes have only four patients (Appendix~\ref{app:cv_schema}); such a slide's
+posterior is averaged across the folds it appears in before its single decision is
+taken, so it is never double-counted. We additionally report within-bag instance
+recall — the fraction of a slide's own spectra that carry its own label under the
+(false) instance-level assumption — as a diagnostic only, since no instance-level
+ground truth exists to validate it against; it must not be read as an accuracy.
 
-To obtain more robust uncertainty estimates, we implemented a stratified cluster bootstrap procedure at the slide level. Across 1,000 bootstrap iterations, slides were sampled with replacement while preserving class proportions. This procedure preserves the correlation structure within each slide while approximating variability across independent batches of biopsy slides.
+Due to the hierarchical structure of the dataset, bags are themselves correlated across
+biopsies from the same subject, so evaluating variance solely across the five
+cross-validation folds yields limited statistical power. To obtain more robust
+uncertainty estimates, we implemented a stratified cluster bootstrap procedure at the
+bag level. Across 1,000 bootstrap iterations, bags were sampled with replacement while
+preserving class proportions. This procedure approximates variability across
+independent batches of biopsy slides.
 
 For pairwise comparisons between evaluation settings (TS/TR vs. TR/TR or TSR/TR vs. TR/TR), we computed bootstrap distributions of the corresponding accuracy differences:
 \[
@@ -573,33 +591,33 @@ The binary classification is influenced by broad metabolic differences that can 
 \toprule
 \emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{F1-score}\\
 \midrule
-\multirow{3}{*}{RF + SVM} & TR/TR & $0.688$ & -- & -- & $0.697$ \\
- & TS/TR & $0.431$ & $-0.257$* & $[-0.330, -0.180]$ & $0.340$ \\
- & TSR/TR & $0.699$ & $+0.011$ & $[-0.015, +0.037]$ & $0.720$ \\
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.741$ & -- & -- & $0.728$ \\
+ & TS/TR & $0.431$ & $-0.310$* & $[-0.414, -0.207]$ & $0.301$ \\
+ & TSR/TR & $0.759$ & $+0.017$ & $[-0.052, +0.086]$ & $0.744$ \\
 \midrule
-\multirow{3}{*}{RF} & TR/TR & $0.734$ & -- & -- & $0.724$ \\
- & TS/TR & $0.669$ & $-0.065$ & $[-0.148, +0.017]$ & $0.696$ \\
- & TSR/TR & $0.742$ & $+0.008$ & $[-0.001, +0.019]$ & $0.745$ \\
+\multirow{3}{*}{RF} & TR/TR & $0.810$ & -- & -- & $0.797$ \\
+ & TS/TR & $0.707$ & $-0.103$* & $[-0.207, -0.017]$ & $0.696$ \\
+ & TSR/TR & $0.810$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ \\
 \midrule
-\multirow{3}{*}{XGBoost} & TR/TR & $0.742$ & -- & -- & $0.742$ \\
- & TS/TR & $0.622$ & $-0.120$* & $[-0.191, -0.051]$ & $0.653$ \\
- & TSR/TR & $0.746$ & $+0.004$ & $[-0.004, +0.013]$ & $0.749$ \\
+\multirow{3}{*}{XGBoost} & TR/TR & $0.793$ & -- & -- & $0.776$ \\
+ & TS/TR & $0.690$ & $-0.103$ & $[-0.224, +0.017]$ & $0.689$ \\
+ & TSR/TR & $0.810$ & $+0.017$ & $[+0.000, +0.052]$ & $0.797$ \\
 \midrule
-\multirow{3}{*}{1D-CNN} & TR/TR & $0.588$ & -- & -- & $0.445$ \\
- & TS/TR & $0.398$ & $-0.190$* & $[-0.299, -0.077]$ & $0.380$ \\
- & TSR/TR & $0.602$ & $+0.014$ & $[-0.055, +0.086]$ & $0.555$ \\
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.621$ & -- & -- & $0.505$ \\
+ & TS/TR & $0.397$ & $-0.224$* & $[-0.345, -0.103]$ & $0.374$ \\
+ & TSR/TR & $0.603$ & $-0.017$ & $[-0.121, +0.069]$ & $0.556$ \\
 \midrule
-CbR & -- & $0.622$ & -- & $[+0.555, +0.682]$ & $0.644$ \\
+CbR & -- & $0.741$ & -- & $[+0.621, +0.845]$ & $0.732$ \\
 \bottomrule
 \end{tabular*}
-\note{Regimens: TR/TR (real-only baseline), TS/TR (synthetic-only), TSR/TR (synthetic + real), CbR (Classification by Reconstruction, model-independent). $\Delta$ and 95\% CI are the slide-level bootstrap difference vs.\ TR/TR; (*) marks a 95\% CI excluding zero. F1-score is macro-averaged, spectrum-level pooled across folds. The CbR row reports its own accuracy 95\% CI.}
+\note{Regimens: TR/TR (real-only baseline), TS/TR (synthetic-only), TSR/TR (synthetic + real), CbR (Classification by Reconstruction, model-independent). Accuracy, $\Delta$, 95\% CI and F1-score are all computed at the \emph{bag} level: each slide's per-spectrum predictions are collapsed to one majority-vote decision, and every statistic is over the resulting $n=58$ slide decisions, not individual spectra. $\Delta$ and 95\% CI are the bag-level bootstrap difference vs.\ TR/TR; (*) marks a 95\% CI excluding zero. F1-score is macro-averaged over the 58 bag decisions. The CbR row reports its own bag-level accuracy 95\% CI.}
 \end{table}
 
-Across all classifiers, models trained exclusively on synthetic spectra underperformed the corresponding TR/TR baselines, which implies a substantial domain gap between synthetic and real spectra. Nevertheless, the performance degradation remained relatively moderate for RF and XGBoost, suggesting that the generated spectra retain part of the discriminative structure of the original data distribution.
+Across all classifiers, models trained exclusively on synthetic spectra underperformed the corresponding TR/TR baselines, which implies a substantial domain gap between synthetic and real spectra. The performance degradation was statistically significant for RF+SVM, RF and 1D-CNN (95\% CI excluding zero); XGBoost's decline, while similar in magnitude, was not significant at this bag-level sample size ($n=58$).
 
-In contrast to the TS/TR setting, combining synthetic and real spectra generally improved downstream classification performance. The largest improvement was observed for the 1D-CNN model; Random Forest and XGBoost also showed positive trends. This indicates that synthetic spectra are more effective as a regularization mechanism, augmenting real training data, than as a complete replacement for real measurements.
+In the TSR/TR setting, none of the four bag-level deltas reached significance: RF+SVM and XGBoost showed small positive shifts ($+0.017$), RF was unchanged, and 1D-CNN showed a small negative shift ($-0.017$). This is a more conservative picture than the (uncorrected, instance-level) point estimates might suggest in isolation, and is consistent with the wider uncertainty expected from a bootstrap over 58 bags rather than hundreds of thousands of spectra. We therefore read the TSR/TR results as showing synthetic augmentation is not harmful at the bag level for any model, rather than as a confirmed improvement for any specific one.
 
-Of particular interest is the CbR inference method, which reached an accuracy of around 62\%. While lower than the other classifiers' accuracies, it is in the same range as the TS/TR models.
+Of particular interest is the CbR inference method, which reached a bag-level accuracy of $0.741$ — identical to the RF+SVM TR/TR baseline, and well above the $\approx 62\%$ figure from instance-level pooling reported in earlier analyses of this pipeline. CbR requires no classifier training at all beyond the shared CVAE, which makes this result notable independent of the specific number.
 
 \subsection{6-Class Glioma Sub-Grading}
 \label{sec:results_6class}

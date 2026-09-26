@@ -230,9 +230,37 @@ strategies, not required to match it bit-for-bit for models with this property.
   call at production `n_boot=1000` over the full ~240k-instance validation set costs
   ~300s; a bag-level bootstrap over 58 bags costs ~40s) before committing to a plan:
   exp_201 (~70 min, needed for the paper's main-text Table 2) was run first and is
-  reflected in §2 above; the remaining 10 appendix experiments (~15h estimated) were
-  started as a second background batch after checking with the user on the time
-  commitment, and were still running as of this document.
+  reflected in §2 above; the remaining 10 appendix experiments (~15h estimated, ~11h
+  actual) were started as a second background batch after checking with the user on
+  the time commitment. **Completed**: all 20 stage-runs (10 experiments × stats_eval +
+  mil_eval) report `ok`, zero failures despite `--continue-on-error` being enabled.
+  `paper/appendix_extended_results.tex` now carries real bag-level numbers for all 11
+  experiments; rebuilt via `latexmk`, exit 0, no undefined references.
+
+## 7. Two claims from the pre-Stage-2 paper, checked against the full bag-level rerun
+
+Both `paper/main.tex` claims that cite appendix tables (deliberately left unedited
+pending this rerun — see §5) were checked against the real numbers rather than assumed:
+
+- **6-class TR/TR accuracy "approximately 30%"** (exp_204/205/206): bag-level TR/TR
+  accuracy is 0.259–0.293 across the four models (RF: 0.2931, Apollo: 0.2759, XGBoost:
+  0.2586, 1D-CNN: 0.2241–0.2414 depending on loss variant) — **the claim still holds**,
+  unchanged in substance at the bag level.
+- **"1D-CNN showed a tendency of improvement with larger training datasets"**
+  (exp_401/402/403, the TSR/TR ratio ablation): bag-level 1D-CNN TSR/TR delta vs. TRTR
+  is **+0.052 (1:0.5), +0.052 (1:1), +0.155\* (1:2)** — monotonically increasing with
+  more synthetic data, and the highest ratio is now statistically significant at the
+  bag level (n=58; not true of any single-ratio point estimate under the old
+  instance-level pooling). This is a case where the bag-level correction *strengthens*
+  a pre-Stage-2 qualitative claim rather than weakening it, unlike Table 2's 1D-CNN
+  TSR/TR sign flip at the default ratio (exp_201: −0.017, not significant) — the two
+  are consistent (exp_201 uses a different default ratio than the 401/402/403 sweep,
+  and the effect is ratio-dependent, not contradictory).
+
+Not folded into `paper/main.tex` proper: the user is rewriting the paper's framing and
+narrative directly (see project memory), so these are reported here as inputs to that
+rewrite rather than applied as further automatic edits on top of the Table 2 change
+already made mid-Stage-2.
 
 ## 6. What Stage 3 inherits
 

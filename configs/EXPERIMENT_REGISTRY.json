@@ -156,5 +156,13 @@
     "last_run_date": "2026-09-26T19:09:10.893911",
     "last_run_status": "success (mil_eval)",
     "notes": "Notebook initialization on 2026-06-18 11:29:25"
+  },
+  "exp_501": {
+    "created_date": "2026-09-27T00:19:25.800292",
+    "description": "MIL reframe: binary classification (gamma=1, delta=0) on glioma_mil.h5 -- exp_201's dataset-migrated counterpart",
+    "status": "running",
+    "last_run_date": "2026-09-27T00:36:11.659545",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-09-27 00:19:25"
   }
 }

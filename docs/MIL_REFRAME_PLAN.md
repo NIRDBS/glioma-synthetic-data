@@ -746,6 +746,29 @@ analysis, with wider and honest CIs.
 
 ### Stage 3 — Instance-model hygiene
 
+> **Dataset-migration decision (made before Stage 3's real training, 2026-09-27).** Stage
+> 4 needs `viable_legacy` (§4's tests), a field that exists only in Stage 1's
+> `data/processed/glioma_mil.h5`, not the old per-experiment `glioma_dataset.h5` every
+> config still pointed at (confirmed: `exp_201.yaml` reads
+> `results/exp_201/data/glioma_dataset.h5`). Training Stage 3's CNN trunk on the old
+> dataset while Stage 4's MIL models train on the new one would confound "does the
+> formulation help" with "did the data change" — the exact issue flagged when Stage 2's
+> background regen was first noticed. Resolved by migrating **before** Stage 3's real
+> training, not after: new `configs/exp_501.yaml`, exp_201's exact model/training
+> hyperparameters unchanged, only `paths.processed_file` repointed at
+> `data/processed/glioma_mil.h5` (verified via a direct probe-load through the existing
+> loader/config machinery before committing to a full run -- all 5 folds load cleanly,
+> 288,678 instances, correct label range, `coords`/`groups` intact, no code changes
+> needed). `trtr` stage smoke-tested first (964s, all 4 classifiers, all 5 folds, no
+> errors) before launching the full `cvae, tstr, tsrtr, stats_eval, mil_eval` run.
+> exp_501 is now the dataset-migrated counterpart to exp_201, and its Tier 0 (once
+> computed) is the actual apples-to-apples floor Stage 4 compares against -- not
+> exp_201's, which is real and useful but sits on the old data. See exp_501's TRTR
+> output for a live demonstration of the exact bug this stage's CNN fix targets: 1D-CNN
+> early-stopped after 6-11 of 30 possible epochs per fold, with wildly unstable
+> validation accuracy (0.617 ± 0.162 across folds) -- consistent with §7.2's diagnosis
+> that it monitors the test fold itself.
+
 **Goal.** A trunk worth benchmarking on, before any MIL model is built on it.
 
 **Changes.** Per §7.2: inner validation split from **training bags only**, group-aware; forward

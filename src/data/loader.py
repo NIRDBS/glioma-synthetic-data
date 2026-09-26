@@ -48,6 +48,7 @@ class GliomaDataLoader:
         self.wavenumbers = None
         self.groups = None
         self.coords = None
+        self.tissue_cluster = None
 
         self._load_data()
     
@@ -169,6 +170,8 @@ class GliomaDataLoader:
                 self.wavenumbers = self.h5_file['wavenumbers'][:]
             if 'coords' in self.h5_file:
                 self.coords = self.h5_file['coords'][:]
+            if 'tissue_cluster' in self.h5_file:
+                self.tissue_cluster = self.h5_file['tissue_cluster'][:]
             raw_groups = self.h5_file['sample_ids'][:]
         else:
             # Load everything into RAM (fastest for training)
@@ -181,6 +184,8 @@ class GliomaDataLoader:
                     self.wavenumbers = f['wavenumbers'][:]
                 if 'coords' in f:
                     self.coords = f['coords'][:]
+                if 'tissue_cluster' in f:
+                    self.tissue_cluster = f['tissue_cluster'][:]
                 raw_groups = f['sample_ids'][:]
 
         # Robust String Decoding
@@ -204,6 +209,8 @@ class GliomaDataLoader:
                 self.groups = self.groups[mask]
                 if self.coords is not None:
                     self.coords = self.coords[mask]
+                if self.tissue_cluster is not None:
+                    self.tissue_cluster = self.tissue_cluster[mask]
                 print(f"    Filtered to {self.X.shape[0]} Pure Tumor Spectra.")
             else:
                 print("   ! WARNING: 'y_tumor' not found in HDF5! Using all data.")
@@ -355,6 +362,8 @@ class GliomaDataLoader:
             self.y_tumor = self.y_tumor[keep_indices]
         if self.coords is not None:
             self.coords = self.coords[keep_indices]
+        if self.tissue_cluster is not None:
+            self.tissue_cluster = self.tissue_cluster[keep_indices]
 
         print(f"[OK] Downsampled to {self.X.shape[0]} spectra (was {len(patient_ids)})")
 
@@ -400,6 +409,10 @@ class GliomaDataLoader:
                     'val_groups': self.groups[test_mask],
                     'train_coords': self.coords[train_mask] if self.coords is not None else None,
                     'val_coords': self.coords[test_mask] if self.coords is not None else None,
+                    'train_tissue_cluster': (self.tissue_cluster[train_mask]
+                                             if self.tissue_cluster is not None else None),
+                    'val_tissue_cluster': (self.tissue_cluster[test_mask]
+                                          if self.tissue_cluster is not None else None),
                 }
         else:
             print("\n Split file not found or not configured.")
@@ -418,6 +431,10 @@ class GliomaDataLoader:
                     'val_groups': self.groups[val_idx],
                     'train_coords': self.coords[train_idx] if self.coords is not None else None,
                     'val_coords': self.coords[val_idx] if self.coords is not None else None,
+                    'train_tissue_cluster': (self.tissue_cluster[train_idx]
+                                             if self.tissue_cluster is not None else None),
+                    'val_tissue_cluster': (self.tissue_cluster[val_idx]
+                                          if self.tissue_cluster is not None else None),
                 }
 
     def __len__(self):

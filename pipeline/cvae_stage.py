@@ -28,7 +28,19 @@ def _make_epoch_dataset(X_epoch, y_epoch, aug_cfg, num_classes, batch_size):
     fill a large shuffle buffer (which was the dominant bottleneck: 15-25 s/epoch
     just to materialise 22k elements into the buffer).  Augmentation:
     - Within-class mixup: partners pre-computed in numpy, blending in TF graph.
-    - Spectral shift: one random integer shift per batch via tf.roll.
+    - Spectral shift: one random integer shift PER SAMPLE (docs/MIL_REFRAME_PLAN.md
+      §7.2's named defect was a single shared shift for the whole batch -- fixed
+      here via a vectorised per-row tf.gather, not a Python-level loop).
+    - Baseline wobble: a vectorised TF-native stand-in for
+      src/data/augmentation.py's baseline_wobble (smooth random perturbation,
+      amplitude scaled to each sample's own dynamic range) -- "the most valuable"
+      of §7.2's suggested augmentations, motivated by the Stage 0 baseline study.
+      Not literally src/data/augmentation.py's cubic-spline-through-control-points
+      version: that is a per-row scipy.interp1d call, and at ~22k rows x 70
+      epochs x 5 folds (~7.7M calls) it would materially slow CVAE training,
+      the single most expensive stage in the suite. This achieves the same
+      qualitative effect (smooth, random, amplitude-scaled) at batch-vectorised
+      cost via a couple of random-amplitude/phase low-frequency sinusoids.
     """
     import tensorflow as tf
 
@@ -49,6 +61,9 @@ def _make_epoch_dataset(X_epoch, y_epoch, aug_cfg, num_classes, batch_size):
 
     mixup_alpha = float(aug_cfg.get('mixup_alpha', 0.5))
     max_shift   = int(aug_cfg.get('max_shift', 3))
+    wobble_cfg  = aug_cfg.get('baseline_wobble', {'enabled': True})
+    wobble_enabled = bool(wobble_cfg.get('enabled', True))
+    wobble_amplitude = float(wobble_cfg.get('max_amplitude', 0.05))
 
     # Pre-compute within-class mixup partners (numpy, once per epoch, O(n))
     partners = np.empty_like(X)
@@ -57,12 +72,36 @@ def _make_epoch_dataset(X_epoch, y_epoch, aug_cfg, num_classes, batch_size):
         p     = np.random.permutation(len(idx_c))
         partners[idx_c] = X[idx_c[p]]
 
+    n_features = X.shape[1]
+
     @tf.function
     def _augment(x, partner, y):
-        lam = tf.random.uniform((tf.shape(x)[0], 1), 0.0, mixup_alpha)
+        batch = tf.shape(x)[0]
+
+        # 1. Within-class mixup
+        lam = tf.random.uniform((batch, 1), 0.0, mixup_alpha)
         x   = lam * partner + (1.0 - lam) * x
-        sh  = tf.random.uniform((), -max_shift, max_shift + 1, dtype=tf.int32)
-        x   = tf.roll(x, sh, axis=1)
+
+        # 2. Spectral shift, per sample (see docstring above)
+        shifts = tf.random.uniform((batch,), -max_shift, max_shift + 1, dtype=tf.int32)
+        pos = tf.range(n_features)[tf.newaxis, :] - shifts[:, tf.newaxis]
+        idx = tf.math.floormod(pos, n_features)
+        x = tf.gather(x, idx, batch_dims=1)
+
+        # 3. Baseline wobble (see docstring above)
+        if wobble_enabled:
+            pos_f = tf.cast(tf.range(n_features), tf.float32)[tf.newaxis, :] / tf.cast(n_features, tf.float32)
+            amp = wobble_amplitude * (
+                tf.reduce_max(x, axis=1, keepdims=True) - tf.reduce_min(x, axis=1, keepdims=True) + 1e-8)
+            freq1 = tf.random.uniform((batch, 1), 1.0, 3.0)
+            freq2 = tf.random.uniform((batch, 1), 3.0, 6.0)
+            phase1 = tf.random.uniform((batch, 1), 0.0, 2 * np.pi)
+            phase2 = tf.random.uniform((batch, 1), 0.0, 2 * np.pi)
+            a1 = tf.random.uniform((batch, 1), 0.3, 1.0)
+            wobble = amp * (a1 * tf.sin(2 * np.pi * freq1 * pos_f + phase1)
+                            + (1.0 - a1) * tf.sin(2 * np.pi * freq2 * pos_f + phase2))
+            x = x + wobble
+
         return tf.expand_dims(x, -1), y
 
     return (tf.data.Dataset

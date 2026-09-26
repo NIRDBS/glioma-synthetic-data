@@ -46,7 +46,7 @@ tsrtr:
 # SUITE PIPELINE
 # ============================================================================
 pipeline:
-  stages: [trtr, cvae, tstr, tsrtr, stats_eval, mil_eval]
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval, mil_eval, mil_fit]
 
 # ============================================================================
 # PREPROCESSING CONFIGURATION
@@ -129,8 +129,15 @@ models:
     optimizer: "adam"
     loss: "categorical_crossentropy"
     batch_size: 256
-    epochs: 30
-    early_stopping_patience: 5
+    # Stage 3 (docs/MIL_REFRAME_PLAN.md §7.2): early stopping now watches an
+    # inner split carved from training slides only, never the true test fold
+    # (see pipeline/_common.py::_inner_validation_split). exp_501's own
+    # pre-fix smoke test early-stopped after 6-11/30 epochs on the leaky
+    # signal; epochs/patience raised so the corrected signal has room to
+    # actually converge rather than being capped at the old leak-tuned values.
+    epochs: 100
+    early_stopping_patience: 10
+    inner_val_fraction: 0.15
     random_state: 42
     dropout_rate: 0.6
 

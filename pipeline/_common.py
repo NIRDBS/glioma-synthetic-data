@@ -18,6 +18,7 @@ from typing import Optional
 
 import numpy as np
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
 
 
 def set_seeds(config):
@@ -138,7 +139,54 @@ def prepare_fold(fold_data, config, cap_train=True):
     )
 
 
-def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_name, seed=42):
+def _inner_validation_split(y, bag_ids=None, val_fraction=0.15, seed=42):
+    """
+    Carve an inner train/val split out of a fold's TRAINING data only, for the
+    CNN's early-stopping monitor -- never the true held-out CV test fold
+    (docs/MIL_REFRAME_PLAN.md §7.2: "early-stops on the test fold itself... not
+    merely optimism -- restore_best_weights selects on held-out data").
+
+    Group-aware when ``bag_ids`` identifies real slides (whole slides go
+    entirely to one side, so the leakage this project's whole CV design exists
+    to prevent doesn't creep back in at this smaller scale). Rows with no group
+    (``bag_ids`` entry is ``None`` -- synthetic instances have no slide to leak
+    across) get a plain per-row stratified split instead; TSTR's purely
+    synthetic training set (``bag_ids=None`` entirely) falls through to a plain
+    split for every row.
+
+    Returns (train_idx, val_idx), positional indices into ``y`` (and whatever
+    else the caller subsets the same way).
+    """
+    n = len(y)
+    idx = np.arange(n)
+
+    if bag_ids is None:
+        return train_test_split(idx, test_size=val_fraction, stratify=y, random_state=seed)
+
+    bag_ids = np.asarray(bag_ids, dtype=object)
+    has_group = np.array([b is not None for b in bag_ids])
+    grouped_idx = idx[has_group]
+    ungrouped_idx = idx[~has_group]
+
+    train_parts, val_parts = [], []
+    if len(grouped_idx) > 0:
+        gss = GroupShuffleSplit(n_splits=1, test_size=val_fraction, random_state=seed)
+        g_train, g_val = next(gss.split(grouped_idx, y[grouped_idx], groups=bag_ids[grouped_idx]))
+        train_parts.append(grouped_idx[g_train])
+        val_parts.append(grouped_idx[g_val])
+    if len(ungrouped_idx) > 0:
+        u_y = y[ungrouped_idx]
+        stratify = u_y if len(np.unique(u_y)) > 1 else None
+        u_train, u_val = train_test_split(
+            ungrouped_idx, test_size=val_fraction, stratify=stratify, random_state=seed)
+        train_parts.append(u_train)
+        val_parts.append(u_val)
+
+    return np.concatenate(train_parts), np.concatenate(val_parts)
+
+
+def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_name, seed=42,
+                      train_bag_ids=None):
     """
     Train the 4 benchmark models on (X_train, y_train), evaluate on (X_val, y_val),
     and save each to ``model_dir`` using the canonical filename scheme:
@@ -146,6 +194,11 @@ def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_na
 
     Returns a dict {model_name: val_accuracy}. TensorFlow is imported lazily inside
     the CNN block (matches the notebook; avoids Windows DLL load issues up front).
+
+    ``train_bag_ids`` (optional): per-row slide id for ``X_train`` (``None`` for
+    rows with no real slide, e.g. synthetic instances). Used only by the CNN's
+    inner validation split (see ``_inner_validation_split``); the other three
+    models are unaffected.
     """
     import joblib
     from sklearn.ensemble import RandomForestClassifier
@@ -215,18 +268,62 @@ def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_na
     try:
         import tensorflow as tf
         from src.models.cnn import build_1d_cnn
+        from src.data.augmentation import AugmentedDataGenerator
 
         tf.keras.backend.clear_session()
         tf.random.set_seed(seed)
 
         n_features = X_train.shape[1]
-        X_train_cnn = X_train.reshape(-1, n_features, 1)
-        X_val_cnn = X_val.reshape(-1, n_features, 1)
-        y_train_cnn = tf.keras.utils.to_categorical(y_train, num_classes=cnn_cfg['num_classes'])
-        y_val_cnn = tf.keras.utils.to_categorical(y_val, num_classes=cnn_cfg['num_classes'])
+        num_classes = cnn_cfg['num_classes']
 
-        cnn_model = build_1d_cnn(input_shape=(n_features, 1), num_classes=cnn_cfg['num_classes'])
-        cnn_model.compile(optimizer=cnn_cfg['optimizer'], loss=cnn_cfg['loss'], metrics=['accuracy'])
+        # Inner split for early stopping -- NEVER the true held-out test fold
+        # (fold's own X_val/y_val, used only for the final accuracy below).
+        inner_val_fraction = cnn_cfg.get('inner_val_fraction', 0.15)
+        tr_idx, inner_val_idx = _inner_validation_split(
+            y_train, train_bag_ids, inner_val_fraction, seed)
+        X_fit, y_fit = X_train[tr_idx], y_train[tr_idx]
+        X_inner_val, y_inner_val = X_train[inner_val_idx], y_train[inner_val_idx]
+
+        # Single authoritative compile (dropout_rate/learning_rate/loss all
+        # forwarded here, and nowhere else) -- src/models/cnn.py's docstring.
+        cnn_model = build_1d_cnn(
+            input_shape=(n_features, 1), num_classes=num_classes,
+            learning_rate=cnn_cfg.get('learning_rate', 0.001),
+            dropout_rate=cnn_cfg.get('dropout_rate', 0.4),
+            loss=cnn_cfg['loss'],
+        )
+
+        X_inner_val_cnn = X_inner_val.reshape(-1, n_features, 1)
+        y_inner_val_oh = tf.keras.utils.to_categorical(y_inner_val, num_classes=num_classes)
+
+        aug_cfg = dict(config.get('augmentation', {}))
+        if aug_cfg.get('enabled', False):
+            gen = AugmentedDataGenerator(X_fit, y_fit, aug_cfg)
+            # get_tf_dataset(epochs=1) yields exactly one epoch's worth of
+            # (shuffled, augmented) batches from a from_generator dataset --
+            # .fit(dataset, epochs=N) does NOT reliably re-invoke the
+            # underlying Python generator fresh each outer epoch (confirmed:
+            # without .repeat(), a real training run hit "input ran out of
+            # data" after epoch 1). .repeat() makes the wrap-around explicit
+            # and documented instead of relying on .fit()'s own dataset-
+            # restart behaviour; steps_per_epoch bounds each epoch so Keras
+            # still sees the same amount of data per epoch as the unaugmented
+            # path. Each wrap-around still reshuffles/re-augments, since
+            # AugmentedDataGenerator draws fresh randomness every time its
+            # generator function itself is (re-)invoked.
+            steps_per_epoch = int(np.ceil(len(X_fit) / cnn_cfg['batch_size']))
+            train_ds = (
+                gen.get_tf_dataset(batch_size=cnn_cfg['batch_size'], epochs=1, shuffle=True)
+                .repeat()
+                .map(lambda x, y: (tf.expand_dims(x, -1), tf.one_hot(y, num_classes)),
+                     num_parallel_calls=tf.data.AUTOTUNE)
+                .prefetch(tf.data.AUTOTUNE)
+            )
+            fit_data_kwargs = dict(x=train_ds, steps_per_epoch=steps_per_epoch)
+        else:
+            X_fit_cnn = X_fit.reshape(-1, n_features, 1)
+            y_fit_oh = tf.keras.utils.to_categorical(y_fit, num_classes=num_classes)
+            fit_data_kwargs = dict(x=X_fit_cnn, y=y_fit_oh, batch_size=cnn_cfg['batch_size'])
 
         early_stop = tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
@@ -234,18 +331,19 @@ def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_na
             restore_best_weights=True,
         )
         history = cnn_model.fit(
-            X_train_cnn, y_train_cnn,
-            validation_data=(X_val_cnn, y_val_cnn),
+            **fit_data_kwargs,
+            validation_data=(X_inner_val_cnn, y_inner_val_oh),
             epochs=cnn_cfg['epochs'],
-            batch_size=cnn_cfg['batch_size'],
             callbacks=[early_stop],
             verbose=0,
         )
+        X_val_cnn = X_val.reshape(-1, n_features, 1)
         y_pred_cnn = np.argmax(cnn_model.predict(X_val_cnn, verbose=0), axis=1)
         accs['1D_CNN'] = float(accuracy_score(y_val, y_pred_cnn))
         cnn_model.save(str(model_dir / f"cnn_{fold_name}.keras"))
-        print(f"        Val Acc: {accs['1D_CNN']:.4f}  ({len(history.history['loss'])} epochs)")
-        del cnn_model, X_train_cnn, X_val_cnn, y_train_cnn, y_val_cnn
+        print(f"        Val Acc: {accs['1D_CNN']:.4f}  ({len(history.history['loss'])} epochs, "
+              f"inner val={len(inner_val_idx)}/{len(y_train)})")
+        del cnn_model, X_inner_val_cnn, X_val_cnn, y_inner_val_oh
         tf.keras.backend.clear_session()
         gc.collect()
     except Exception as e:

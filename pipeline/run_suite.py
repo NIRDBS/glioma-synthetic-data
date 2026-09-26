@@ -31,13 +31,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_STAGES     = ['trtr', 'cvae', 'tstr', 'tsrtr', 'stats_eval', 'mil_eval']
+DEFAULT_STAGES     = ['trtr', 'cvae', 'tstr', 'tsrtr', 'stats_eval', 'mil_eval', 'mil_fit']
 CLASSIFIER_STAGES  = {'trtr', 'tstr', 'tsrtr'}
 STAGE_ALIASES = {
     'preprocess': 'preprocessing', 'preprocessing': 'preprocessing',
     'trtr': 'trtr', 'cvae': 'cvae', 'tstr': 'tstr', 'tsrtr': 'tsrtr',
     'eval': 'stats_eval', 'evaluation': 'stats_eval', 'stats_eval': 'stats_eval',
     'mil_eval': 'mil_eval', 'mil': 'mil_eval', 'tier0': 'mil_eval',
+    'mil_fit': 'mil_fit', 'misvm': 'mil_fit', 'em': 'mil_fit',
 }
 
 
@@ -85,6 +86,13 @@ def _stage_outputs_exist(stage, config):
             # spuriously off the other's output.
             d = Path(paths['statistical_dir'])
             return d.exists() and any(d.glob('mil_tier0_*.json'))
+        if stage == 'mil_fit':
+            store_path = Path(paths.get('experiment_root', '')) / 'latent' / 'latent_labels.h5'
+            if not store_path.exists():
+                return False
+            import h5py
+            with h5py.File(store_path, 'r') as f:
+                return 'misvm' in f and 'em' in f
     except Exception:
         return False
     return False
@@ -165,6 +173,9 @@ def _run_stage(stage, config, output_dir, cvae_backend, epochs):
         if not results:
             print("  [mil_eval] No regimen model dirs found — skipping.")
         return results
+    if stage == 'mil_fit':
+        from pipeline.mil_fit_stage import mil_fit_stage
+        return mil_fit_stage(config, output_dir)
     raise ValueError(f"Unknown stage: {stage}")
 
 

@@ -52,7 +52,9 @@ def tsrtr_stage(config, output_dir=None):
         print(f"\n--- {fold_name} ---")
 
         # 1. Patient-capped real training data + val
-        X_real, y_real, X_val, y_val = prepare_fold(fold_data, config, cap_train=True)
+        fd = prepare_fold(fold_data, config, cap_train=True)
+        X_real, y_real, X_val, y_val = fd.X_train, fd.y_train, fd.X_val, fd.y_val
+        real_bag_ids = fd.train_bag_ids
         n_real = X_real.shape[0]
 
         # 2. On-demand synthetic generation at the target ratio
@@ -72,13 +74,23 @@ def tsrtr_stage(config, output_dir=None):
         # 3. Mix, shuffle, train
         X_mix = np.vstack([X_real, X_synth])
         y_mix = np.concatenate([y_real, y_synth])
+        # Synthetic rows have no real slide to leak across; None marks them as
+        # "ungrouped" for _inner_validation_split's per-row fallback split.
+        if real_bag_ids is not None:
+            bag_ids_mix = np.concatenate(
+                [np.asarray(real_bag_ids, dtype=object),
+                 np.array([None] * len(y_synth), dtype=object)])
+        else:
+            bag_ids_mix = None
         perm = np.random.permutation(len(y_mix))
         X_mix, y_mix = X_mix[perm], y_mix[perm]
+        bag_ids_mix = bag_ids_mix[perm] if bag_ids_mix is not None else None
         print(f"  Mixed real+synth: {X_mix.shape}  "
               f"(real={n_real}, synth={X_synth.shape[0]}, "
               f"actual ratio={X_synth.shape[0] / max(n_real, 1):.3f})")
 
-        accs = train_four_models(X_mix, y_mix, X_val, y_val, config, model_dir, fold_name, seed)
+        accs = train_four_models(X_mix, y_mix, X_val, y_val, config, model_dir, fold_name, seed,
+                                 train_bag_ids=bag_ids_mix)
         per_fold.append(accs)
 
     print_benchmark_summary(per_fold, title=f"TSRTR BENCHMARK COMPLETE (ratio {synth_ratio})")

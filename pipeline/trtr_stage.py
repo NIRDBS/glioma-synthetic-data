@@ -27,8 +27,9 @@ def trtr_stage(config, output_dir=None):
     for fold_data in loader:
         fold_name = fold_data['fold_name']
         print(f"\n--- {fold_name} ---")
-        X_train, y_train, X_val, y_val = prepare_fold(fold_data, config, cap_train=True)
-        accs = train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_name, seed)
+        fd = prepare_fold(fold_data, config, cap_train=True)
+        accs = train_four_models(fd.X_train, fd.y_train, fd.X_val, fd.y_val, config, model_dir,
+                                 fold_name, seed, train_bag_ids=fd.train_bag_ids)
         per_fold.append(accs)
 
     print_benchmark_summary(per_fold, title="TRTR BENCHMARK COMPLETE")

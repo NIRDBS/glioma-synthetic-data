@@ -171,13 +171,39 @@ too; Stage 4's mi-SVM/EM runs, fit before that fix, covered 58).
 clears p<0.05 at lag 3 *and* lag 4 — genuine excess correlation at distances
 the 3×3 median filter provably cannot produce, with z-scores an order of
 magnitude larger than mi-SVM's. `encoder_head` is directionally the same but
-weaker, sitting just above the conventional 0.05 threshold. Neither, however,
-clears the plan's own tissue-scale criterion: a variogram range of 3 px is
-past the "1–2 px is the filter" line but nowhere near the "10–20 px is
-tissue" one — read as **real, non-null, but short-range** coherence, not
-evidence of tissue-scale structure. The shuffled-bag-label control (still not
-run for any tier, per Stage 5's own §3) is the piece that would make this
-finding definitive.
+weaker, sitting just above the conventional 0.05 threshold.
+
+**The "10–20 px is tissue" bar from the plan was framing language, not a
+measured quantity, and this project has no validated ground truth for tumour
+region size to check it against.** That needs to be stated plainly, because
+an earlier version of this section got it wrong: it computed the variogram
+range of `viable_legacy` and reported that map as "the old manual tumour
+annotation," "tissue we're confident is real" — treating it as ground truth.
+**It is not.** Per the project's own foundational finding
+(docs/MIL_REFRAME_PLAN.md's opening section, and the limitation already
+written into `paper/main.tex`'s Data Preprocessing discussion): `viable_legacy`
+is the output of an *unsupervised* per-slide pipeline — NMF(100) then a
+3-component GMM — where a human then looked at each cluster's mean spectrum
+and picked whichever looked like "the strongest signal," manually labelling
+that "tumor." It is a **signal-quality judgment, not a histopathological
+one**, and it is exactly the kind of instance-level label this whole MIL
+reframing exists to stop treating as ground truth. Reusing it as a tumour-size
+reference would have quietly reintroduced the same false assumption Stage 1
+retired.
+
+What the earlier computation actually measured, stated correctly: the
+variogram range of *which per-slide GMM cluster got manually picked as
+strongest-signal*, pooled across 41/59 slides with a real mixed selection
+(2026-09-28) — median 7.0 px, mean 10.5 px, p10=3 px, p90=21 px. This is a
+real, independently-computed number (different pipeline, different math from
+any MIL posterior), but it calibrates nothing about tumour size, and no
+conclusion should be drawn from comparing it to Tier 4's 3 px or mi-SVM's
+2 px — that comparison, in the earlier version of this section, is retracted.
+**Whether 3 px reflects real, small-scale tumour coherence or residual filter
+structure remains genuinely unresolved** by anything currently in this
+project. The shuffled-bag-label control (still not run for any tier, per
+Stage 5's own §3) is the one check that could actually distinguish these —
+not a comparison to `viable_legacy`, which was never fit for that purpose.
 
 ### External agreement vs `viable_legacy`: degenerate for a real, discovered reason
 

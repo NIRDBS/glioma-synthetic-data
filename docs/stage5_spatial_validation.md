@@ -48,6 +48,16 @@ slide, `HF-1887_via-t_2_1.h5_3`, had zero covered instances and was skipped —
 consistent with it being the historically excluded slide documented in
 Stage 1).
 
+> **Update, 2026-09-28**: the root cause was `data/splits/manual_splits.json`
+> omitting this slide from every fold's train/test list — not a property of
+> the slide's spectra, which on inspection differ only in baseline
+> fluorescence level, expected to be handled by IARPLS. Fixed in the split
+> file (docs/stage1_data_layer.md §4); the dataset is 59 slides going
+> forward. The numbers in this section were not re-run and still reflect 58 —
+> per the reasoning at the time, one slide out of 58 was not expected to
+> change the mi-SVM/EM conclusions above, but a from-59 re-fit would now
+> include a 59th out-of-sample posterior this report never had.
+
 ### mi-SVM
 
 | lag | Moran's I | p | z | variogram γ |

@@ -57,7 +57,9 @@ patching around them:
 - **The duplicate-bag rule (§7.1) fell out of `bag_decisions` for free**: it keys
   purely by bag id, so a bag seen in two CV folds (4 of them, forced by 6-class
   stratification over classes with only 4 patients — verified directly against
-  `data/splits/manual_splits.json`: 62 (bag, fold) test pairs, 58 unique bags,
+  `data/splits/manual_splits.json`: 63 (bag, fold) test pairs, 59 unique bags as of
+  2026-09-28 (`HF-1887_via-t_2_1.h5_3` added, single test fold, not a duplicate;
+  was 62/58 before — docs/stage1_data_layer.md §4),
   `HF-2104_#5_1.h5_0`/`HF-2104_#9_1.h5_1`/`HF-2104_V1T_1.h5_2`/`HF-592_V3T_1.h5_4` each
   appearing in exactly two folds) contributes one entry, not two. No special-casing
   needed for majority vote specifically.

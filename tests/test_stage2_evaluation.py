@@ -5,9 +5,11 @@ Covers exactly the three bullets in the plan's Stage 2 "Tests" spec:
   1. Hand-built single-class bags -- each previously-degenerate metric
      (precision_macro was a constant ~0.5, kappa was always 0.0, f1_macro
      silently dropped 0%-accuracy bags) now behaves.
-  2. Duplicate-bag averaging yields exactly 58 bag decisions from 62
+  2. Duplicate-bag averaging yields exactly 59 bag decisions from 63
      (bag, fold) test pairs -- both via plain pooling (bag_decisions) and via
-     the genuine per-fold path (aggregate_bag_scores_across_folds).
+     the genuine per-fold path (aggregate_bag_scores_across_folds). (Was
+     58 from 62 until data/splits/manual_splits.json picked up its 59th
+     slide, HF-1887_via-t_2_1.h5_3 -- docs/stage1_data_layer.md §4.)
   3. Tier-0 mean/majority pooling reproduces the existing majority-vote
      confusion matrix where they should agree (no within-bag ties).
 
@@ -132,18 +134,26 @@ def test_bag_decisions_rejects_mixed_labels_within_bag():
 
 
 # ---------------------------------------------------------------------------
-# 2. Duplicate-bag averaging: 62 (bag, fold) test pairs -> 58 unique bags
+# 2. Duplicate-bag averaging: 63 (bag, fold) test pairs -> 59 unique bags
+#
+# Was 62 -> 58 until 2026-09-28: HF-1887_via-t_2_1.h5_3 was missing from every
+# fold's train/test list in this split file (an independent bug, unrelated to
+# the 4 deliberately-duplicated slides below -- see docs/stage1_data_layer.md
+# §4). It's now a normal, single-test-fold slide (fold_3), so it adds exactly
+# 1 to both the pair count and the unique-bag count, and does not join the
+# duplicated set.
 # ---------------------------------------------------------------------------
 
 @requires_splits
-def test_manual_splits_has_62_test_pairs_58_unique_bags():
+def test_manual_splits_has_63_test_pairs_59_unique_bags():
     """docs/MIL_REFRAME_PLAN.md §7.1: 4 slides are forced into two test folds
     each (6-class stratification over classes with only 4 patients), giving 62
-    (slide, fold) test pairs over 58 unique slides."""
+    (slide, fold) test pairs over 58 unique slides -- plus HF-1887's own single
+    test-fold appearance (fold_3), for 63 pairs over 59 unique slides."""
     splits = json.loads(SPLITS_PATH.read_text())
     all_test = [sid for fold in splits.values() for sid in fold['test']]
-    assert len(all_test) == 62
-    assert len(set(all_test)) == 58
+    assert len(all_test) == 63
+    assert len(set(all_test)) == 59
 
     dup_counts = Counter(all_test)
     duplicated = {sid for sid, n in dup_counts.items() if n > 1}
@@ -152,10 +162,10 @@ def test_manual_splits_has_62_test_pairs_58_unique_bags():
 
 
 @requires_splits
-def test_bag_decisions_collapses_duplicated_bags_to_58():
+def test_bag_decisions_collapses_duplicated_bags_to_59():
     """Pooling every instance from every (bag, fold) test appearance and
-    deciding once (bag_decisions keys purely by bag id) collapses the 62 pairs
-    to exactly 58 bag decisions -- the behaviour the old instance-level code
+    deciding once (bag_decisions keys purely by bag id) collapses the 63 pairs
+    to exactly 59 bag decisions -- the behaviour the old instance-level code
     had implicitly, now made explicit."""
     splits = json.loads(SPLITS_PATH.read_text())
     rng = np.random.default_rng(0)
@@ -171,11 +181,11 @@ def test_bag_decisions_collapses_duplicated_bags_to_58():
 
     ids_sorted, bag_pred, bag_true = bag_decisions(
         np.array(preds), np.array(bag_ids), np.array(y_true))
-    assert len(ids_sorted) == 58
+    assert len(ids_sorted) == 59
 
 
 @requires_splits
-def test_aggregate_bag_scores_across_folds_collapses_duplicated_bags_to_58():
+def test_aggregate_bag_scores_across_folds_collapses_duplicated_bags_to_59():
     """Same claim via the genuine per-fold code path that preserves fold
     boundaries instead of concatenating -- what mil_eval_stage.py actually
     calls."""
@@ -199,8 +209,8 @@ def test_aggregate_bag_scores_across_folds_collapses_duplicated_bags_to_58():
         })
 
     bag_ids_sorted, scores, bag_true = aggregate_bag_scores_across_folds(fold_data, rule='mean')
-    assert len(bag_ids_sorted) == 58
-    assert scores.shape == (58, K)
+    assert len(bag_ids_sorted) == 59
+    assert scores.shape == (59, K)
     np.testing.assert_allclose(scores.sum(axis=1), 1.0, atol=1e-8)
 
 

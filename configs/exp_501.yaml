@@ -74,7 +74,13 @@ preprocessing:
   # Explicit false rather than relying on the loader's not-found fallback: use every
   # strong-signal instance in the export, which is the whole point of the wider mask.
   y_tumor: false
-  ignore_samples: []  # HF-1887_via-t_2_1.h5_3 is correctly included now (docs/stage1_data_layer.md §4)
+  # ignore_samples is dead config (never read by loader/pipeline code, see
+  # docs/stage1_data_layer.md §4); the real gate was data/splits/manual_splits.json,
+  # which excluded HF-1887_via-t_2_1.h5_3 from every fold's train/test list --
+  # fixed 2026-09-28 (now test in fold_3, train in the other four; 59 slides
+  # total, all 5 folds). This experiment (exp_501) was already fully run before
+  # that fix, so its stored results reflect 58 slides; a re-run would pick up 59.
+  ignore_samples: []
 
 # ============================================================================
 # DYNAMIC AUGMENTATION
@@ -180,7 +186,7 @@ statistics:
   primary_metric: "f1_macro"
 
 # ============================================================================
-# MIL (Stage 4: mi-SVM / EM fit stage)
+# MIL (Stage 4: mi-SVM / EM fit stage; Stage 6: generative/CVAE-based tier)
 # ============================================================================
 mil:
   pi_floor: 0.02
@@ -191,6 +197,18 @@ mil:
   # bag, at the same historical patient_cap value (500) -- scoring still runs
   # on every instance regardless. See src/mil/misvm.py::_subsample_for_svm.
   svm_subsample_per_bag: 500
+
+  # Tier 4 (Stage 6, docs/MIL_REFRAME_PLAN.md): softmax(-mse/T) temperature
+  # for the 'reconstruction' (CbR-promoted) posterior. Picked from a real
+  # smoke test on exp_501 fold_0's validation MSE (2026-09-28): T=1 (a naive
+  # default) makes the posterior nearly uniform at this data's real MSE scale
+  # (mean top-class probability ~0.50 for K=2 -- no usable signal); the
+  # median inter-class MSE gap on that sample was ~0.0008. T=0.001 gives a
+  # genuinely graded posterior (mean top-class probability ~0.67) without
+  # collapsing toward the hard argmin. Provisional and untested for
+  # sensitivity, same treatment as IARPLS lambda / CVAE epochs elsewhere in
+  # this config -- see src/mil/generative.py::mse_to_posterior.
+  cbr_temperature: 0.001
 
 # ============================================================================
 # OUTPUT CONFIGURATION

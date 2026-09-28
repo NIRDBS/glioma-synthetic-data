@@ -14,6 +14,7 @@ scripts/build_glioma_mil.py) and are skipped if it is absent, so this file does
 not force a ~10-minute export as a side effect of running the suite.
 """
 
+import json
 from pathlib import Path
 
 import h5py
@@ -161,16 +162,56 @@ def test_export_schema():
 
 @requires_export
 def test_export_includes_all_59_slides_not_58():
-    """Documents the resolved discrepancy: ignore_samples is dead config (never
-    read outside ConfigManager's defaults) and HF-1887_via-t_2_1.h5_3 appears in
-    neither split file, so its presence is inert -- excluding it was an artifact
+    """Documents the resolved export-level discrepancy: ignore_samples is dead
+    config (never read outside ConfigManager's defaults), and excluding
+    HF-1887_via-t_2_1.h5_3 from the old results/exp_102 export was an artifact
     of the old RamanPreprocessor filtering, not a deliberate exclusion. The new
     export includes it, matching the notebook-01 producer results/exp_201 also
-    used (which has 59 slides; results/exp_102, built by the old class, has 58)."""
+    used (which has 59 slides; results/exp_102, built by the old class, has 58).
+    This only covers the HDF5 export -- see
+    test_hf1887_reachable_through_both_split_files below for the separate fix
+    needed to actually *use* the slide in a fold."""
     with h5py.File(MIL_H5, "r") as f:
         names = {n.decode() if isinstance(n, bytes) else n for n in f["slide_names"][:]}
     assert len(names) == 59
     assert "HF-1887_via-t_2_1.h5_3" in names
+
+
+def test_hf1887_reachable_through_both_split_files():
+    """Follow-up to the export-level fix above: the HDF5 having all 59 slides was
+    necessary but not sufficient. __iter__ builds each fold's train/val mask from
+    data/splits/manual_splits.json or strict_splits.json (src/data/loader.py
+    __iter__, `np.isin(self.groups, train_samples/test_samples)`), and both files
+    independently omitted HF-1887_via-t_2_1.h5_3 from every fold's train and test
+    list -- so it was never in a train or val mask for any fold, regardless of
+    what the export contained (confirmed: this is why Stage 5 saw 'zero covered
+    instances' for it, docs/stage5_spatial_validation.md, not a data problem).
+
+    Fixed 2026-09-28, on inspection of the raw spectra (different baseline
+    fluorescence than the rest, otherwise fine -- IARPLS correction is expected
+    to handle it): added to fold_3's test list in manual_splits.json and fold_4's
+    test list in strict_splits.json, train in the other four folds of each, the
+    same one-test-fold-else-train pattern every other non-duplicated slide has.
+    This pins that fix so a future split-file edit that silently drops the slide
+    again fails loudly here instead of surfacing three stages later as a
+    near-empty posterior map."""
+    slide = "HF-1887_via-t_2_1.h5_3"
+
+    manual = json.loads((REPO_ROOT / "data" / "splits" / "manual_splits.json").read_text())
+    strict_raw = json.loads((REPO_ROOT / "data" / "splits" / "strict_splits.json").read_text())
+    strict = strict_raw["cv_folds"]
+
+    for name, splits in (("manual_splits.json", manual), ("strict_splits.json", strict)):
+        test_folds = [fk for fk, v in splits.items() if slide in v["test"]]
+        train_folds = [fk for fk, v in splits.items() if slide in v["train"]]
+        assert len(test_folds) == 1, f"{name}: expected exactly 1 test-fold membership, got {test_folds}"
+        assert set(train_folds) == set(splits.keys()) - set(test_folds), (
+            f"{name}: expected train in every other fold, got train={train_folds} test={test_folds}"
+        )
+
+    # strict_splits.json's separate 6-slide holdout is untouched by this fix --
+    # it's a distinct set with its own purpose, not part of the 5-fold CV.
+    assert slide not in strict_raw["test_set"]
 
 
 @requires_export

@@ -187,11 +187,25 @@ Full data: `results/stage1_lambda_sensitivity/`.
   asserted).
 - **The 59-vs-58 discrepancy is resolved, not just flagged.** `ignore_samples` is
   dead config — read only into `ConfigManager`'s defaults, never applied by loader or
-  pipeline code — and `HF-1887_via-t_2_1.h5_3` appears in neither split file, so its
-  exclusion from the old `results/exp_102` export was an artifact of the old
+  pipeline code — and excluding `HF-1887_via-t_2_1.h5_3` from the old
+  `results/exp_102` export was an artifact of the old
   `RamanPreprocessor.IGNORE_SAMPLES` class attribute, not a considered decision. The
   new export includes it (matching `results/exp_201`, which was built via notebook 01
   and also has 59); a test pins this (`test_export_includes_all_59_slides_not_58`).
+  **Update, 2026-09-28**: the export having 59 slides turned out not to be enough —
+  `data/splits/manual_splits.json` and `data/splits/strict_splits.json` (what
+  `GliomaDataLoader.__iter__` actually uses to build each fold's train/val mask)
+  independently omitted the slide from every fold's train/test list, so it was
+  never trained on or scored anywhere regardless of the export. This is the reason
+  Stage 5 found "zero covered instances" for it (docs/stage5_spatial_validation.md
+  §2). On inspection the raw spectrum has a different baseline fluorescence level
+  than the rest of the cohort but is otherwise sound, and IARPLS correction is
+  expected to normalise that; both split files now assign it to one fold's test
+  set and train in the other four, the same pattern every other non-duplicated
+  slide has (`test_hf1887_reachable_through_both_split_files`). The dataset is
+  therefore 59 biopsies going forward, not 58 — anything computed before this fix
+  (exp_501's stored Stage 4/5 results included) still reflects 58 and was not
+  re-run for this one slide.
 - **Loader**: `coords` is now loaded and kept aligned through the tumour filter and
   patient cap (both previously silent no-ops for `coords`, since it was never loaded
   at all); `y_bag` is read with a fallback to `y_class` so pre-Stage-1 exports still

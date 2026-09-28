@@ -1088,7 +1088,13 @@ then on.
   contiguous patches.
 - **Spatial**: variogram / Moran's I **by lag band**. The claim rests on lag ≥ 3, where a 3×3 median
   cannot reach; lags 1–2 are shown but excluded. Report the variogram range — 1–2 px means the
-  filter, 10–20 px means tissue.
+  filter, 10–20 px means tissue. **[2026-09-28: this 1–2/10–20 px split was framing language, not
+  a measured quantity, and no ground-truth tumour annotation exists anywhere in this project to
+  calibrate it against — every candidate (`viable_legacy`, `tissue_cluster`, the older PCA/DBSCAN
+  "tumor maps") is itself unsupervised-derived, never histopathological. Checked directly in Stage
+  6 by mistake — `viable_legacy` was briefly (and wrongly) used as a size reference, caught and
+  retracted (docs/stage6_generative_mil.md §4). The **shuffled-bag-label control below is the only
+  way to validate this claim** — range alone cannot.]**
 - **Controls**: the shuffled-bag-label refit must collapse coherence at lag ≥ 3. If it does not, the
   spatial argument does not hold and §6 must be rewritten. A no-filter export is a one-line
   sensitivity check, not a gate.
@@ -1097,3 +1103,56 @@ then on.
   even if it is negative.
 - **End-to-end**: `python -m pipeline.run_suite --config exp_2xx_mil --stages mil_fit,mil_eval`
   produces a bag-level summary CSV plus per-slide posterior maps.
+
+---
+
+## 13. Backlog after Stage 6 (2026-09-28) — where things stand, for continuity
+
+Stages 0–6 (Tier 4 only) are done and committed. This is the durable list of what's left,
+so a later session (compacted or not) can pick up without re-deriving it. Update this list
+as items close rather than letting the record go stale.
+
+**In progress now:** Tier 3 (attention MIL) and the shuffled-bag-label control, started together.
+
+### New training still needed
+- **Tier 3 — attention MIL** (§ Stage 6 above, `src/mil/attention.py` not yet written). Gated
+  attention over instance *logits*, frozen per-fold CVAE encoder trunk, sub-bag sampler (§4.1:
+  uniform draws, size from $\pi_{\min}$ then adaptive from a fitted $\hat\pi_b$, one-sided label
+  smoothing at the resulting $\varepsilon$). Needs its own smoke test before a real run (per the
+  agreed Stage 6 reordering).
+- **Stage 7 — CVAE soft conditioning.** Replace `to_categorical(y_s)` with a latent-store lookup;
+  needs a simplex sampler for generation (not corner enumeration), a CbR rework (currently tied to
+  one-hot corners), a stop-gradient guard if the condition comes from the CVAE's own encoder head.
+  **Open decision**: which posterior to condition on — EM was the plan's original pick ("calibrated
+  soft labels") but EM collapsed (Stage 4 §6); `encoder_head` is the strongest MIL signal found so
+  far (Stage 6 §3) but is itself CVAE-derived, which may be circular for this specific use.
+- **Stage 8 — mixture model (M) + 6-class.** Relax (C) to (M) (instance state ranges over all
+  $K{+}1$ types, not just $\{$nulls, own-bag-class$\}$); new 6-class MIL configs. The plan's own
+  pre-registered identifiability criterion (§10, checkpoint 2) is unchecked.
+
+### Validation / loose ends flagged but not resolved (no new architecture needed)
+- **Shuffled-bag-label control** — specified as the primary spatial control (§6, §12), never run
+  for any tier. The only way to validate the lag≥3 spatial claim now that no size ground truth
+  exists (see the 2026-09-28 note above). Cost: a full refit under permuted labels — cheap for
+  mi-SVM/EM (reuses the already-validated CPU-only `modal_mil_fit.py` path, ~6h precedent), **not**
+  cheap for Tier 4 (would need a full CVAE retrain per fold — this project's first real GPU
+  training run; validate the Modal GPU config cheaply first, per the standing GPU-cost rule, before
+  committing to it).
+- **mi-SVM had not converged** at the 10-iteration cap (churn still decreasing every fold/class,
+  Stage 4 §6). Untested whether more iterations changes the picture.
+- **EM's collapse root cause** undetermined — genuine weak signal at this bag count vs. an artifact
+  of this specific config (cold start, shrinkage strength, fixed $\pi_{\text{init}}$).
+- **$\pi_b$ vs NMF cluster proportions** (§1's other named external-validity check) — never computed.
+- **The K=2 softmax external-agreement threshold bug** (Stage 6 §4) — documented, not fixed. Affects
+  any future tier whose instance head is a plain softmax (Tier 3, if built that way).
+- **mi-SVM vs Apollo/RF/XGBoost bag accuracy** — only computed vs the CNN (Stage 6 §5). Cheap to
+  extend with the existing `scripts/stage6_bag_eval.py`.
+- **`cbr_temperature` (T=0.001)** — one fold's smoke test, never swept.
+- **$\sigma$ identifiability** (§10, checkpoint 1) — no profile-likelihood interval built.
+- **Join-count/boundary-length spatial statistics + qualitative RGB overlay** (§6) — skipped since
+  Moran's I + variogram already answered the question at the time.
+
+### Not modeling
+- The paper's Methodology/Experimental Design revision — analysis delivered (chat, 2026-09-28);
+  drafting is the user's own.
+- Coarser 6-class grouping (post-Stage-8 idea, in memory) — still deferred, not started.

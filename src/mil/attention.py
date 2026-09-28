@@ -187,6 +187,19 @@ class AttentionMIL(Model):
         self.center_by_bag = center_by_bag
 
         reg = tf.keras.regularizers.l2(l2) if l2 else None
+        # Each fold has its OWN independently-trained CVAE encoder, and they
+        # do not produce z_mean on a consistent scale -- confirmed directly
+        # on exp_501 (2026-09-28): fold_1's raw z_mean std was ~7.5x SMALLER
+        # than fold_0's (0.011 vs 0.082), which alone was enough to make
+        # fold_1's training stall completely (near-zero instance_logits,
+        # near-uniform attention, loss frozen at ln(2) for 70+ epochs) at
+        # weight-initialization scales tuned for a "normal" input variance.
+        # Centering (below) does NOT fix this -- subtracting a per-bag mean
+        # cannot change variance, only removes the mean -- so this
+        # normalisation is the actual fix, applied regardless of
+        # center_by_bag, making training robust to whatever scale a given
+        # fold's frozen trunk happens to produce rather than assuming one.
+        self.post_trunk_norm = layers.LayerNormalization(name="post_trunk_norm")
         self.pre_dropout = layers.Dropout(dropout_rate)
         self.instance_head = layers.Dense(num_classes, name="instance_logits",
                                           kernel_regularizer=reg)
@@ -232,6 +245,7 @@ class AttentionMIL(Model):
             z_mean_3d = z_mean_3d - tf.reduce_mean(z_mean_3d, axis=1, keepdims=True)
             z_mean = tf.reshape(z_mean_3d, (batch * s, self.latent_dim))
 
+        z_mean = self.post_trunk_norm(z_mean)
         z_mean = self.pre_dropout(z_mean, training=training)
 
         instance_logits_flat = self.instance_head(z_mean)         # (batch*s, K)
@@ -296,6 +310,7 @@ class AttentionMIL(Model):
                 idx = np.where(bag_ids == b)[0]
                 z_mean[idx] -= z_mean[idx].mean(axis=0, keepdims=True)
 
+        z_mean = self.post_trunk_norm(z_mean).numpy()
         logits = self.instance_head(z_mean).numpy()
         probs = tf.nn.softmax(logits, axis=1).numpy()
         return class_probs_to_posterior(probs)

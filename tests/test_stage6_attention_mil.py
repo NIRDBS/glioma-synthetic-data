@@ -274,11 +274,19 @@ def test_center_by_bag_cancels_a_pure_bag_level_offset():
     encoder = _identity_encoder(n_features, num_classes, seed=20)
 
     # bag A and bag B: identical relative structure, offset by a constant
-    # that differs only by which bag it is -- not by class or content.
+    # that differs only by which bag it is -- not by class or content. The
+    # fingerprint is mean-ZERO across features ([5,-5,5,-5], not a uniform
+    # [5,5,5,5]): AttentionMIL now always applies LayerNormalization after
+    # the optional per-bag centering step, and LayerNorm's own PER-INSTANCE
+    # (across-feature) mean-centering would otherwise remove a uniform
+    # offset by itself, for any bag, confounding what this test is actually
+    # meant to isolate -- centering's cross-INSTANCE, per-bag effect, a
+    # different axis entirely (confirmed by this test initially failing
+    # against a uniform fingerprint for exactly that reason).
     rng = np.random.default_rng(21)
     base = rng.normal(size=(10, n_features)).astype(np.float32)
-    x_bag_a = base + np.array([5.0, 5.0, 5.0, 5.0], dtype=np.float32)   # bag A's fingerprint
-    x_bag_b = base + np.array([-5.0, -5.0, -5.0, -5.0], dtype=np.float32)  # bag B's fingerprint
+    x_bag_a = base + np.array([5.0, -5.0, 5.0, -5.0], dtype=np.float32)   # bag A's fingerprint
+    x_bag_b = base + np.array([-5.0, 5.0, -5.0, 5.0], dtype=np.float32)  # bag B's fingerprint
     X = np.concatenate([x_bag_a, x_bag_b])
     bag_ids = np.array(['A'] * 10 + ['B'] * 10, dtype=object)
 

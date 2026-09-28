@@ -1,10 +1,13 @@
 # Stage 4 — Latent store and Tier 1/2, constrained binary
 
-**Status: complete (code + tests); real-data fit in progress.** New package
-`src/mil/` (`common.py`, `misvm.py`, `em.py`, `store.py`), new
-`pipeline/mil_fit_stage.py`, wired into `pipeline/run_suite.py`.
+**Status: complete, including the real-data fit.** New package `src/mil/`
+(`common.py`, `misvm.py`, `em.py`, `store.py`), new `pipeline/mil_fit_stage.py`
+and `pipeline/modal_mil_fit.py`, wired into `pipeline/run_suite.py`. Real fit
+on exp_501 finished; results in §6, and honest findings they are -- EM
+collapsed in most folds and mi-SVM hadn't fully converged, both surfaced by
+running this for real rather than assumed from the synthetic tests alone.
 
-> **Reproducing this.** `pytest tests/test_stage4_mil.py` (15 tests, synthetic
+> **Reproducing this.** `pytest tests/test_stage4_mil.py` (18 tests, synthetic
 > data only). Real fit: `python -m pipeline.run_suite --configs exp_501
 > --stages mil_fit --force` (needs exp_501's `trtr`-trained data path only —
 > mi-SVM/EM train their own classifiers from scratch, they do not reuse
@@ -148,14 +151,63 @@ either extreme).
 - **No `pi_min` sweep (1–5%) yet** — a single fixed value is used throughout;
   the plan lists this as a sensitivity check (§1), not a Stage 4 requirement.
 
-## 6. Real-data validation (to be filled in once the fit completes)
+## 6. Real-data validation
 
-`mil_fit_stage` on exp_501 was in progress when this document was written.
-Once complete: the fitted $\pi_b$ distribution across the 58 bags, the
-shrinkage-check verdict, the null-component collapse diagnostic, and — the
-plan's own priority ("worth prioritising") — $\pi_b$'s external correlation
-against the `viable_legacy` fraction and NMF cluster proportions, not yet
-computed here.
+`mil_fit_stage` on exp_501 completed (all 5 folds, both methods, 21,933s /
+6.1h total -- see §6.1 for why this was tractable at all). Real, honest
+findings, not the clean picture the synthetic tests showed:
+
+- **mi-SVM converged within its 10-iteration cap in every fold, but was still
+  refining, not stable**: churn was still decreasing at the final iteration in
+  every fold/class (e.g. fold_0 class 0: `...1594, 2222, 1528, 1422`, still
+  moving). It hit the iteration ceiling, not a fixed point. `max_iters` should
+  be raised before trusting these posteriors fully.
+- **EM's shrinkage diagnostic (§1) fired `collapsed=True` in 4 of 5 folds.**
+  $\pi_b$ converged to ~0.02-0.03 (essentially the numerical floor) with
+  population $\sigma \to 0$ -- EM found no bag-to-bag signal in most folds.
+  fold_0 was the one exception (`shrinkage_ratio=5.851`, not collapsed,
+  $\pi_b \approx 0.031$) -- the SAME code, different folds, a genuinely
+  fold-dependent (not deterministic-bug-shaped) outcome, consistent with a
+  real, borderline signal rather than a simple implementation error.
+- **$\pi_b$'s external correlation against `viable_legacy`**: not computed as
+  a correlation directly; instead assessed via Stage 5's external-agreement
+  check on the hard diagnostic/non-diagnostic assignment (ARI/AMI vs
+  `viable_legacy`), which was effectively null for both methods -- see
+  docs/stage5_spatial_validation.md. NMF cluster-proportion correlation is
+  not yet computed at all (this stage's real compute cost pushed it out of
+  scope for this pass; `tissue_cluster` is wired through the loader and
+  available whenever this is picked up).
+
+### 6.1 A necessary fix found only by actually running this on real data
+
+The synthetic tests (§3) ran on bags of ~40-80 instances; exp_501's real
+folds are ~200k+ instances (Stage 4 retired `patient_cap` deliberately, so
+mi-SVM/EM see every instance). Apollo's RBF SVM scales badly with sample
+count -- a single fit at full fold size was confirmed empirically to be
+impractically slow (a local run sat in fold_0's first SVM fit for over 14
+hours with no result). Fixed with `svm_subsample_per_bag=500`
+(`src/mil/misvm.py::_subsample_for_svm`): caps each bag's contribution to the
+SVM's own *training* set at the historical `patient_cap` value, per bag (not
+a flat global subsample, so no bag risks being starved out entirely) and per
+iteration (a fresh subsample each round, not one arbitrary slice reused
+throughout). Scoring (`predict_proba`, which drives both relabeling and the
+returned posterior) always runs on every instance regardless -- only the fit
+itself is capped. Threaded through EM's mi-SVM bootstrap too (same
+bottleneck, same fix). This is what made the 6.1h run tractable at all --
+without it, mi-SVM/EM were not completing in practical time.
+
+Also added, for the same underlying reason (this workload doesn't fit
+comfortably on one machine, and this project's Modal wiring already existed
+for the CVAE/classifier stages): `pipeline/modal_mil_fit.py` parallelizes
+mi-SVM/EM across the 5 folds as independent CPU-only Modal containers
+(sklearn work throughout, no GPU benefit) rather than the local sequential
+loop -- checked into a memory-constrained-machine problem specifically (13.7GB
+total RAM, 1.9GB free at the time), not a speed complaint. `pipeline/
+modal_classifiers.py` separately gained real GPU support (`gpu="T4"`) for the
+1D-CNN, with a hard-fail check if TensorFlow doesn't actually see the
+requested GPU -- validated cheaply (a throwaway matmul probe, not a real
+training run) before ever being used for anything long, directly per a
+past-incident concern about silently-CPU-priced-as-GPU credit costs.
 
 ## 7. What Stage 5+ inherits
 

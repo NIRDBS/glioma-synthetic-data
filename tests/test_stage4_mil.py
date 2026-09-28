@@ -18,9 +18,10 @@ from src.mil.common import (
     posterior_to_K1, shrinkage_diagnostic,
 )
 from src.mil.em import fit_em, score_em
-from src.mil.misvm import fit_misvm, predict_misvm
+from src.mil.misvm import _subsample_for_svm, fit_misvm, predict_misvm
 from src.mil.store import (
-    alignment_checksum, assert_no_fold_leakage, read_posteriors, write_posteriors,
+    alignment_checksum, assert_no_fold_leakage, merge_out_of_sample_posterior,
+    read_posteriors, write_posteriors,
 )
 
 
@@ -211,6 +212,43 @@ def test_em_shrinkage_stronger_for_smaller_bags():
     assert small_bag_dist_to_mu <= large_bag_dist_to_mu + 0.05  # allow small noise margin
 
 
+def test_subsample_for_svm_caps_every_bag_without_starving_any():
+    """Apollo's RBF SVM scales badly with sample count; Stage 4 retired the
+    global patient_cap, so this per-bag re-cap (for the SVM fit only) is what
+    keeps a single fit tractable at full fold size. Every bag must still
+    contribute at least min(bag_size, cap) instances -- none dropped
+    entirely -- and no bag may exceed the cap."""
+    rng = np.random.default_rng(30)
+    bag_ids = np.concatenate([
+        np.full(50, 'big', dtype=object),
+        np.full(10, 'small', dtype=object),   # below the cap already
+        np.full(500, 'huge', dtype=object),
+    ])
+    idx = _subsample_for_svm(bag_ids, cap_per_bag=20, seed=1)
+    kept = bag_ids[idx]
+    counts = {b: int((kept == b).sum()) for b in np.unique(bag_ids)}
+    assert counts['big'] == 20
+    assert counts['small'] == 10  # under the cap -> kept whole, not padded
+    assert counts['huge'] == 20
+    assert len(idx) == len(set(idx.tolist()))  # no duplicate rows
+
+
+def test_misvm_subsampling_still_recovers_class_separation():
+    """The whole point of the cap: fitting on a subsample must not break
+    mi-SVM's actual job. Uses a bag size comfortably above a tiny cap so the
+    subsampling path is definitely exercised, not accidentally skipped."""
+    X, y_bag, bag_ids, z_true = _synthetic_constrained_mil(
+        n_bags_per_class=6, n_per_bag=80, seed=31)
+    fit = fit_misvm(X, bag_ids, y_bag, n_classes=2, pi_min=0.1, max_iters=5,
+                    seed=31, verbose=False, svm_subsample_per_bag=30)
+    posterior = fit['posterior']
+    is_diagnostic = z_true >= 3
+    for cls in (0, 1):
+        own_class_mass_diag = posterior[is_diagnostic & (y_bag == cls), 1 + cls]
+        own_class_mass_null = posterior[~is_diagnostic & (y_bag == cls), 1 + cls]
+        assert own_class_mass_diag.mean() > own_class_mass_null.mean()
+
+
 def test_misvm_and_em_score_functions_work_on_held_out_data():
     X, y_bag, bag_ids, _ = _synthetic_constrained_mil(seed=13)
     n_train = len(y_bag) * 3 // 4
@@ -278,6 +316,38 @@ def test_fold_leakage_assertion_passes_when_correctly_out_of_sample(tmp_path):
 
     assert_no_fold_leakage(store_path, 'em', 'constrained', 'fold_0',
                            val_bag_ids_this_fold=['C'], bag_ids_all=bag_ids_all)  # no raise
+
+
+def test_merge_out_of_sample_posterior_averages_duplicated_bag(tmp_path):
+    """A bag that is a validation (out-of-sample) bag in TWO folds -- §7.1's
+    documented case -- must get the AVERAGE of both folds' estimates, not
+    whichever fold happened to be read first, and ordinary single-fold bags
+    must pass through unchanged."""
+    store_path = tmp_path / 'latent_labels.h5'
+    bag_ids_all = np.array(['A', 'A', 'B', 'B'])  # A: ordinary, B: duplicated
+
+    # Fold 0: A in-sample (train), B out-of-sample (val) with posterior [0.2, 0.8]
+    write_posteriors(
+        store_path, 'em', 'constrained', 'fold_0',
+        posterior=np.array([[0.9, 0.1], [0.9, 0.1], [0.2, 0.8], [0.2, 0.8]], dtype=np.float32),
+        in_sample=np.array([True, True, False, False]),
+        sample_ids=bag_ids_all, coords=None)
+
+    # Fold 1: A out-of-sample (val) with posterior [0.7, 0.3]; B ALSO
+    # out-of-sample here (the duplicated case) with posterior [0.4, 0.6].
+    write_posteriors(
+        store_path, 'em', 'constrained', 'fold_1',
+        posterior=np.array([[0.7, 0.3], [0.7, 0.3], [0.4, 0.6], [0.4, 0.6]], dtype=np.float32),
+        in_sample=np.array([False, False, False, False]),
+        sample_ids=bag_ids_all, coords=None)
+
+    merged, counts = merge_out_of_sample_posterior(
+        store_path, 'em', 'constrained', ['fold_0', 'fold_1'])
+
+    np.testing.assert_array_equal(counts, [1, 1, 2, 2])
+    np.testing.assert_allclose(merged[0], [0.7, 0.3], atol=1e-5)  # A: only fold_1 was OOS
+    np.testing.assert_allclose(merged[2], [0.3, 0.7], atol=1e-5)  # B: mean of [.2,.8] and [.4,.6]
+    np.testing.assert_allclose(merged.sum(axis=1), 1.0, atol=1e-5)
 
 
 def test_fold_leakage_assertion_raises_on_mismatched_fold(tmp_path):

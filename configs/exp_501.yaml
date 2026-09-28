@@ -144,7 +144,13 @@ models:
   cvae:
     num_classes: 2
     batch_size: 256
-    epochs: 70
+    # Bumped from exp_201's 70, matching the CNN's raised budget -- but this
+    # is an open, exploratory question, not a tuned value: whether the CVAE
+    # actually benefits from more epochs (as opposed to just the CNN, which
+    # Stage 3 specifically fixed a leak for) hasn't been investigated. Revisit
+    # once real convergence curves exist to look at, rather than treating 100
+    # as settled.
+    epochs: 100
     learning_rate: 0.001
     latent_dim: 32
     random_state: 42
@@ -172,6 +178,19 @@ statistics:
   alpha: 0.05
   random_seed: 42
   primary_metric: "f1_macro"
+
+# ============================================================================
+# MIL (Stage 4: mi-SVM / EM fit stage)
+# ============================================================================
+mil:
+  pi_floor: 0.02
+  # Apollo's RBF SVM scales badly with sample count; Stage 4 retired
+  # patient_cap globally (mi-SVM/EM need every instance for scoring), so
+  # without this, the SVM's own *training* set is ~230k instances/fold --
+  # confirmed impractically slow. This re-caps only the SVM fit itself, per
+  # bag, at the same historical patient_cap value (500) -- scoring still runs
+  # on every instance regardless. See src/mil/misvm.py::_subsample_for_svm.
+  svm_subsample_per_bag: 500
 
 # ============================================================================
 # OUTPUT CONFIGURATION

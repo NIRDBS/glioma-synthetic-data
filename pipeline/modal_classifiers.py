@@ -158,12 +158,42 @@ def _download_stage_outputs(config, stage: str):
 
 # ── remote function ────────────────────────────────────────────────────────────
 
-@app.function(cpu=4.0, memory=8192, volumes={VOL_MOUNT: volume}, timeout=60 * 60 * 4)
-def train_stage_remote(config_name: str, stage: str, h5_name: str = None):
-    """Run one classifier stage (trtr / tstr / tsrtr) for one experiment on Modal."""
+@app.function(gpu="T4", cpu=4.0, memory=8192, volumes={VOL_MOUNT: volume}, timeout=60 * 60 * 4)
+def train_stage_remote(config_name: str, stage: str, h5_name: str = None,
+                       require_gpu: bool = True):
+    """
+    Run one classifier stage (trtr / tstr / tsrtr) for one experiment on Modal.
+
+    Only the 1D-CNN benefits from the GPU here (Apollo/RF/XGBoost are
+    CPU-native and simply run on this same container's CPU while it's idle);
+    requesting gpu="T4" for the whole stage is the simple version rather than
+    splitting CNN into its own GPU-only remote call, which would double the
+    per-stage data-upload overhead for a still-fairly-short training job.
+
+    require_gpu fails loudly (raises) if TF does not actually see a GPU,
+    rather than silently completing on CPU: a real past incident was hours of
+    CPU-speed training running to completion under a GPU request that had
+    silently fallen back, unnoticed until the credit bill (and the wall-clock)
+    arrived. Always validate with a short/cheap call (small --epochs, or a
+    single fold) BEFORE any long real run -- this flag does not replace that,
+    it only prevents the silent-fallback failure mode specifically.
+    """
     import os
     import shutil
     os.chdir("/root")
+
+    import tensorflow as tf
+    gpus = tf.config.list_physical_devices('GPU')
+    print(f"[modal:{config_name}:{stage}] TF sees {len(gpus)} GPU(s): {gpus}")
+    if require_gpu and not gpus:
+        raise RuntimeError(
+            f"[modal:{config_name}:{stage}] gpu=\"T4\" was requested but TensorFlow "
+            "sees NO GPU in this container -- refusing to silently continue on CPU "
+            "(this is exactly the failure mode that has previously burned hours of "
+            "GPU-priced credits on CPU-speed training). Investigate the Modal image/"
+            "GPU allocation before retrying, or pass require_gpu=False if CPU-only "
+            "is genuinely intended for this call."
+        )
 
     from src.utils.config_manager import ConfigManager
     config = ConfigManager.load_config(config_name)

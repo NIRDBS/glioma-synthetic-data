@@ -121,3 +121,44 @@ def assert_no_fold_leakage(store_path, method, variant, fold_name, val_bag_ids_t
             "given validation-bag rows are marked in_sample=True in the store -- a "
             "held-out bag's posterior must come from a model that never saw it."
         )
+
+
+def merge_out_of_sample_posterior(store_path, method, variant, fold_names):
+    """
+    Combine every fold's out-of-sample (in_sample=False) rows into one
+    full-dataset (N, K+1) posterior -- the single leak-free estimate for each
+    instance, for consumers (Stage 5's spatial validation, T3's CVAE
+    conditioning) that want one posterior per instance rather than
+    per-(fold, instance).
+
+    Each instance is out-of-sample in exactly one fold, EXCEPT the 4 bags
+    docs/MIL_REFRAME_PLAN.md §7.1 documents as spanning two CV test folds --
+    those get an out-of-sample estimate from both, which are averaged and
+    renormalised here (consistent with Stage 2's own duplicate-bag handling),
+    not arbitrarily picked from whichever fold happened to load first.
+
+    Returns (posterior, n_folds_covering): posterior is (N, K+1) float32,
+    NaN for any row no fold ever marked out-of-sample (should not happen for
+    a correctly-run Stage 4 fit, but not silently assumed away);
+    n_folds_covering is (N,) int, the number of folds that contributed to
+    each row (1 for ordinary bags, 2 for the duplicated ones, 0 if missing).
+    """
+    sums = None
+    counts = None
+    for fold_name in fold_names:
+        data = read_posteriors(store_path, method, variant, fold_name)
+        posterior = data['posterior']
+        in_sample = data['in_sample']
+        if sums is None:
+            sums = np.zeros_like(posterior, dtype=np.float64)
+            counts = np.zeros(len(posterior), dtype=np.int64)
+        oos = ~in_sample
+        sums[oos] += posterior[oos]
+        counts[oos] += 1
+
+    merged = np.full_like(sums, np.nan)
+    covered = counts > 0
+    merged[covered] = sums[covered] / counts[covered, None]
+    row_sums = merged[covered].sum(axis=1, keepdims=True)
+    merged[covered] = merged[covered] / np.where(row_sums > 0, row_sums, 1.0)
+    return merged.astype(np.float32), counts

@@ -26,7 +26,8 @@ from src.mil.common import (
 )
 
 
-def _cold_start_hard_labels(X, bag_ids, y_bag_per_instance, n_classes, pi_init, pi_min, seed):
+def _cold_start_hard_labels(X, bag_ids, y_bag_per_instance, n_classes, pi_init, pi_min, seed,
+                            svm_subsample_per_bag=500):
     """
     Cold start via a quick mi-SVM pre-fit (src/mil/misvm.py) rather than the
     naive "every instance is diagnostic" assumption alone.
@@ -64,7 +65,8 @@ def _cold_start_hard_labels(X, bag_ids, y_bag_per_instance, n_classes, pi_init, 
     from src.mil.misvm import fit_misvm
 
     misvm_fit = fit_misvm(X, bag_ids, y_bag_per_instance, n_classes, pi_min=pi_init,
-                         variant='mi_svm', max_iters=5, seed=seed, verbose=False)
+                         variant='mi_svm', max_iters=5, seed=seed, verbose=False,
+                         svm_subsample_per_bag=svm_subsample_per_bag)
     is_diagnostic = misvm_fit['posterior'][:, 1:].max(axis=1) > misvm_fit['posterior'][:, 0]
 
     n = len(y_bag_per_instance)
@@ -187,9 +189,14 @@ def _update_pi_b(gamma, y_bag_per_instance, bag_ids, mu, sigma, pi_min, pi_max=0
 
 
 def fit_em(X, bag_ids, y_bag_per_instance, n_classes, tissue_cluster=None, pi_min=0.02,
-          pi_init=0.15, max_iters=20, tol=1e-3, seed=42, rf_kwargs=None, verbose=True):
+          pi_init=0.15, max_iters=20, tol=1e-3, seed=42, rf_kwargs=None, verbose=True,
+          svm_subsample_per_bag=500):
     """
     Fit the constrained-model EM (Tier 2).
+
+    ``svm_subsample_per_bag``: forwarded to the mi-SVM cold-start bootstrap
+    only (see ``_cold_start_hard_labels``) -- EM's own M-step uses a
+    RandomForest, which scales fine at full fold size and is left untouched.
 
     Returns dict:
       'posterior'  (n, K+1), collapsed from the (M+K) state space
@@ -212,7 +219,8 @@ def fit_em(X, bag_ids, y_bag_per_instance, n_classes, tissue_cluster=None, pi_mi
     # tissue_cluster as an RF feature or a later-round tie-break is a
     # reasonable refinement, not implemented here.
     hard_labels, pi_b = _cold_start_hard_labels(X, bag_ids, y_bag_per_instance, n_classes,
-                                                pi_init, pi_min, seed)
+                                                pi_init, pi_min, seed,
+                                                svm_subsample_per_bag=svm_subsample_per_bag)
     confidence = np.ones(n, dtype=np.float64)
 
     logit_pi_b_init = np.array([np.log(p / (1 - p)) for p in pi_b.values()])

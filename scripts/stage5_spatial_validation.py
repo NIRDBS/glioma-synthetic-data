@@ -39,6 +39,37 @@ from src.evaluation.spatial import (
 )
 from src.mil.store import merge_out_of_sample_posterior
 
+# See hard_diagnostic_threshold()'s docstring for why these two,
+# specifically, get a rescaled hard-diagnostic threshold and mi-SVM does not.
+JOINT_SOFTMAX_METHODS = {'attention', 'cbr'}
+
+
+def hard_diagnostic_threshold(method, K):
+    """
+    The cutoff on non-diagnostic mass used to call an instance "diagnostic"
+    for the external-agreement (ARI/AMI) check. A flat 0.5 is only reachable
+    at all for a method whose non-diagnostic mass isn't bounded below 0.5 by
+    construction. mi-SVM's independent one-vs-rest scores aren't bounded
+    that way (already non-degenerate under 0.5 -- 0.96% hard-diagnostic, a
+    real if small number) and are deliberately left alone here, so this fix
+    doesn't retroactively change an already-reported result for a tier that
+    didn't need it.
+
+    For a genuine joint K-way softmax (Tier 3's attention head, Tier 4's cbr
+    variants -- docs/mil_tiers_methodology.md Sec 1/6.3), max_k p_k is
+    bounded below at 1/K by construction, so after the "1 - max_p" K+1 lift,
+    non-diagnostic mass can never reach 0.5 at all: confirmed directly on
+    real data (ARI=AMI=0.0000, every single instance called "diagnostic",
+    for both attention and both cbr variants). Provisional fix, documented
+    and not swept -- same treatment as this project's other provisional
+    constants (cbr_temperature, IARPLS lambda): half of the maximum
+    non-diagnostic mass this construction can EVER produce, (K-1)/(2K-1),
+    instead of a threshold inherited from a differently-shaped score source.
+    """
+    if method in JOINT_SOFTMAX_METHODS and K > 1:
+        return (K - 1) / (2.0 * (2 * K - 1))
+    return 0.5
+
 
 def _load_raw_side_tables(h5_path):
     with h5py.File(h5_path, 'r') as f:
@@ -134,16 +165,19 @@ def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42
               f"(n={len(range_lags)} slides with an estimable range)")
 
     # External agreement vs viable_legacy: hard assignment = "diagnostic" iff
-    # non-diagnostic mass < 0.5 (i.e. argmax over the K+1-collapsed posterior
-    # is NOT the non-diagnostic class), compared against the OLD manually-
-    # curated tumour-cluster boolean -- the finest-grained comparison
-    # available from the (K+1)-collapsed posterior alone (see
-    # docs/stage5_spatial_validation.md for why the full (M+K)-way ARI
-    # against hard_labels.npy's 3-cluster id is deferred, not done here).
+    # non-diagnostic mass < threshold (see hard_diagnostic_threshold's
+    # docstring), compared against the OLD manually-curated tumour-cluster
+    # boolean -- the finest-grained comparison available from the
+    # (K+1)-collapsed posterior alone (see docs/stage5_spatial_validation.md
+    # for why the full (M+K)-way ARI against hard_labels.npy's 3-cluster id
+    # is deferred, not done here).
+    K = posterior.shape[1] - 1
+    threshold = hard_diagnostic_threshold(method, K)
     covered = n_folds_covering > 0
-    hard_diagnostic = (non_diag_mass[covered] < 0.5).astype(int)
+    hard_diagnostic = (non_diag_mass[covered] < threshold).astype(int)
     agreement = external_agreement(hard_diagnostic, viable_legacy[covered].astype(int))
-    print(f"\n{'='*70}\nEXTERNAL AGREEMENT vs viable_legacy (n={agreement['n']})\n{'='*70}")
+    print(f"\n{'='*70}\nEXTERNAL AGREEMENT vs viable_legacy (n={agreement['n']}, "
+          f"hard_diagnostic_threshold={threshold:.4f})\n{'='*70}")
     print(f"  ARI={agreement['ari']:.4f}  AMI={agreement['ami']:.4f}")
     print(f"  (model says 'diagnostic': {hard_diagnostic.sum()}/{len(hard_diagnostic)}; "
           f"viable_legacy true: {viable_legacy[covered].sum()}/{covered.sum()})")
@@ -157,6 +191,7 @@ def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42
         'pooled_permutation_z_by_lag': pooled_perm_z,
         'variogram_range_median_px': float(np.median(range_lags)) if range_lags else None,
         'external_agreement_vs_viable_legacy': agreement,
+        'hard_diagnostic_threshold': threshold,
     }
     if out_path is None:
         out_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \

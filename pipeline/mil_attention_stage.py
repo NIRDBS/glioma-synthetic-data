@@ -14,8 +14,9 @@ put in place for the CNN. Scores both training (in-sample) and validation
 to the latent-label store, exactly like Tier 1/2/4.
 
 Per the agreed Stage 6 reordering ("Tier 3 attention MIL second with cheap
-smoke test"), do not launch a full 5-fold run without first running
-scripts/stage6_attention_smoke_test.py.
+smoke test"), do not launch a full 5-fold run without a cheap ``--folds``
+subset run first (see docs/stage6_generative_mil.md / backlog §13 for the
+two real, informative smoke-test failures this caught before a full run).
 """
 import json
 from pathlib import Path
@@ -27,15 +28,32 @@ from pipeline._common import _inner_validation_split, make_loader, num_classes_o
 from pipeline._cvae_gen import build_cvae_config, load_encoder_decoder
 from src.mil.attention import AttentionMIL, required_sub_bag_size, sample_sub_bags, sub_bag_null_rate
 from src.mil.store import write_posteriors
-from src.utils.statistical_evaluation import bag_decisions
 
 VARIANT = 'attention'
 
 
-def _bag_accuracy(posterior, bag_ids, y_true):
+def _bag_accuracy(model, X, bag_ids, y_true):
+    """
+    Bag-level accuracy via ``AttentionMIL.bag_posterior`` -- the
+    attention-WEIGHTED aggregate, not a naive majority-vote/mean-pool over
+    instance_posterior's per-instance values. That naive approach was tried
+    first and is a poor fit for this architecture specifically: an
+    instance attention learns to downweight during training can develop an
+    arbitrary individual prediction (near-zero training gradient regardless
+    of what it predicts), so pooling it back in unweighted just reintroduces
+    noise the training objective never touched -- confirmed empirically on
+    two real smoke tests (fold_0, fold_1: excellent attention-pooled
+    training loss, chance-level naive-pooled bag accuracy on the SAME
+    model), not assumed. See AttentionMIL.bag_posterior's own docstring.
+    """
+    bag_ids = np.asarray(bag_ids)
+    y_true = np.asarray(y_true)
+    bag_id_to_true = {b: int(y_true[bag_ids == b][0]) for b in np.unique(bag_ids)}
+
+    bags_sorted, posterior = model.bag_posterior(X, bag_ids)
     preds = posterior[:, 1:].argmax(axis=1)
-    _, bag_pred, bag_true = bag_decisions(preds, bag_ids, y_true)
-    return float((bag_pred == bag_true).mean())
+    trues = np.array([bag_id_to_true[b] for b in bags_sorted])
+    return float((preds == trues).mean())
 
 
 def _config_hash(config):
@@ -115,8 +133,7 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
         y_val_oh = tf.keras.utils.to_categorical(y_val_sub, num_classes=n_classes)
         val_metrics = model.evaluate(X_val_sub, y_val_oh, batch_size=32, verbose=0, return_dict=True)
 
-        val_posterior = model.instance_posterior(X_inner_val, bag_inner_val)
-        val_acc = _bag_accuracy(val_posterior, bag_inner_val, y_inner_val)
+        val_acc = _bag_accuracy(model, X_inner_val, bag_inner_val, y_inner_val)
         epoch_log.append({'epoch': epoch, 'train_loss': float(h.history['loss'][0]),
                           'train_bag_acc_subbags': float(h.history['bag_accuracy'][0]),
                           'inner_val_loss_subbags': float(val_metrics['loss']),
@@ -139,8 +156,7 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
 
     train_posterior = model.instance_posterior(fd.X_train, fd.train_bag_ids)
     val_posterior = model.instance_posterior(fd.X_val, fd.val_bag_ids)
-    best_val_acc = _bag_accuracy(model.instance_posterior(X_inner_val, bag_inner_val),
-                                 bag_inner_val, y_inner_val)
+    best_val_acc = _bag_accuracy(model, X_inner_val, bag_inner_val, y_inner_val)
 
     train_mask_full = np.isin(full_bag_ids, fold_data['train_sample_ids'])
     val_mask_full = np.isin(full_bag_ids, fold_data['val_sample_ids'])

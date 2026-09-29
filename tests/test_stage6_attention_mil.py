@@ -329,3 +329,93 @@ def test_attention_mil_regularised_defaults_still_train_shapes_correctly():
     posterior = model.instance_posterior(X[:30], bag_ids[:30])
     assert posterior.shape == (30, num_classes + 1)
     np.testing.assert_allclose(posterior.sum(axis=1), 1.0, atol=1e-5)
+
+
+# ---------------------------------------------------------------------------
+# 6. bag_posterior -- the attention-WEIGHTED bag-level aggregate, added
+# after two real smoke tests (fold_0, fold_1) showed excellent
+# attention-pooled TRAINING loss alongside chance-level bag accuracy from
+# instance_posterior's naive (attention-free) per-instance pooling on the
+# SAME trained model -- an instance attention learns to ignore can develop
+# an arbitrary individual prediction with near-zero training gradient, so
+# evaluation must use the same weighting training does, not bypass it.
+# ---------------------------------------------------------------------------
+
+def test_bag_posterior_shapes_and_normalisation():
+    n_features, latent_dim, num_classes = 6, 8, 2
+    encoder = _tiny_encoder(n_features, latent_dim, num_classes)
+    model = AttentionMIL(encoder, latent_dim, num_classes, attn_dim=8, dropout_rate=0.0, l2=0.0)
+    X, _, bag_ids = _separable_sub_bags(n_features, seed=30)
+
+    bags_sorted, posterior = model.bag_posterior(X, bag_ids)
+    n_bags = len(np.unique(bag_ids))
+    assert len(bags_sorted) == n_bags
+    assert list(bags_sorted) == sorted(bags_sorted)  # sorted, per its own contract
+    assert posterior.shape == (n_bags, num_classes + 1)
+    np.testing.assert_allclose(posterior.sum(axis=1), 1.0, atol=1e-5)
+
+
+def test_bag_posterior_matches_call_for_a_single_batched_bag():
+    """Consistency check between two SEPARATELY WRITTEN code paths for the
+    same math: call()'s batched, graph-mode attention (what training
+    actually runs) vs bag_posterior's eager, per-bag numpy reimplementation
+    (what evaluation runs). Feeding call() exactly one "sub-bag" equal to a
+    real bag's full instance set must give the identical bag posterior
+    bag_posterior computes for that same bag -- if these ever silently
+    diverge (a transcription slip in one of the two implementations), this
+    is what catches it, not a hand-wave that they "should" agree."""
+    n_features, latent_dim, num_classes = 6, 8, 2
+    encoder = _tiny_encoder(n_features, latent_dim, num_classes, seed=31)
+    model = AttentionMIL(encoder, latent_dim, num_classes, attn_dim=8, dropout_rate=0.0,
+                         l2=0.0, center_by_bag=True)
+
+    rng = np.random.default_rng(32)
+    X_one_bag = rng.normal(size=(25, n_features)).astype(np.float32)
+    bag_ids = np.array(['only'] * 25, dtype=object)
+
+    # Force-build via bag_posterior first so both paths use the SAME weights
+    # (an untrained model's weights are only realised on first call/build).
+    _, bp_posterior = model.bag_posterior(X_one_bag, bag_ids)
+
+    x_batched = tf.constant(X_one_bag[None, :, :])  # (1, 25, n_features) -- one "sub-bag"
+    bag_probs, _, _ = model(x_batched, training=False)
+    from src.mil.generative import class_probs_to_posterior
+    call_posterior = class_probs_to_posterior(bag_probs.numpy())
+
+    np.testing.assert_allclose(bp_posterior, call_posterior, atol=1e-5)
+
+
+def test_bag_posterior_is_attention_weighted_not_uniform():
+    """A direct behavioural check that attention weighting actually happens:
+    with a FROZEN, deliberately lopsided attn_w (one direction scores much
+    higher raw attention than any instance could organically produce here),
+    bag_posterior's decision should track the HIGH-attention instances'
+    class, not a plain average over all of them."""
+    n_features, latent_dim, num_classes = 4, 4, 2
+    encoder = _identity_encoder(n_features, num_classes, seed=33)
+    model = AttentionMIL(encoder, latent_dim, num_classes, attn_dim=4, dropout_rate=0.0,
+                         l2=0.0, center_by_bag=False)
+
+    # One bag, 20 instances: 19 "noise" instances near the origin (low raw
+    # attention under any reasonable weights) and 1 "signal" instance far
+    # from the origin (z_mean magnitude, hence attn_V/attn_U's activations,
+    # dominate) -- an unweighted mean would be swamped by the 19 noise
+    # instances; attention-weighted pooling should not be.
+    rng = np.random.default_rng(34)
+    noise = rng.normal(0, 0.05, size=(19, n_features)).astype(np.float32)
+    signal = np.array([[8.0, 8.0, 8.0, 8.0]], dtype=np.float32)
+    X = np.concatenate([noise, signal])
+    bag_ids = np.array(['b'] * 20, dtype=object)
+
+    bags_sorted, posterior = model.bag_posterior(X, bag_ids)
+    instance_post = model.instance_posterior(X, bag_ids)
+
+    # The signal instance's OWN individual posterior and the bag-level
+    # (attention-weighted) posterior should be far closer to each other
+    # than to a plain unweighted mean of all 20 instances' posteriors --
+    # i.e. the bag decision is being driven disproportionately by the one
+    # high-magnitude instance, not diluted 19:1 by the noise instances.
+    plain_mean = instance_post.mean(axis=0)
+    dist_to_signal = np.abs(posterior[0] - instance_post[-1]).sum()
+    dist_to_plain_mean = np.abs(posterior[0] - plain_mean).sum()
+    assert dist_to_signal < dist_to_plain_mean

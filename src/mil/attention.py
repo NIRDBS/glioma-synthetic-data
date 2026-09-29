@@ -282,23 +282,17 @@ class AttentionMIL(Model):
         self.acc_tracker.update_state(y_bag_onehot, bag_probs)
         return {m.name: m.result() for m in self.metrics}
 
-    def instance_posterior(self, X, bag_ids, batch_size=256):
+    def _encode_and_normalize(self, X, bag_ids, batch_size=256):
         """
-        Score arbitrary (whole-bag, not sub-bag) instances through the
-        frozen encoder + trainable instance head only (no attention --
-        attention is defined over a bag/sub-bag, not a single instance) --
-        softmax over K, then lifted to (n, K+1) via the same 1-max_p
-        convention as Tier 4 (src/mil/generative.py). This is what gets
-        written to the latent store per fold.
-
-        ``bag_ids`` (n,): required when ``center_by_bag=True`` so centering
-        is computed per WHOLE bag here, the natural inference-time analogue
-        of ``call``'s per-SUB-bag centering (same operation -- subtract this
-        bag's own mean -- at a different granularity, since inference scores
-        a bag's real instance count, not a fixed sub-bag size).
+        Shared by ``instance_posterior`` and ``bag_posterior``: frozen
+        encoder -> per-(whole-)bag centering (if enabled) -> post_trunk_norm.
+        Returns (n, latent_dim). ``bag_ids`` required whenever
+        ``center_by_bag=True`` -- centering here is computed per WHOLE bag,
+        the natural inference-time analogue of ``call``'s per-SUB-bag
+        centering (same operation, subtract this bag's own mean, at a
+        different granularity, since inference sees a bag's real instance
+        count, not a fixed sub-bag size).
         """
-        from src.mil.generative import class_probs_to_posterior
-
         n_features = X.shape[1]
         X_exp = X.reshape(-1, n_features, 1)
         z_mean = self.encoder.predict(X_exp, batch_size=batch_size, verbose=0)[0]
@@ -310,7 +304,75 @@ class AttentionMIL(Model):
                 idx = np.where(bag_ids == b)[0]
                 z_mean[idx] -= z_mean[idx].mean(axis=0, keepdims=True)
 
-        z_mean = self.post_trunk_norm(z_mean).numpy()
+        return self.post_trunk_norm(z_mean).numpy()
+
+    def instance_posterior(self, X, bag_ids, batch_size=256):
+        """
+        Score arbitrary (whole-bag, not sub-bag) instances through the
+        frozen encoder + trainable instance head only (no attention --
+        deliberately: this gives one value PER INSTANCE, independent of
+        which other instances happen to be scored alongside it, which is
+        what Stage 5's spatial validation needs to reproject a per-pixel
+        map -- attention weights are relative to a specific bag's instance
+        SET and are not a well-defined per-instance quantity outside one)
+        -- softmax over K, then lifted to (n, K+1) via the same 1-max_p
+        convention as Tier 4 (src/mil/generative.py). This is what gets
+        written to the latent store per fold, for spatial validation.
+
+        For BAG-LEVEL classification (accuracy, the plan's "beats Tier 0"
+        question), use ``bag_posterior`` instead -- see its docstring for
+        why this attention-free posterior is a poor fit for that specific
+        question, confirmed empirically, not just argued (docs/
+        MIL_REFRAME_PLAN.md backlog §13).
+        """
+        from src.mil.generative import class_probs_to_posterior
+
+        z_mean = self._encode_and_normalize(X, bag_ids, batch_size)
         logits = self.instance_head(z_mean).numpy()
         probs = tf.nn.softmax(logits, axis=1).numpy()
         return class_probs_to_posterior(probs)
+
+    def bag_posterior(self, X, bag_ids, batch_size=256):
+        """
+        Attention-WEIGHTED bag-level posterior -- the aggregate this model
+        is actually TRAINED to optimize (``call``'s ``bag_logits``), unlike
+        ``instance_posterior``'s naive per-instance value. Runs the same
+        gated-attention mechanism training uses, over each bag's FULL
+        instance set (not a fixed-size sub-bag).
+
+        Why this matters, confirmed on real exp_501 data (2026-09-28): an
+        instance attention learns to downweight during training can develop
+        an ARBITRARY individual prediction, since its contribution to the
+        attention-pooled training loss is near zero regardless of what it
+        predicts -- nothing in the objective ever shapes it. With this
+        project's own pi_b findings (mostly a small minority of any bag is
+        genuinely diagnostic), a naive unweighted pool over thousands of
+        such instances is dominated by exactly the instances the model
+        never learned to get right individually. Two real smoke tests
+        (fold_0, fold_1) showed sub-bag training loss falling to a strong,
+        well-behaved minimum while naive-pooled bag accuracy sat at or
+        below chance on the SAME trained model -- this method is the fix,
+        not a hypothetical.
+
+        Returns (bag_ids_sorted, posterior (n_bags, K+1)) -- one row per
+        unique bag in ``bag_ids``, K+1-lifted the same way.
+        """
+        from src.mil.generative import class_probs_to_posterior
+
+        bag_ids = np.asarray(bag_ids)
+        z_mean = self._encode_and_normalize(X, bag_ids, batch_size)
+        instance_logits = self.instance_head(z_mean).numpy()             # (n, K)
+        attn_feat = (self.attn_V(z_mean) * self.attn_U(z_mean)).numpy()
+        raw_attn = self.attn_w(attn_feat).numpy()[:, 0]                  # (n,)
+
+        bags_sorted = sorted(set(bag_ids.tolist()))
+        class_probs = np.zeros((len(bags_sorted), self.num_classes))
+        for i, b in enumerate(bags_sorted):
+            idx = np.where(bag_ids == b)[0]
+            a = raw_attn[idx] - raw_attn[idx].max()   # numerical stability
+            w = np.exp(a)
+            w /= w.sum()
+            bag_logits = (w[:, None] * instance_logits[idx]).sum(axis=0)
+            class_probs[i] = tf.nn.softmax(bag_logits).numpy()
+
+        return np.array(bags_sorted, dtype=object), class_probs_to_posterior(class_probs)

@@ -340,22 +340,31 @@ work — cannot silently repeat.
 - **mi-SVM/EM were not re-run against Apollo/RF/XGBoost** (only vs the CNN,
   §5) — mi-SVM's number is genuine and the comparison is cheap to extend;
   not done in this pass since Tier 4 was the actual ask.
-- **Tier 3 (attention MIL) is not started.** Per the user's own reordering,
-  Tier 4 was to come first specifically because it's cheap; Tier 3 needs new
-  training and its own smoke test before a real run. If its instance head
-  turns out to be a plain softmax, §4's K=2 convention bound and §5's
-  circularity check both apply to it too — worth checking before trusting
-  its numbers, not after.
+- **Tier 3 (attention MIL) is now complete** — see
+  docs/stage6_attention_mil.md. Its instance head is indeed a plain K=2
+  softmax (a deliberate design choice, made independently of this
+  prediction), so §4's K=2 convention bound was confirmed to apply, exactly
+  as flagged here. §5's EM-specific circularity check does **not** apply to
+  it: Tier 3's instance head was deliberately built *without* Model (C)'s
+  hard support restriction (docs/mil_tiers_methodology.md §6.3), precisely
+  so its bag classification would not be circular the way EM's is.
 
 ## 8. What Stage 6+ inherits
 
-- `scripts/stage6_bag_eval.py` is generic over `(method, variant)` — Tier 3's
-  posteriors, once fit, get a bag-accuracy-vs-Tier-0 number from the same
-  script with no new code, and the circularity guard (§5) runs automatically
-  on that number before anyone has to remember to ask whether it's real.
-- The K=2 softmax external-agreement bound (§4) is a design note for Tier 3
-  too, if its instance head is a plain softmax rather than independent
-  per-class scores.
+- **Correction to a prediction made here**: it turned out `scripts/stage6_bag_eval.py`
+  could *not* simply be reused for Tier 3 as this bullet originally
+  predicted. Tier 3's shared-store posterior is deliberately attention-free
+  (right for spatial validation, wrong for bag classification — a bug
+  found and fixed during Tier 3's own smoke-testing, docs/stage6_attention_mil.md
+  §2), so bag-level evaluation needed a dedicated
+  `scripts/stage6_attention_bag_eval.py` reading a separate,
+  already-attention-weighted artifact instead. The circularity guard this
+  bullet mentions did carry over unchanged (reused via
+  `stage6_bag_eval.py::_tier0_reference`, imported directly by the new
+  script) — only the posterior-pooling step needed to be separate.
+- The K=2 softmax external-agreement bound (§4) was confirmed to apply to
+  Tier 3 as well (ARI=AMI=0.0000, identical mechanism) — see
+  docs/stage6_attention_mil.md §5.
 - `mil_fit_stage.py`'s `method='cbr'` dispatch pattern
   (`_score_one_fold_cbr` returning a *list* of `(variant, posterior,
   in_sample)` from one shared per-fold computation) is the template for any

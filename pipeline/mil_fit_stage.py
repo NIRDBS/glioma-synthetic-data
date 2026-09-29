@@ -64,6 +64,7 @@ def _fit_one_fold(fold_data, config, method, n_classes, pi_min, max_iters, seed,
     print(f"\n  [{method}] fold={fold_name}  "
           f"train={fd.X_train.shape[0]}  val={fd.X_val.shape[0]}")
 
+    em_diagnostics = None
     if method == 'misvm':
         fit = fit_misvm(fd.X_train, fd.train_bag_ids, fd.y_train, n_classes,
                         pi_min=pi_min, variant='mi_svm', max_iters=max_iters, seed=seed,
@@ -82,6 +83,22 @@ def _fit_one_fold(fold_data, config, method, n_classes, pi_min, max_iters, seed,
         print(f"    shrinkage_ratio={fit['shrinkage']['shrinkage_ratio']:.3f}  "
               f"(collapsed={fit['shrinkage']['collapsed']})  "
               f"null_effective_n={fit['null_collapse']['effective_n_components']:.2f}")
+        # pi_b/mu/sigma/shrinkage/null_collapse/history were computed and
+        # immediately discarded here in every prior run -- only the collapsed
+        # (n, K+1) posterior ever reached the store. Persisted from here on
+        # (mil_fit_stage's caller writes this to em_diagnostics.json) so the
+        # backlog's pi_b-external-validity and sigma-identifiability checks
+        # (docs/MIL_REFRAME_PLAN.md §13) don't need a from-scratch refit again.
+        em_diagnostics = {
+            'pi_b': {str(b): float(v) for b, v in fit['pi_b'].items()},
+            'mu': fit['mu'], 'sigma': fit['sigma'],
+            'shrinkage': fit['shrinkage'],
+            'null_collapse': {
+                'pairwise_cosine': np.asarray(fit['null_collapse']['pairwise_cosine']).tolist(),
+                'effective_n_components': fit['null_collapse']['effective_n_components'],
+            },
+            'history': fit['history'],
+        }
     else:
         raise ValueError(f"unknown MIL method {method!r}")
 
@@ -103,7 +120,7 @@ def _fit_one_fold(fold_data, config, method, n_classes, pi_min, max_iters, seed,
     posterior_full[val_mask_full] = val_posterior
     in_sample_full[val_mask_full] = False
 
-    return fold_name, variant, posterior_full, in_sample_full
+    return fold_name, variant, posterior_full, in_sample_full, em_diagnostics
 
 
 def _score_one_fold_cbr(fold_data, config, n_classes, full_bag_ids, full_coords,
@@ -162,18 +179,24 @@ def _score_one_fold_cbr(fold_data, config, n_classes, full_bag_ids, full_coords,
 
 def _fit_one_formulation(method, loader, config, n_classes, store_path, pi_min,
                          max_iters, seed, svm_subsample_per_bag=500,
-                         cvae_weights_dir=None, cbr_temperature=1.0):
+                         cvae_weights_dir=None, cbr_temperature=1.0,
+                         em_diagnostics_path=None):
     full_bag_ids = loader.groups
     full_coords = loader.coords
     config_hash = _config_hash(config)
 
+    em_diagnostics_by_fold = {}
+    if em_diagnostics_path is None and method == 'em':
+        em_diagnostics_path = Path(store_path).parent / 'em_diagnostics.json'
+
     for fold_data in loader:
+        em_diagnostics = None
         if method == 'cbr':
             fold_name, variant_results = _score_one_fold_cbr(
                 fold_data, config, n_classes, full_bag_ids, full_coords,
                 cvae_weights_dir, cbr_temperature)
         else:
-            fold_name, variant, posterior_full, in_sample_full = _fit_one_fold(
+            fold_name, variant, posterior_full, in_sample_full, em_diagnostics = _fit_one_fold(
                 fold_data, config, method, n_classes, pi_min, max_iters, seed,
                 full_bag_ids, full_coords, svm_subsample_per_bag=svm_subsample_per_bag)
             variant_results = [(variant, posterior_full, in_sample_full)]
@@ -185,6 +208,13 @@ def _fit_one_formulation(method, loader, config, n_classes, store_path, pi_min,
                 sample_ids=full_bag_ids, coords=full_coords, config_hash=config_hash,
             )
             print(f"    -> wrote {method}/{variant}/{fold_name} to {store_path}")
+
+        if em_diagnostics is not None:
+            em_diagnostics_by_fold[fold_name] = em_diagnostics
+            em_diagnostics_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(em_diagnostics_path, 'w') as f:
+                json.dump(em_diagnostics_by_fold, f, indent=2)
+            print(f"    -> wrote em_diagnostics/{fold_name} to {em_diagnostics_path}")
 
 
 def mil_fit_stage(config, output_dir=None, methods=METHODS, pi_min=None, max_iters=10,

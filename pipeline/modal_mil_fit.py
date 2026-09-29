@@ -95,8 +95,9 @@ def fit_fold_remote(config_name: str, method: str, fold_name: str, h5_name: str,
                     pi_min: float, max_iters: int, seed: int,
                     svm_subsample_per_bag: int = 500):
     """Fit one MIL formulation on one fold, remotely. Returns
-    (fold_name, variant, posterior_full, in_sample_full) -- no store writes
-    happen here; the local driver collects every result and writes them."""
+    (fold_name, variant, posterior_full, in_sample_full, em_diagnostics) --
+    em_diagnostics is None except for method='em' -- no store writes happen
+    here; the local driver collects every result and writes them."""
     import os
     import pathlib
     import shutil
@@ -188,15 +189,22 @@ def run_mil_fit_parallel(config, methods=('misvm', 'em'), pi_min=None, max_iters
                 svm_subsample_per_bag=svm_subsample_per_bag)
             for method, fold_name in jobs
         }
+        em_diagnostics_by_fold = {}
+        em_diagnostics_path = store_path.parent / 'em_diagnostics.json'
         for (method, fold_name), handle in handles.items():
             print(f"  [modal] waiting for {method}:{fold_name}...")
-            result_fold_name, variant, posterior_full, in_sample_full = handle.get()
+            result_fold_name, variant, posterior_full, in_sample_full, em_diagnostics = handle.get()
             write_posteriors(
                 store_path, method=method, variant=variant, fold_name=result_fold_name,
                 posterior=posterior_full, in_sample=in_sample_full,
                 sample_ids=full_bag_ids, coords=full_coords, config_hash=config_hash,
             )
             print(f"  [modal] {method}:{fold_name} complete -> written to store")
+            if em_diagnostics is not None:
+                em_diagnostics_by_fold[result_fold_name] = em_diagnostics
+                em_diagnostics_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(em_diagnostics_path, 'w') as f:
+                    json.dump(em_diagnostics_by_fold, f, indent=2)
 
     print(f"\n  MIL fit stage complete (modal) -> {store_path}")
     return {'store_path': str(store_path), 'methods': list(methods)}

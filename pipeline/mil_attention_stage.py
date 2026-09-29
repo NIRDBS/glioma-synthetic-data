@@ -213,11 +213,21 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
 
 def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_per_epoch=50,
                         max_epochs=200, patience=15, pi_min=None, seed=None, fold_names=None,
-                        attn_dim=32, dropout_rate=0.3, l2=1e-3, center_by_bag=True):
+                        attn_dim=32, dropout_rate=0.3, l2=1e-3, center_by_bag=True,
+                        loader=None, store_path=None, bag_level_path=None):
     """
     Full run: every fold (or ``fold_names``, for a smoke test on a subset),
     written to the same latent-label store Tier 1/2/4 use, method='attention',
     variant='attention'.
+
+    ``loader``, ``store_path``, ``bag_level_path``: optional overrides, unused
+    by the real fit (which builds its own loader and uses the default paths
+    below). scripts/stage6_shuffled_label_control.py passes all three
+    explicitly -- a loader with its y_class already permuted (built the same
+    way _fit_one_formulation's caller does it, before any fold splitting) and
+    a separate pair of output paths, so a shuffled run can never collide with
+    or corrupt the real store/bag-level artifact. Everything else in this
+    function, and all of fit_one_fold_attention, is unchanged either way.
     """
     seed = seed if seed is not None else set_seeds(config)
     n_classes = num_classes_of(config)
@@ -225,8 +235,11 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
     pi_min = pi_min if pi_min is not None else mil_cfg.get('pi_floor', 0.02)
     cvae_weights_dir = config['paths'].get('models_cvae_dir')
 
-    store_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
-        / 'latent' / 'latent_labels.h5'
+    if store_path is None:
+        store_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
+            / 'latent' / 'latent_labels.h5'
+    else:
+        store_path = Path(store_path)
 
     print(f"\n{'='*80}\nTIER 3 (ATTENTION MIL) FIT STAGE: {config['name']}\n{'='*80}")
     print(f"  pi_min={pi_min}  n_classes={n_classes}  cvae_weights_dir={cvae_weights_dir}")
@@ -234,13 +247,17 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
           f"center_by_bag={center_by_bag}")
     print(f"  store -> {store_path}")
 
-    loader = make_loader(config)
+    if loader is None:
+        loader = make_loader(config)
     full_bag_ids = loader.groups
     full_coords = loader.coords
     config_hash = _config_hash(config)
 
-    bag_level_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
-        / 'latent' / 'attention_bag_level.json'
+    if bag_level_path is None:
+        bag_level_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
+            / 'latent' / 'attention_bag_level.json'
+    else:
+        bag_level_path = Path(bag_level_path)
 
     results = {}
     bag_level_by_fold = {}

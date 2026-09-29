@@ -158,6 +158,26 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
     val_posterior = model.instance_posterior(fd.X_val, fd.val_bag_ids)
     best_val_acc = _bag_accuracy(model, X_inner_val, bag_inner_val, y_inner_val)
 
+    # The attention-weighted bag-level posterior for the TRUE held-out test
+    # fold -- what scripts/stage6_bag_eval.py's cross-tier comparison needs,
+    # and NOT what instance_posterior/the latent store give it (that naive,
+    # attention-free pooling is the exact thing _bag_accuracy's docstring
+    # documents as misleading for this architecture). Computed here, while
+    # the trained model is still in memory -- it is discarded at the end of
+    # this function (tf.keras.backend.clear_session() below) and cannot be
+    # reconstructed from the store afterward, so this is the only point
+    # this can be captured.
+    test_bags_sorted, test_bag_posterior = model.bag_posterior(fd.X_val, fd.val_bag_ids)
+    val_bag_ids_arr = np.asarray(fd.val_bag_ids)
+    test_bag_true = np.array([
+        int(fd.y_val[val_bag_ids_arr == b][0]) for b in test_bags_sorted
+    ])
+    bag_level_result = {
+        'bag_ids': test_bags_sorted.tolist(),
+        'posterior': test_bag_posterior.tolist(),
+        'y_true': test_bag_true.tolist(),
+    }
+
     train_mask_full = np.isin(full_bag_ids, fold_data['train_sample_ids'])
     val_mask_full = np.isin(full_bag_ids, fold_data['val_sample_ids'])
     n_full = len(full_bag_ids)
@@ -188,7 +208,7 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
               f"sub_bag_null_rate={null_rate:.4f} (target epsilon={epsilon:.4f})")
 
     tf.keras.backend.clear_session()
-    return fold_name, posterior_full, in_sample_full, diagnostics
+    return fold_name, posterior_full, in_sample_full, diagnostics, bag_level_result
 
 
 def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_per_epoch=50,
@@ -219,11 +239,15 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
     full_coords = loader.coords
     config_hash = _config_hash(config)
 
+    bag_level_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
+        / 'latent' / 'attention_bag_level.json'
+
     results = {}
+    bag_level_by_fold = {}
     for fold_data in loader:
         if fold_names is not None and fold_data['fold_name'] not in fold_names:
             continue
-        fold_name, posterior_full, in_sample_full, diagnostics = fit_one_fold_attention(
+        fold_name, posterior_full, in_sample_full, diagnostics, bag_level_result = fit_one_fold_attention(
             fold_data, config, n_classes, full_bag_ids, full_coords, cvae_weights_dir,
             sub_bag_size=sub_bag_size, n_per_bag_per_epoch=n_per_bag_per_epoch,
             max_epochs=max_epochs, patience=patience, pi_min=pi_min, seed=seed,
@@ -236,9 +260,21 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
         )
         print(f"    -> wrote attention/{VARIANT}/{fold_name} to {store_path}")
         results[fold_name] = diagnostics
+        bag_level_by_fold[fold_name] = bag_level_result
+
+        # Written after EVERY fold, not just at the end: on a 5-fold run
+        # spanning hours, this means a fold's attention-weighted bag-level
+        # result survives even if a later fold crashes or the run is
+        # stopped -- the per-instance store above already has this property
+        # (write_posteriors runs per fold); this keeps the same guarantee
+        # for the bag-level artifact scripts/stage6_bag_eval.py needs.
+        bag_level_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(bag_level_path, 'w') as f:
+            json.dump(bag_level_by_fold, f, indent=2)
 
     print(f"\n  Tier 3 fit stage complete -> {store_path}")
-    return {'store_path': str(store_path), 'per_fold': results}
+    print(f"  Attention-weighted bag-level results -> {bag_level_path}")
+    return {'store_path': str(store_path), 'bag_level_path': str(bag_level_path), 'per_fold': results}
 
 
 if __name__ == '__main__':

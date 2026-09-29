@@ -83,6 +83,53 @@ mass > 0.5) fired on only 2,784 of 288,678 instances (0.96%), against
 `viable_legacy`'s 227,344 (78.7%) — a large scale mismatch, not just a
 weak correlation.
 
+### mi-SVM: the shuffled-bag-label control (run 2026-09-29)
+
+The one check named as "primary" from the start (§3) and, until now, never
+run. `scripts/stage6_shuffled_label_control.py` permutes which label goes
+with which bag — an exact permutation of the true label multiset, so class
+balance is identical to the real run — holding every instance's features,
+bag membership, and the CV split completely fixed, then refits mi-SVM
+exactly as `pipeline/mil_fit_stage.py` does (reused unchanged; the
+permutation is a single substitution on the loader's own label array before
+any fold splitting). Full 5-fold refit, same `max_iters=10`, same
+convergence pattern as the real run (every class in every fold hit the
+iteration cap). Run against 59 slides (post-HF1887-fix — the real mi-SVM
+numbers above are still 58; see the update note in §2).
+
+| lag | Moran's I | p | z | variogram γ |
+|---|---|---|---|---|
+| 1 (contaminated) | +0.166 | 0.001 | +23.8 | 0.0081 |
+| 2 (contaminated) | +0.054 | 0.038 | +11.2 | 0.0095 |
+| **3 (headline)** | **+0.018** | **0.261** | **+5.01** | 0.0100 |
+| 4 | +0.015 | 0.273 | +4.57 | 0.0101 |
+| 5 | +0.013 | 0.254 | +4.36 | 0.0100 |
+| 10 | +0.008 | 0.391 | +3.70 | 0.0101 |
+
+Variogram range: median 2 px — identical to the real fit. External
+agreement: ARI = −0.0075, AMI = 0.0011, hard "diagnostic" count 3,883/288,678
+(1.35%) — all indistinguishable from the real fit's own null result.
+
+**This settles the question, and not in the real fit's favour.** The
+shuffled-label control does not merely fail to collapse relative to the real
+result — it produces *comparable or larger* apparent coherence at every
+lag ≥ 3 (z = +5.01 vs the real fit's +1.50 at lag 3; z stays above +3.7 out
+to lag 10, where the real fit had already fallen to +1.29). Per the plan's
+own pre-registered exit criterion ("excess coherence at lag ≥ 3 survives the
+shuffled-label control — if not, the spatial claim is dropped"), mi-SVM's
+already-non-significant lag ≥ 3 signal now fails this definitively rather
+than just lacking significance on its own: a fit with **no genuine
+label-content relationship whatsoever** produces the same or stronger
+"coherence." The most likely mechanism is not biological: mi-SVM's per-bag
+top-k relabelling can latch onto *any* spectrally-distinct, spatially-
+contiguous subcluster within a slide — real tissue has real spatial
+autocorrelation in its raw spectral features regardless of which label a
+subcluster is being fit to represent — so some lag-band "coherence" is a
+close-to-mechanical property of this formulation applied to this kind of
+data, not evidence the model recovered the true diagnostic structure. The
+spatial claim for mi-SVM is dropped, per the plan's own contingency, on the
+strongest available evidence rather than a suggestive p-value alone.
+
 ### EM
 
 | lag | Moran's I | p | z | variogram γ |
@@ -126,25 +173,34 @@ surviving Stage 5's own headline criterion, on this run:
 
 Per the plan's own Stage 5 exit criterion — "Excess coherence at lag ≥ 3
 survives the shuffled-label control. If not, §6 is rewritten and the spatial
-claim is dropped — **that outcome is reportable too**" — this is already
-pointing toward "does not survive," without even needing the shuffled-label
-control to explain the observed effect away (there is little at lag ≥ 3 to
-explain). That control was **not run** in this pass (it implies a full
-mil_fit-scale refit on permuted labels — another multi-hour job); given the
-observed effect is already non-significant, its main remaining value would be
-confirmatory rather than decisive.
+claim is dropped — **that outcome is reportable too**" — **the shuffled-label
+control has now been run for mi-SVM (2026-09-29, above) and the criterion
+fails explicitly**: the permuted-label fit produces comparable-or-larger
+apparent coherence at every lag ≥ 3 than the real fit did. This is stronger
+than the earlier reading ("little at lag ≥ 3 to explain") — it's not just
+that the real effect was small, it's that an equally-sized-or-larger effect
+appears with no genuine label-content relationship at all, pointing at a
+property of the formulation-on-this-data rather than of the true labels.
+**The mi-SVM spatial claim is dropped.**
 
-Two concrete, unexplored leads before treating this as final, both flagged
-rather than acted on (per the instruction to stop here for review):
+Two concrete leads from the original pass, one now addressed:
 
-1. **mi-SVM had not converged** — churn was still decreasing at the
-   10-iteration cap in every fold/class. Whether more iterations changes the
-   spatial picture is untested.
+1. ~~**mi-SVM had not converged**~~ — moot for the spatial claim specifically:
+   the shuffled control hit the same iteration cap with the same convergence
+   pattern, and still showed coherence at least as strong as the real fit, so
+   further real-fit convergence would not rescue a claim the control already
+   defeats. (Whether more iterations changes mi-SVM's *bag-classification*
+   accuracy — a separate question, docs/stage6_generative_mil.md §5 — is
+   still untested.)
 2. **EM's collapse may or may not be the "correct" answer** for real spectra
    at this bag count — it could be a genuine finding (the discriminative
    signal really is this weak at 58 bags) or an artifact of this specific EM
    configuration (cold-start, shrinkage strength, fixed `pi_init`). Not yet
-   distinguished.
+   distinguished, and EM's own shuffled-label control was not run (Stage 4's
+   collapse already makes EM's real-fit result uninformative on its own
+   terms, so a shuffled version would be informative about the collapse
+   mechanism, not about a spatial claim EM never supported in the first
+   place — lower priority than mi-SVM's was).
 
 ## 4. Verification
 
@@ -180,7 +236,10 @@ rather than acted on (per the instruction to stop here for review):
   store extension, not implemented in this pass.
 - **NMF cluster-proportion correlation with $\pi_b$** (the plan's other named
   external-validity check, docs/MIL_REFRAME_PLAN.md §1) is not computed.
-- **The shuffled-bag-label control was not run** — see §3.
+- **The shuffled-bag-label control was not run in this original pass** — run
+  for mi-SVM on 2026-09-29, see the new subsection in §2 and the updated §3.
+  EM's own shuffled control remains not run (lower priority — its real fit
+  was already uninformative via the collapse, independent of this control).
 - **Join-count/boundary-length statistics and the qualitative RGB overlay**
   (both named in §6) are not implemented — the two statistics that were
   implemented (Moran's I, variogram) already gave a clear, mutually
@@ -190,8 +249,15 @@ rather than acted on (per the instruction to stop here for review):
 
 ## 6. What comes next
 
-Not started, pending review: whether to (a) fix mi-SVM's convergence and
-EM's collapse and re-run before drawing conclusions, (b) run the
-shuffled-label control regardless to have the fully definitive answer, (c)
-treat the current result as the honest finding and write up §6's spatial
-claim as not supported for this MIL configuration, or (d) something else.
+**Resolved.** The user's direction (2026-09-28) was (c): treat this as the
+honest finding. The shuffled-label control (2026-09-29, §2/§3) then went
+further than (c) alone would have — it doesn't just accept a non-significant
+result, it shows a permuted-label fit produces comparable-or-larger apparent
+coherence, actively defeating the spatial claim rather than merely failing
+to support it. mi-SVM's spatial claim is dropped on this basis. This tier's
+spatial story is closed; Tier 4's generative-MIL posteriors (Stage 6) show a
+materially different, more encouraging picture and are the live spatial
+result going forward (docs/stage6_generative_mil.md §4) — though Tier 4's
+own shuffled-label control (which would need a full per-fold CVAE retrain,
+not just a cheap refit) has not been run either, so its lag≥3 coherence is
+still suggestive, not yet definitive, the same way mi-SVM's once was.

@@ -55,12 +55,21 @@ def _load_raw_side_tables(h5_path):
 
 
 def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42,
-       out_path=None):
+       out_path=None, store_path=None):
+    """
+    ``store_path``: override the default real-store path -- e.g. to read
+    ``latent_labels_shuffled.h5`` (scripts/stage6_shuffled_label_control.py)
+    for the shuffled-bag-label control's own spatial statistics, compared
+    directly against the real fit's, without touching the real store.
+    """
     from src.utils.config_manager import ConfigManager
     config = ConfigManager.load_config(config_name)
 
-    store_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \
-        / 'latent' / 'latent_labels.h5'
+    if store_path is None:
+        store_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \
+            / 'latent' / 'latent_labels.h5'
+    else:
+        store_path = Path(store_path)
     fold_names = [f"fold_{i}" for i in range(n_folds)]
 
     print(f"Merging out-of-sample posteriors: {method}/{variant} from {store_path}")
@@ -170,9 +179,13 @@ if __name__ == '__main__':
     parser.add_argument('--max-lag', type=int, default=10)
     parser.add_argument('--n-perm', type=int, default=200)
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--store-path', default=None,
+                        help="override the real store, e.g. latent_labels_shuffled.h5 "
+                             "for the shuffled-bag-label control")
+    parser.add_argument('--out-path', default=None)
     args = parser.parse_args()
 
     _DEFAULT_VARIANT = {'em': 'constrained', 'misvm': 'mi_svm', 'cbr': 'reconstruction'}
     variant = args.variant or _DEFAULT_VARIANT[args.method]
     run(args.config, args.method, variant, max_lag=args.max_lag, n_perm=args.n_perm,
-       seed=args.seed)
+       seed=args.seed, store_path=args.store_path, out_path=args.out_path)

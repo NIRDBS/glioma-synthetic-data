@@ -1131,15 +1131,20 @@ as items close rather than letting the record go stale.
   pre-registered identifiability criterion (§10, checkpoint 2) is unchecked.
 
 ### Validation / loose ends flagged but not resolved (no new architecture needed)
-- **Shuffled-bag-label control** — specified as the primary spatial control (§6, §12), never run
-  for any tier. The only way to validate the lag≥3 spatial claim now that no size ground truth
-  exists (see the 2026-09-28 note above). Cost: a full refit under permuted labels — cheap for
-  mi-SVM/EM (reuses the already-validated CPU-only `modal_mil_fit.py` path, ~6h precedent), **not**
-  cheap for Tier 4 (would need a full CVAE retrain per fold — this project's first real GPU
-  training run; validate the Modal GPU config cheaply first, per the standing GPU-cost rule, before
-  committing to it).
+- **Shuffled-bag-label control — done for mi-SVM (2026-09-29), definitive.** A full 5-fold refit
+  under permuted labels (`scripts/stage6_shuffled_label_control.py`, reuses
+  `pipeline/mil_fit_stage.py`'s per-fold fitting unchanged) produced comparable-or-LARGER apparent
+  lag≥3 coherence than the real fit (z=+5.01 vs +1.50 at lag 3). The plan's own exit criterion
+  ("excess coherence survives the control, or the claim is dropped") is failed explicitly, not just
+  left unsupported by a non-significant p-value — see docs/stage5_spatial_validation.md §2/§3.
+  **mi-SVM's spatial claim is dropped.** EM's own control not run (its collapse already made its
+  real-fit result uninformative on its own terms). **Still open: Tier 4** — would need a full
+  per-fold CVAE retrain (this project's first real GPU training run; validate the Modal GPU config
+  cheaply first, per the standing GPU-cost rule, before committing to it) — so Tier 4's lag≥3
+  coherence (docs/stage6_generative_mil.md §4) remains suggestive, not yet definitive.
 - **mi-SVM had not converged** at the 10-iteration cap (churn still decreasing every fold/class,
-  Stage 4 §6). Untested whether more iterations changes the picture.
+  Stage 4 §6) — moot for the *spatial* claim (the shuffled control hit the same cap and still beat
+  the real fit), but still open for mi-SVM's *bag-classification* accuracy (Stage 6 §5).
 - **EM's collapse root cause** undetermined — genuine weak signal at this bag count vs. an artifact
   of this specific config (cold start, shrinkage strength, fixed $\pi_{\text{init}}$).
 - **$\pi_b$ vs NMF cluster proportions** (§1's other named external-validity check) — never computed.

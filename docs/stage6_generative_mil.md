@@ -1,21 +1,28 @@
 # Stage 6 (Tier 4) — Generative MIL from the CVAE
 
-**Status: complete, including the real-data fit and both evaluations.** New
-`src/mil/generative.py`, `pipeline/mil_fit_stage.py` gains a `method='cbr'`
-dispatch, new `scripts/stage6_bag_eval.py`. Real fit + evaluation on exp_501
-finished; results below, and they cut both ways — a genuine, statistically
+**Status: complete, including the shuffled-bag-label control — and both
+variants' spatial claims are dropped (§4a).** New `src/mil/generative.py`,
+`pipeline/mil_fit_stage.py` gains a `method='cbr'` dispatch, new
+`scripts/stage6_bag_eval.py`. Real fit + evaluation on exp_501 finished;
+results below, and they cut both ways — a genuine, statistically
 significant bag-level result against the weakest Tier 0 reference, no such
-result against the three strongest ones, real (if modest and short-range)
-spatial coherence beyond what Tier 1/2 showed, and two distinct
+result against the three strongest ones; real-looking (if modest and
+short-range) lag≥3 coherence that does **not** survive a full CVAE retrain
+under permuted labels (§4a, 2026-09-30) — `encoder_head`'s shuffled result
+is numerically indistinguishable from its real one; and two distinct
 methodological bugs this pass found by actually running the numbers rather
-than trusting them: the external-agreement check is structurally degenerate
-for a K=2 softmax source (§4, independent of anything about the CVAE
-itself), and — more seriously — a naive bag-accuracy metric applied to EM
-(§5) turned out to be vacuously, trivially 1.0000 by construction, not a
-real finding, and has been excluded rather than reported.
+than trusting them: the external-agreement check was structurally
+degenerate for a K=2 softmax source (§4, fixed 2026-09-29, independent of
+anything about the CVAE itself), and — more seriously — a naive
+bag-accuracy metric applied to EM (§5) turned out to be vacuously, trivially
+1.0000 by construction, not a real finding, and has been excluded rather
+than reported.
 
-Per the user's own framing ("Tier 4 CbR-based first, cheap"), this is Tier 4
-only. Tier 3 (attention MIL) is not started.
+This tier's spatial retraction completes the pattern across the whole
+project: mi-SVM (Tier 1), attention (Tier 3), and now both Tier 4 variants
+have all had their spatial claims tested against a shuffled-label control,
+and all four have failed (§4a's closing paragraph). No tier in this project
+currently has a spatial-coherence finding that survives this control.
 
 > **Reproducing this.** `pytest tests/test_stage6_generative_mil.py` (13
 > tests, synthetic fakes only — no real CVAE weights needed). Real fit:
@@ -151,7 +158,7 @@ improvement on voting the hard decisions directly — a real, reportable
 nuance, not a red flag (the two numbers are also not on identical data:
 0.741 is exp_201/airPLS/58-bags, 0.712 is exp_501/IARPLS/59-bags).
 
-## 4. Spatial validation — real coherence, and a discovered convention bug
+## 4. Spatial validation — real coherence, a discovered convention bug, and (§4a) a dropped claim
 
 Both variants' posteriors were run through Stage 5's unchanged spatial
 pipeline (`scripts/stage5_spatial_validation.py`), covering **all
@@ -167,11 +174,75 @@ too; Stage 4's mi-SVM/EM runs, fit before that fix, covered 58).
 | *(for comparison)* mi-SVM (Stage 5) | I=+0.006, p=0.361, z=+1.5 | — | — | median 2 px |
 | *(for comparison)* EM (Stage 5) | variogram ≡ 0 (collapsed) | — | — | n/a |
 
-**This is a materially different picture from Tier 1/2.** `reconstruction`
-clears p<0.05 at lag 3 *and* lag 4 — genuine excess correlation at distances
-the 3×3 median filter provably cannot produce, with z-scores an order of
+**This looked like a materially different picture from Tier 1/2 — until the
+shuffled-label control (§4a) showed it wasn't.** `reconstruction` clears
+p<0.05 at lag 3 *and* lag 4 — genuine excess correlation at distances the
+3×3 median filter provably cannot produce, with z-scores an order of
 magnitude larger than mi-SVM's. `encoder_head` is directionally the same but
-weaker, sitting just above the conventional 0.05 threshold.
+weaker, sitting just above the conventional 0.05 threshold. **Both numbers
+are real, and both are now known not to be evidence of label-driven
+coherence — see §4a.**
+
+### 4a. The shuffled-bag-label control — both variants fail, and the project-wide pattern is now complete
+
+Per docs/MIL_REFRAME_PLAN.md §6/§13's pre-registered check, run 2026-09-30
+on Modal GPU (this tier's control needed a full CVAE retrain under permuted
+labels — the trunk itself, not a downstream head, since Tier 4 conditions
+directly on the CVAE's own weights): `scripts/stage6_shuffled_label_control.py
+--method cvae` (5 folds, full 100-epoch schedule, permutation_seed=123,
+44/59 bags relabeled, weights written to `results/exp_501/models/cvae_shuffled/`
+— the real weights, confirmed by file timestamp, were never touched), then
+`--method cbr` to score those shuffle-trained weights exactly as the real
+fit was scored (same `cbr_temperature=0.001`, same code path, pure
+inference).
+
+| | lag 3 real | lag 3 shuffled | lag 4 real | lag 4 shuffled | lag 5 real | lag 5 shuffled |
+|---|---|---|---|---|---|---|
+| **reconstruction** | I=+0.122, z=+29.4 | **I=+0.125, z=+32.3** | I=+0.092, z=+25.8 | I=+0.100, z=+29.8 | I=+0.076, z=+23.8 | I=+0.086, z=+29.2 |
+| **encoder_head** | I=+0.049, z=+11.1 | **I=+0.049, z=+11.0** | I=+0.038, z=+10.0 | I=+0.041, z=+10.8 | I=+0.031, z=+9.2 | I=+0.036, z=+10.1 |
+
+(shuffled variogram range: `reconstruction` median 3.0px — identical to the
+real fit's; `encoder_head` median 2.0px, vs the real fit's 3.0px. Full
+per-lag detail: `results/exp_501/spatial_validation/stage5_cbr_{reconstruction,encoder_head}_shuffled.json`.)
+
+**Both variants fail — one narrowly, one so completely there is no
+meaningful gap left to explain.** `reconstruction`'s shuffled coherence is
+slightly *larger* than its real fit's at every one of lags 3–5 (the same
+direction of failure mi-SVM's and Tier 3's controls showed). `encoder_head`
+goes further: its shuffled numbers are **essentially indistinguishable
+from its real ones** (I=+0.049 vs +0.049 at lag 3; +0.041 vs +0.038 at lag
+4) — not "comparable," but numerically the same result to two decimal
+places, from a model trained on labels that have zero relationship to the
+truth. Per the plan's own pre-registered exit criterion, **both of Tier 4's
+spatial claims are dropped**, on the same strength of evidence as mi-SVM's
+and Tier 3's retractions.
+
+**This closes out every control this project has run, and the pattern is
+now unanimous.** Four real spatial-coherence claims were made across this
+project's four tiers (mi-SVM, attention, `reconstruction`, `encoder_head`
+— EM's was never made, since it collapsed on its own terms before spatial
+validation could say anything). All four have now been tested against a
+shuffled-label control. **All four failed.** The likely mechanism,
+articulated identically at each retraction (docs/stage5_spatial_validation.md
+for mi-SVM, docs/stage6_attention_mil.md §5a for attention, here for Tier
+4): every one of these posteriors is a function of *some* representation of
+the raw spectrum — RF-selected bands for mi-SVM, a frozen CVAE embedding
+for attention, the CVAE's own encoder/decoder for both cbr variants — and
+real tissue has real spatial autocorrelation in its raw spectral
+characteristics, entirely independently of which diagnostic label a region
+is being fit to represent. A model with enough flexibility to fit *any*
+label well enough (§3's 88–93% training "accuracy" on `encoder_head`'s
+auxiliary classifier, achieved under complete label noise, is direct
+evidence this flexibility exists) will produce a lag≥3-coherent
+non-diagnostic-mass map regardless of the label, because the coherence was
+never coming from the label in the first place. **The spatial-validation
+pipeline itself (Moran's I + variogram by lag, docs/mil_tiers_methodology.md
+§9) worked exactly as designed at catching this** — it is the pipeline that
+found all four failures, not a limitation of it. What it has shown is that
+none of the four tiers' apparent spatial structure, as measured here,
+demonstrates recovery of the true diagnostic label; each is better
+explained as smooth, label-independent structure already present in the
+underlying spectral representation.
 
 **The "10–20 px is tissue" bar from the plan was framing language, not a
 measured quantity, and this project has no validated ground truth for tumour
@@ -354,13 +425,26 @@ work — cannot silently repeat.
   re-derived by a different code path before being trusted or reported —
   this is what caught §5's EM circularity bug in the first place, rather than
   it silently entering the record as a "significant" finding.
+- **§4a's Modal GPU run was verified directly, not assumed from exit code
+  0** (2026-09-30): the real, pre-existing CVAE weights' file timestamps
+  were confirmed unchanged after the shuffled run completed; the shuffled
+  run's own history CSVs were read directly, confirming a real 100-epoch
+  loss trajectory (not a crash-and-silently-return-early); the parameter
+  chain carrying `permutation_seed` from the driver script through to
+  `run_local` was re-read end-to-end by inspection, since Modal's `.remote()`
+  call did not stream the container's own per-epoch print statements back
+  to the local terminal the way a local subprocess would.
 
 ## 7. Deviations from the plan / honest gaps
 
-- **The external-agreement convention bug (§4) is documented, not fixed.**
-  A principled K-appropriate hard-diagnostic threshold is future work.
+- **The external-agreement convention bug (§4) is fixed (2026-09-29)**, not
+  just documented — `hard_diagnostic_threshold()` in
+  `scripts/stage5_spatial_validation.py` rescales to half the theoretical
+  max for a joint-softmax source. No longer an open item.
 - **`reconstruction`'s temperature (T=0.001) was calibrated from one fold's
   smoke-test sample, not swept.** A sensitivity check across T is not done.
+  Moot in one sense given §4a's retraction, but still relevant to the
+  bag-level numbers in §3, which stand independently of the spatial claim.
 - **The K-diagnostic-column bag-accuracy metric itself (§5) is now known to
   be unusable for any method that implements Model (C)'s hard support
   restriction throughout scoring** — not a Tier 4 limitation, but a limitation
@@ -368,12 +452,14 @@ work — cannot silently repeat.
   for mi-SVM and for Tier 4's two variants (verified per-method, not assumed),
   and the script now warns automatically rather than requiring the caller to
   remember which methods are safe.
-- **The shuffled-bag-label control** (Stage 5's own named, not-yet-run
-  check) still hasn't been run for any tier, Tier 4 included — the lag≥3
-  significance in §4 is suggestive, not definitive, without it.
-- **mi-SVM/EM were not re-run against Apollo/RF/XGBoost** (only vs the CNN,
-  §5) — mi-SVM's number is genuine and the comparison is cheap to extend;
-  not done in this pass since Tier 4 was the actual ask.
+- **The shuffled-bag-label control is done for every tier that can produce
+  one, and every one has failed (§4a, 2026-09-30).** No longer an open
+  item — the answer is now known, and it is negative across the board.
+- **mi-SVM was re-run against Apollo/RF/XGBoost (2026-09-29)** — not
+  significant vs Apollo, significantly worse vs RF/XGBoost (docs/
+  stage6_generative_mil.md §5). EM's own bag-accuracy remains excluded
+  (circular, §5) regardless of reference model, so extending it further
+  would not be informative.
 - **Tier 3 (attention MIL) is now complete** — see
   docs/stage6_attention_mil.md. Its instance head is indeed a plain K=2
   softmax (a deliberate design choice, made independently of this
@@ -399,6 +485,12 @@ work — cannot silently repeat.
 - The K=2 softmax external-agreement bound (§4) was confirmed to apply to
   Tier 3 as well (ARI=AMI=0.0000, identical mechanism) — see
   docs/stage6_attention_mil.md §5.
+- **§4a's cross-tier pattern (all four spatial claims failed) is a project-level
+  finding, not a Tier-4-specific one** — any future MIL formulation (Stage 8's
+  mixture model, in particular) inherits the same burden of proof: a lag≥3
+  Moran's I/variogram result is not reportable as evidence of label-driven
+  structure until it has been run through its own shuffled-label control,
+  regardless of how large the z-score looks.
 - `mil_fit_stage.py`'s `method='cbr'` dispatch pattern
   (`_score_one_fold_cbr` returning a *list* of `(variant, posterior,
   in_sample)` from one shared per-fold computation) is the template for any

@@ -235,11 +235,15 @@ Two concrete leads from the original pass, one now addressed:
   to also persist its internal $(M{+}K)$-way `gamma` — a small, targeted
   store extension, not implemented in this pass.
 - **NMF cluster-proportion correlation with $\pi_b$** (the plan's other named
-  external-validity check, docs/MIL_REFRAME_PLAN.md §1) is not computed.
+  external-validity check, docs/MIL_REFRAME_PLAN.md §1) — done, 2026-09-30,
+  also null (Spearman $\rho \in [-0.16,+0.14]$, all $p>0.19$, n=59 bags):
+  `scripts/stage4_pi_b_external_validity.py`, docs/stage4_mil.md §6.
 - **The shuffled-bag-label control was not run in this original pass** — run
   for mi-SVM on 2026-09-29, see the new subsection in §2 and the updated §3.
   EM's own shuffled control remains not run (lower priority — its real fit
   was already uninformative via the collapse, independent of this control).
+  Attention (Tier 3) and both Tier 4 variants have since had theirs run too
+  (2026-09-29/30) — see §6.
 - **Join-count/boundary-length statistics and the qualitative RGB overlay**
   (both named in §6) are not implemented — the two statistics that were
   implemented (Moran's I, variogram) already gave a clear, mutually
@@ -247,17 +251,41 @@ Two concrete leads from the original pass, one now addressed:
   without offering the "does the answer contradict itself" second opinion, so
   they were left out given the already-answered exit criterion.
 
-## 6. What comes next
+## 6. What comes next — updated 2026-09-30: every tier's control is now in, and every one failed
 
-**Resolved.** The user's direction (2026-09-28) was (c): treat this as the
-honest finding. The shuffled-label control (2026-09-29, §2/§3) then went
-further than (c) alone would have — it doesn't just accept a non-significant
-result, it shows a permuted-label fit produces comparable-or-larger apparent
-coherence, actively defeating the spatial claim rather than merely failing
-to support it. mi-SVM's spatial claim is dropped on this basis. This tier's
-spatial story is closed; Tier 4's generative-MIL posteriors (Stage 6) show a
-materially different, more encouraging picture and are the live spatial
-result going forward (docs/stage6_generative_mil.md §4) — though Tier 4's
-own shuffled-label control (which would need a full per-fold CVAE retrain,
-not just a cheap refit) has not been run either, so its lag≥3 coherence is
-still suggestive, not yet definitive, the same way mi-SVM's once was.
+**Resolved, and closed out completely.** The user's direction (2026-09-28)
+was (c): treat this as the honest finding. The shuffled-label control
+(2026-09-29, §2/§3) then went further than (c) alone would have for
+mi-SVM — it doesn't just accept a non-significant result, it shows a
+permuted-label fit produces comparable-or-larger apparent coherence,
+actively defeating the spatial claim rather than merely failing to support
+it.
+
+At the time this section was last written, Tier 4's generative-MIL
+posteriors looked like "a materially different, more encouraging picture"
+and were flagged as "the live spatial result going forward," pending their
+own control. **That control has since been run, on Modal GPU (2026-09-30,
+a full 5-fold CVAE retrain under permuted labels), and it failed too** —
+`encoder_head`'s shuffled result is numerically indistinguishable from its
+real one, and `reconstruction`'s shuffled result is *larger* than its real
+one at every headline lag (docs/stage6_generative_mil.md §4a, the same
+day Tier 3's attention-MIL control also failed — docs/stage6_attention_mil.md
+§5a). That "more encouraging picture" language is retracted along with
+mi-SVM's — it was true of the raw numbers and wrong about what they meant.
+
+**The complete, final state: four spatial-coherence claims were made across
+this project (mi-SVM, attention, `reconstruction`, `encoder_head`); all
+four were tested; all four failed.** EM never produced one to test (its
+real fit collapsed on its own terms first). There is currently no tier in
+this project whose lag≥3 spatial coherence survives a shuffled-label
+control. The likely shared mechanism — real tissue has real spatial
+autocorrelation in its raw spectral characteristics, present in whatever
+representation a formulation builds on top of the spectrum, regardless of
+which label a region is being fit toward — is stated identically at each
+of the four retractions, not re-derived independently each time, since it
+is the same underlying explanation in every case. This is a project-level
+finding for the paper's limitations section, not a per-tier footnote: the
+spatial-coherence validation strategy itself worked exactly as designed (it
+is precisely what caught all four failures), but nothing currently in this
+project demonstrates that any MIL formulation's posterior map recovers
+genuine, label-driven diagnostic structure at the pixel level.

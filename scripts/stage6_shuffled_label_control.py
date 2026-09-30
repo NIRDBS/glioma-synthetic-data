@@ -22,10 +22,20 @@ attention/cvae, separate bag-level/model output paths too) so a shuffled
 run can never collide with or corrupt the real latent-label store or
 artifacts that Tier 3/4's REAL results depend on.
 
+Two steps for Tier 4, not one: first --method cvae (retrains the CVAE
+itself under permuted labels, on Modal GPU), THEN --method cbr (scores
+those already-shuffle-trained weights into 'reconstruction'/'encoder_head'
+posteriors -- cheap, local, pure inference, identical to how the real Tier
+4 fit works). --method cbr's own label permutation is a harmless no-op
+(CbR's scoring never reads labels at all, only features and CVAE weights --
+see the comment at its call site) -- what makes its result "shuffled" is
+that --method cvae already trained the weights it loads.
+
 Usage:
     python scripts/stage6_shuffled_label_control.py --config exp_501 --method misvm
     python scripts/stage6_shuffled_label_control.py --config exp_501 --method attention
     python scripts/stage6_shuffled_label_control.py --config exp_501 --method cvae [--epochs N]
+    python scripts/stage6_shuffled_label_control.py --config exp_501 --method cbr
 """
 import argparse
 import sys
@@ -105,9 +115,27 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
         return {'store_path': str(store_path), 'bag_level_path': str(bag_level_path),
                'label_map': label_map}
 
+    cbr_kwargs = {}
+    if method == 'cbr':
+        # Unlike misvm/em, CbR's own posterior computation
+        # (_score_one_fold_cbr) never reads fd.y_train/y_val at all -- it is
+        # a pure function of which CVAE weights it loads and which features
+        # it scores (docs/mil_tiers_methodology.md §7). So the label
+        # permutation above is a harmless no-op for this method specifically
+        # -- what actually makes this a "shuffled" result is that the CVAE
+        # weights themselves were trained under permuted labels (--method
+        # cvae, above). Point at that run's weights, not the real ones.
+        from pipeline.modal_cvae import _effective_output_dirs
+        cvae_weights_dir, _ = _effective_output_dirs(config, store_suffix)
+        mil_cfg = config.get('mil', {})
+        cbr_kwargs = {'cvae_weights_dir': cvae_weights_dir,
+                      'cbr_temperature': mil_cfg.get('cbr_temperature', 1.0)}
+        print(f"  cvae_weights_dir -> {cvae_weights_dir}  "
+              f"cbr_temperature={cbr_kwargs['cbr_temperature']}")
+
     _fit_one_formulation(
         method, loader, config, n_classes, store_path, pi_min, max_iters, seed,
-        svm_subsample_per_bag=svm_subsample_per_bag,
+        svm_subsample_per_bag=svm_subsample_per_bag, **cbr_kwargs,
     )
     print(f"\n  Shuffled-label control fit complete -> {store_path}")
     return {'store_path': str(store_path), 'label_map': label_map}
@@ -116,7 +144,8 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Shuffled-bag-label control")
     parser.add_argument('--config', required=True)
-    parser.add_argument('--method', required=True, choices=['misvm', 'em', 'attention', 'cvae'])
+    parser.add_argument('--method', required=True,
+                        choices=['misvm', 'em', 'attention', 'cvae', 'cbr'])
     parser.add_argument('--epochs', type=int, default=None,
                         help="cvae only: override epoch count (smoke-test use)")
     parser.add_argument('--pi-min', type=float, default=None)

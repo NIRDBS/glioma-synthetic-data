@@ -365,3 +365,31 @@ def test_fold_leakage_assertion_raises_on_mismatched_fold(tmp_path):
         assert_no_fold_leakage(store_path, 'em', 'constrained', 'fold_0',
                                val_bag_ids_this_fold=['A'],  # wrong: A was in-sample
                                bag_ids_all=bag_ids_all)
+
+
+# ---------------------------------------------------------------------------
+# pi_b external validity (docs/MIL_REFRAME_PLAN.md §1, backlog §13):
+# scripts/stage4_pi_b_external_validity.py's per-bag averaging
+# ---------------------------------------------------------------------------
+
+def test_load_pi_b_per_bag_averages_across_folds(tmp_path):
+    """A bag in TRAINING for several folds should get its pi_b averaged, not
+    overwritten by whichever fold's diagnostics happened to load last."""
+    import json
+
+    from scripts.stage4_pi_b_external_validity import _load_pi_b_per_bag
+
+    path = tmp_path / 'em_diagnostics.json'
+    with open(path, 'w') as f:
+        json.dump({
+            'fold_0': {'pi_b': {'A': 0.10, 'B': 0.20}},
+            'fold_1': {'pi_b': {'A': 0.20, 'C': 0.30}},
+            'fold_2': {'pi_b': {'A': 0.30}},
+        }, f)
+    pi_b, counts = _load_pi_b_per_bag(path)
+    assert pi_b['A'] == pytest.approx(0.20)  # mean of 0.10, 0.20, 0.30
+    assert counts['A'] == 3
+    assert pi_b['B'] == pytest.approx(0.20)
+    assert counts['B'] == 1
+    assert pi_b['C'] == pytest.approx(0.30)
+    assert counts['C'] == 1

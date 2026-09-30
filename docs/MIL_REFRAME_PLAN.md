@@ -1106,63 +1106,97 @@ then on.
 
 ---
 
-## 13. Backlog after Stage 6 (2026-09-29) — where things stand, for continuity
+## 13. Backlog after Stage 6 (2026-09-30) — where things stand, for continuity
 
 Stages 0–6 (all four tiers) are done and committed. This is the durable list of what's left,
 so a later session (compacted or not) can pick up without re-deriving it. Update this list
 as items close rather than letting the record go stale.
 
-**Tier 3 — attention MIL is now complete**: real 5-fold fit, bag-level eval against all four
-Tier 0 references, and spatial validation all done (docs/stage6_attention_mil.md). Result is
-mixed and should be relayed as such, not rounded up: real (if modest, and not yet
-control-tested) lag≥3 spatial coherence between mi-SVM's and Tier 4's, but **significantly
-worse bag-level accuracy than Apollo/RF/XGBoost** (p=0.012/0.002/0.002) and not significantly
-better than the CNN. Tier 3's own shuffled-label control has not been run — see below.
+**Tier 3 — attention MIL's spatial claim is dropped.** Its shuffled-label control
+(2026-09-29/30) showed *larger* lag≥3 coherence under permuted labels than the real fit
+(z=+14.70 vs +5.63 at lag 3) — the same failure mode mi-SVM's control found. Two of two
+controls run so far have failed identically. Tier 3 remains a real, non-degenerate model that
+is **significantly worse at bag classification than Apollo/RF/XGBoost** (p=0.012/0.002/0.002)
+and not significantly better than the CNN — see docs/stage6_attention_mil.md.
 
 ### New training still needed
 - **Stage 7 — CVAE soft conditioning.** Replace `to_categorical(y_s)` with a latent-store lookup;
   needs a simplex sampler for generation (not corner enumeration), a CbR rework (currently tied to
   one-hot corners), a stop-gradient guard if the condition comes from the CVAE's own encoder head.
-  **Open decision**: which posterior to condition on — EM was the plan's original pick ("calibrated
-  soft labels") but EM collapsed (Stage 4 §6); `encoder_head` is the strongest MIL signal found so
-  far (Stage 6 §3) but is itself CVAE-derived, which may be circular for this specific use.
+  **Open decision, deliberately not started yet**: which posterior to condition on. The landscape
+  as of 2026-09-30: EM collapsed (Stage 4 §6); mi-SVM's *and* Tier 3's spatial claims both failed
+  their shuffled-label controls (immediately below); Tier 4's `encoder_head`/`reconstruction` are
+  both CVAE-derived (self-referential for this specific use) and `reconstruction`'s own control
+  hasn't run yet. **Decision (2026-09-29): wait for Tier 4's `reconstruction` shuffled-label
+  control before picking** — that control is next, gating Stage 7's start (see immediately below).
 - **Stage 8 — mixture model (M) + 6-class.** Relax (C) to (M) (instance state ranges over all
   $K{+}1$ types, not just $\{$nulls, own-bag-class$\}$); new 6-class MIL configs. The plan's own
   pre-registered identifiability criterion (§10, checkpoint 2) is unchecked.
 
-### Validation / loose ends flagged but not resolved (no new architecture needed)
-- **Shuffled-bag-label control — done for mi-SVM (2026-09-29), definitive.** A full 5-fold refit
-  under permuted labels (`scripts/stage6_shuffled_label_control.py`, reuses
-  `pipeline/mil_fit_stage.py`'s per-fold fitting unchanged) produced comparable-or-LARGER apparent
-  lag≥3 coherence than the real fit (z=+5.01 vs +1.50 at lag 3). The plan's own exit criterion
-  ("excess coherence survives the control, or the claim is dropped") is failed explicitly, not just
-  left unsupported by a non-significant p-value — see docs/stage5_spatial_validation.md §2/§3.
-  **mi-SVM's spatial claim is dropped.** EM's own control not run (its collapse already made its
-  real-fit result uninformative on its own terms). **Still open: Tier 3 and Tier 4.** Tier 3's
-  control is cheap to run (no CVAE retrain needed — the trunk is frozen and reused as-is, same
-  per-fold weights already on disk; only the attention head refits) and is the natural next
-  step, especially given docs/stage6_attention_mil.md §5's own mean-p/mean-z tension at lag 3 —
-  the control would help settle whether that lag≥3 signal is real. Tier 4 would need a full
-  per-fold CVAE retrain (this project's first real GPU training run; validate the Modal GPU config
-  cheaply first, per the standing GPU-cost rule, before committing to it) — so Tier 4's lag≥3
-  coherence (docs/stage6_generative_mil.md §4) remains suggestive, not yet definitive.
+### Immediate next step — Tier 4's shuffled-label control on Modal GPU
+Gates Stage 7's start (above). Needs a full per-fold CVAE retrain under permuted labels — this
+project's first real GPU training run. Modal GPU infra for CVAE training already exists
+(`pipeline/modal_cvae.py`, T4 GPU, reuses `cvae_stage.run_local` unchanged) but has no hook for
+injecting permuted labels — `run_local` builds its own loader internally with no override.
+Plan: add an optional `permutation_seed` parameter that applies the same
+`permuted_bag_label_map`/`apply_permuted_labels` substitution already used for Tiers 1–3, inside
+the remote container right after it builds its own loader (no cross-process loader serialization
+needed — deterministic from the seed alone). Per standing practice: cheap smoke-test validation
+on Modal first, then the real 5-fold run — approved to proceed straight through without a
+separate cost check-in if the smoke test is clean (2026-09-29).
+
+### Validation / loose ends
+- **Shuffled-bag-label control: done and FAILED for both mi-SVM and Tier 3 — both spatial claims
+  dropped.** mi-SVM (2026-09-29): shuffled z=+5.01 vs real +1.50 at lag 3
+  (docs/stage5_spatial_validation.md §2/§3). Attention/Tier 3 (2026-09-29/30): shuffled z=+14.70
+  vs real +5.63 at lag 3 (docs/stage6_attention_mil.md §5a) — required extending
+  `pipeline/mil_attention_stage.py` with optional `loader`/`store_path`/`bag_level_path`
+  overrides, since it (unlike `mil_fit_stage.py`) didn't have a label-substitution hook yet.
+  EM's own control still not run (its collapse already made its real-fit result uninformative on
+  its own terms). **Tier 4's `reconstruction`/`encoder_head` controls are the one remaining
+  unknown** — see "Immediate next step" above; given two-for-two controls have failed, Tier 4's
+  currently-strongest-looking spatial result (`reconstruction`, lag3 p=0.028) should be treated
+  as provisional, not assumed to survive.
 - **mi-SVM had not converged** at the 10-iteration cap (churn still decreasing every fold/class,
-  Stage 4 §6) — moot for the *spatial* claim (the shuffled control hit the same cap and still beat
-  the real fit), but still open for mi-SVM's *bag-classification* accuracy (Stage 6 §5).
-- **EM's collapse root cause** undetermined — genuine weak signal at this bag count vs. an artifact
-  of this specific config (cold start, shrinkage strength, fixed $\pi_{\text{init}}$).
-- **$\pi_b$ vs NMF cluster proportions** (§1's other named external-validity check) — never computed.
-- **The K=2 softmax external-agreement threshold bug** (Stage 6 §4) — documented, not fixed.
-  Confirmed to also affect Tier 3 (docs/stage6_attention_mil.md §5) as predicted, since its
-  instance head is a plain softmax too — both now share the same open fix.
-- **mi-SVM vs Apollo/RF/XGBoost bag accuracy** — only computed vs the CNN (Stage 6 §5). Cheap to
-  extend with the existing `scripts/stage6_bag_eval.py`.
-- **Tier 3's inner-validation vs true-test generalization gap is unexplained** (mean inner-val
-  bag_acc 0.893 across folds vs pooled true-test bag_acc 0.644, docs/stage6_attention_mil.md §3) —
-  small-N inner split, residual overfitting, and genuine distribution shift are all plausible and
-  not distinguished from one another.
+  Stage 4 §6) — moot for the *spatial* claim (dropped regardless, above), but still open for
+  mi-SVM's *bag-classification* accuracy (Stage 6 §5).
+- **EM's collapse root cause: explicitly deferred (2026-09-29 user decision)**, not investigated
+  further for now — would need several more full EM refits under different cold-start/shrinkage
+  configs to actually distinguish "genuine weak signal at this bag count" from "an artifact of
+  this specific config."
+- **$\pi_b$ vs NMF cluster proportions — done (2026-09-29/30), null.** Required first fixing a
+  real gap: EM's `pi_b`/`mu`/`sigma`/diagnostics were computed every run and silently discarded
+  (`pipeline/mil_fit_stage.py`, now persisted to `results/{exp}/latent/em_diagnostics.json`), so
+  this needed a fresh full local EM refit, not a free lookup. Result
+  (`scripts/stage4_pi_b_external_validity.py`): Spearman $\rho \in [-0.16,+0.14]$ against all 3
+  NMF/GMM `tissue_cluster` proportions and against `viable_legacy` fraction, every $p>0.19$
+  (n=59 bags) — null, agreeing with Stage 5's independent ARI/AMI-based null result via a
+  completely different statistic. $\pi_b$ itself stays extremely tight to the floor across both
+  the original and the re-run fit (**[0.0200, 0.0443]**, std=0.0031), so there is very little
+  genuine across-bag variation for any proxy to track in the first place — see docs/stage4_mil.md §6.
+- **The K=2 softmax external-agreement threshold bug — fixed (2026-09-29), not just documented.**
+  `hard_diagnostic_threshold()` (`scripts/stage5_spatial_validation.py`) rescales the cutoff to
+  half the theoretical max for a joint-softmax source, `(K-1)/(2(2K-1))` = 1/6 at K=2, for
+  `attention`/`cbr` specifically; mi-SVM stays on the original flat 0.5 (already non-degenerate,
+  left untouched deliberately). Recomputed: Tier 3 goes from ARI=AMI=0.0000/100%-diagnostic to
+  ARI=0.0164/AMI=0.0008/84.4%-diagnostic; Tier 4's `reconstruction` to ARI=−0.0148/AMI=0.0009/9.1%,
+  `encoder_head` to ARI=−0.0458/AMI=0.0089/85.5% — no longer structurally degenerate, but not a
+  positive finding either (both Tier 4 ARIs slightly negative, and the two variants now disagree
+  sharply on how much of the dataset is "diagnostic").
+- **mi-SVM vs Apollo/RF/XGBoost bag accuracy — done (2026-09-29).** Not significant vs Apollo
+  (Δ=−0.069, p=0.238); **significantly worse** vs RF and XGBoost (Δ=−0.121, p=0.046 each) — see
+  docs/stage6_generative_mil.md §5.
+- **Tier 3's inner-validation vs true-test generalization gap: explicitly deferred (2026-09-29
+  user decision)**, not investigated further for now (mean inner-val bag_acc 0.893 across folds
+  vs pooled true-test bag_acc 0.644, docs/stage6_attention_mil.md §3) — would need several more
+  real Tier 3 refits under different regularization to chase down, and moot for now given §5a's
+  dropped spatial claim regardless of the outcome.
 - **`cbr_temperature` (T=0.001)** — one fold's smoke test, never swept.
-- **$\sigma$ identifiability** (§10, checkpoint 1) — no profile-likelihood interval built.
+- **$\sigma$ identifiability** (§10, checkpoint 1) — the EM refit above gives new *informal*
+  evidence (sigma hits the 0.000 boundary in 3/5 folds, and which specific folds collapse is
+  unstable across two same-seed re-runs — docs/stage4_mil.md §6), consistent with the plan's own
+  expectation, but a formal profile-likelihood interval (the plan's literal criterion) still isn't
+  built — would need a marginal-likelihood model this codebase doesn't currently implement.
 - **Join-count/boundary-length spatial statistics + qualitative RGB overlay** (§6) — skipped since
   Moran's I + variogram already answered the question at the time.
 

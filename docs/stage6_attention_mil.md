@@ -1,23 +1,26 @@
 # Stage 6 (Tier 3) — Attention MIL
 
-**Status: complete for the real fit, the bag-level evaluation against all
-four Tier 0 references, and spatial validation. The shuffled-bag-label
-control has not been run for this tier.** New `src/mil/attention.py`,
+**Status: complete, including the shuffled-bag-label control — and the
+spatial claim is dropped.** New `src/mil/attention.py`,
 `pipeline/mil_attention_stage.py`, `scripts/stage6_attention_bag_eval.py`.
 Full architecture and design rationale: docs/mil_tiers_methodology.md §6.3–6.4
 (methodology only, no results — this file is the results counterpart,
 mirroring docs/stage6_generative_mil.md's treatment of Tier 4).
 
 The honest summary: a real, non-degenerate attention model that trains
-cleanly on all 5 folds, recovers genuine (if modest) lag≥3 spatial
-coherence — weaker than Tier 4's `reconstruction` variant, stronger than
-Tier 1's mi-SVM — but is a **significantly worse bag-level classifier than
-three of the four Tier 0 references** (Apollo, RF, XGBoost), and not
+cleanly on all 5 folds and is a **significantly worse bag-level classifier
+than three of the four Tier 0 references** (Apollo, RF, XGBoost), not
 significantly better than the fourth (the CNN, the weakest Tier 0 reference
-by a wide margin). This tier's own debugging process also surfaced three
-real, sequentially-discovered bugs before any of the numbers below could be
-trusted — recorded here because each is a property of attention MIL on this
-data, not a one-off implementation slip.
+by a wide margin) — and whose apparent lag≥3 spatial coherence **does not
+survive the shuffled-bag-label control** (§5a): a fit under completely
+permuted labels produces *larger* coherence than the real fit at every
+headline lag, the same failure mode mi-SVM's control found
+(docs/stage5_spatial_validation.md). Per the plan's own pre-registered exit
+criterion, Tier 3's spatial claim is dropped, same as mi-SVM's. This tier's
+own debugging process also surfaced three real, sequentially-discovered bugs
+before any of the numbers below could be trusted — recorded here because
+each is a property of attention MIL on this data, not a one-off
+implementation slip.
 
 > **Reproducing this.** `pytest tests/test_stage6_attention_mil.py
 > tests/test_stage6_attention_bag_eval.py`. Real fit:
@@ -155,20 +158,90 @@ fix), 200 within-slide permutations/slide, seed 42
 | 5 | +0.0148 ± 0.023 | 0.1873 ± 0.283 | +4.637 ± 7.313 | 0.00629 |
 | 6–10 | declining, +0.0068 to +0.0122 | rising, 0.19–0.28 | declining, +3.2 to +4.2 | ≈0.0063, flat |
 
-Variogram range: median 2.0px (n=59). External agreement vs
-`viable_legacy`: **ARI=0.0000, AMI=0.0000** (n=288,678) — the identical
-structural degeneracy docs/stage6_generative_mil.md §4 diagnoses for Tier
-4's two variants: attention's instance head is a genuine, unconstrained
-K=2 softmax (docs/mil_tiers_methodology.md §6.3 states this was a
-deliberate design choice, made *before* this consequence was confirmed),
-so `max_k p_k ≥ 0.5` by construction and the lifted non-diagnostic mass is
-provably bounded to `[0, 1/3]` — never crossing the 0.5 hard-diagnostic
-threshold used for ARI/AMI, regardless of what the posterior encodes. This
-is the K=2-softmax convention bug §4 of that doc predicted would apply to
-Tier 3 "if its attention head is a plain softmax too" — now confirmed
-directly rather than left as a flag. As with Tier 4, the *continuous* non-
-diagnostic mass driving the Moran's I/variogram numbers above is unaffected
-by this — only the hard-threshold external-agreement check is degenerate.
+Variogram range: median 2.0px (n=59).
+
+**External agreement vs `viable_legacy`, using the corrected threshold**
+(2026-09-29 fix — see below): **ARI=0.0164, AMI=0.0008** (n=288,678,
+threshold=0.1667; model calls 243,692/288,678 = 84.4% "diagnostic", vs
+`viable_legacy`'s own 227,344/288,678 = 78.8%). Weak but no longer
+structurally degenerate. The original computation under a flat 0.5
+threshold gave **ARI=0.0000, AMI=0.0000, 288,678/288,678 (100%) called
+"diagnostic"** — the identical structural degeneracy
+docs/stage6_generative_mil.md §4 diagnoses for Tier 4's two variants:
+attention's instance head is a genuine, unconstrained K=2 softmax (docs/
+mil_tiers_methodology.md §6.3 states this was a deliberate design choice,
+made *before* this consequence was confirmed), so `max_k p_k ≥ 0.5` by
+construction and the lifted non-diagnostic mass is provably bounded to
+`[0, 1/3]` — never crossing a flat 0.5 threshold at all, regardless of what
+the posterior encodes. This is the K=2-softmax convention bug §4 of that
+doc predicted would apply to Tier 3 "if its attention head is a plain
+softmax too" — confirmed directly rather than left as a flag, and now
+**fixed** (not just documented) via `hard_diagnostic_threshold()`
+(`scripts/stage5_spatial_validation.py`): for a joint-softmax source the
+cutoff is rescaled to half of the maximum non-diagnostic mass the
+construction can ever produce, `(K-1)/(2·(2K-1))` = 1/6 at K=2, rather than
+a flat 0.5 inherited from a differently-shaped (independent-score) source
+like mi-SVM's — which is deliberately left on its original 0.5 (already
+non-degenerate, 0.96% hard-diagnostic — this fix does not retroactively
+touch it). Provisional, documented, not swept, the same treatment as this
+project's other provisional constants. As with Tier 4, the *continuous*
+non-diagnostic mass driving the Moran's I/variogram numbers above was never
+affected by this — only the hard-threshold external-agreement check was.
+
+### 5a. The shuffled-bag-label control — the spatial claim is dropped
+
+Per docs/MIL_REFRAME_PLAN.md §6/§13's pre-registered check: does lag≥3
+coherence survive a fit under bag labels that are an exact permutation of
+the true ones (same class balance, everything else — features, bag
+membership, CV splits, architecture, hyperparameters — held fixed)? For
+Tier 3 this is cheap to run: the frozen CVAE trunk needs no retrain, only
+the attention head refits (`scripts/stage6_shuffled_label_control.py
+--method attention`, 2026-09-29; permutation_seed=123, 44/59 bags received
+a different label). All 5 folds trained without incident (early stop
+between epoch 15–30, vs. the real fit's 25–79 — a *faster* stall, exactly
+what training on labels with no real signal should look like).
+
+| lag | real fit: I / z | shuffled fit: I / z |
+|---|---|---|
+| 3 (headline) | +0.0236 / +5.63 | **+0.0613 / +14.70** |
+| 4 | +0.0176 / +5.00 | **+0.0478 / +13.38** |
+| 5 | +0.0148 / +4.64 | **+0.0403 / +12.45** |
+| 10 | +0.0068 / +3.24 | +0.0231 / +10.08 |
+
+(shuffled fit's own variogram range: median 2.0px, identical to the real
+fit's — `results/exp_501/spatial_validation/stage5_attention_attention_shuffled.json`.)
+
+**This does not merely fail to support the real fit's coherence — it beats
+it, at every headline lag, by more than 2×.** Per the plan's own
+pre-registered exit criterion ("excess coherence at lag≥3 survives the
+shuffled-label control — if not, the spatial claim is dropped"), Tier 3's
+already-ambiguous lag-3 signal (§5's own mean-p/mean-z tension) now fails
+definitively: a fit with **no genuine label-content relationship
+whatsoever** produces *stronger* apparent coherence than the real one. This
+is the same failure mode mi-SVM's own control found
+(docs/stage5_spatial_validation.md), and the same likely mechanism applies:
+the frozen CVAE trunk's `z_mean` features are a real, continuous embedding
+of each pixel's spectrum, and real tissue has real spatial autocorrelation
+in its raw spectral characteristics *regardless of which label a region
+happens to be fit toward* — general tissue continuity, acquisition
+smoothness, or both, not diagnostic content. An attention head trained on
+permuted labels has nothing else to latch onto, so it latches onto
+*whatever direction in that shared feature space happens to vary smoothly
+across space* — and that is apparently enough to produce lag≥3 "coherence"
+on its own. **The spatial claim for Tier 3 is dropped**, per the plan's own
+contingency, on the same strength of evidence as mi-SVM's retraction: a
+head-to-head comparison, not a borderline p-value.
+
+Two controls have now been run (mi-SVM, attention); both failed the same
+way. That is no longer a one-off — it is starting to look like a property
+of doing MIL spatial validation on top of *any* representation built from
+raw spectral features (RF-selected bands for mi-SVM, a frozen CVAE
+embedding for attention) on this dataset, independent of which MIL
+formulation sits on top. Tier 4's `reconstruction` variant had the
+strongest real spatial result of any tier so far (lag3 p=0.028) but its own
+control has not been run yet (needs a full CVAE retrain) — given this
+pattern, that result should be treated as provisional, not assumed to
+survive, until its own control is run.
 
 **A real tension worth stating plainly: mean-p and mean-z disagree at the
 headline lag.** At lag 3, the mean permutation p-value (0.1105) does not
@@ -194,53 +267,56 @@ Consolidating every tier's headline lag-3 number in one place (mi-SVM and
 Tier 4 numbers reproduced from docs/stage5_spatial_validation.md and
 docs/stage6_generative_mil.md §4 respectively — not re-run here):
 
-| method | Moran's I (lag 3) | mean p | mean z | variogram range |
-|---|---|---|---|---|
-| mi-SVM (Tier 1) | +0.006 | 0.361 | +1.5 | median 2px |
-| EM (Tier 2) | — | — | — | collapsed (variogram ≡ 0) |
-| **attention (Tier 3)** | **+0.024** | **0.111** | **+5.6** | median 2.0px |
-| CbR reconstruction (Tier 4) | +0.122 | 0.028 | +29.4 | median 3.0px |
-| CbR encoder_head (Tier 4) | +0.049 | 0.057 | +11.1 | median 3.0px |
+| method | Moran's I (lag 3) | mean p | mean z | variogram range | shuffled control |
+|---|---|---|---|---|---|
+| mi-SVM (Tier 1) | +0.006 | 0.361 | +1.5 | median 2px | **failed — z=+5.01 shuffled vs +1.50 real; dropped** |
+| EM (Tier 2) | — | — | — | collapsed (variogram ≡ 0) | not run (moot) |
+| **attention (Tier 3)** | **+0.024** | **0.111** | **+5.6** | median 2.0px | **failed — z=+14.70 shuffled vs +5.63 real; dropped** |
+| CbR reconstruction (Tier 4) | +0.122 | 0.028 | +29.4 | median 3.0px | not run yet (needs CVAE retrain) |
+| CbR encoder_head (Tier 4) | +0.049 | 0.057 | +11.1 | median 3.0px | not run yet (needs CVAE retrain) |
 
-By every column, Tier 3 sits between mi-SVM (weakest, not significant by
-either summary) and Tier 4's two variants (strongest, `reconstruction`
-clearing the conventional p<0.05 bar on the mean-p summary too). Tier 3's
-own mean-z is respectable — ahead of `encoder_head`'s is not true (11.1 >
-5.6), so more precisely: ahead of mi-SVM, behind both Tier 4 variants on
-every column.
+**Both controls run so far have failed the same way — the raw Moran's I/z
+numbers in this table are no longer a reliable guide to which tier's
+spatial claim is real.** Tier 3 sat between mi-SVM and Tier 4 by every
+column here, but "sits in the middle of two numbers" turned out not to
+predict "closer to holding up": mi-SVM's weaker-looking real signal and
+Tier 3's stronger-looking one both collapsed identically under their
+controls. Until Tier 4's own control is run, its table position (strongest
+of all five) should not be read as evidence it will survive — see §5a's
+closing paragraph.
 
 ## 7. Honest overall read
 
-Attention MIL is a genuine, working model — not degenerate, not
-overfit (after the fixes in §2), trains reproducibly across all 5 folds.
-It recovers spatial structure beyond what mi-SVM showed, though weaker
-than either Tier 4 variant, and the p-vs-z tension in §5 means even that
-should be read as suggestive rather than conclusively established without
-the shuffled-label control (§8). But as a bag-level classifier — the
-task's actual clinical objective — it is **the first tier in this project
-whose comparison table shows a significant loss** against multiple Tier 0
-references, not merely a non-significant tie. Two things are true at once
-and neither should be softened to fit the other: the architecture and its
-debugging were done correctly (§2, §3, verified in §9), and the resulting
-model is, on the evidence gathered so far, not competitive with the
-simpler Tier 0 tree ensembles at the one task that matters most.
+Attention MIL is a genuine, working model — not degenerate, not overfit
+(after the fixes in §2), trains reproducibly across all 5 folds. It is
+**not**, on the evidence now in hand, a source of real spatial information:
+§5a's shuffled-label control shows its apparent lag≥3 coherence is fully
+explained by the frozen CVAE trunk's own feature-space smoothness, not by
+anything the attention head learned about the true label. And as a
+bag-level classifier — the task's actual clinical objective — it is **the
+first tier in this project whose comparison table shows a significant
+loss** against multiple Tier 0 references, not merely a non-significant
+tie. Three things are true at once and none should be softened to fit the
+others: the architecture and its debugging were done correctly (§2, §3,
+verified in §9), the resulting model is, on the evidence gathered so far,
+not competitive with the simpler Tier 0 tree ensembles at the one task that
+matters most, and its one apparent point of genuine interest — spatial
+coherence — does not survive the one test built specifically to check it.
+This is, so far, the most negative honest result of any tier in this
+project, and it is reported as such rather than emphasizing §3–§4's
+legitimate engineering work over §5a's outcome.
 
 ## 8. Deviations from the plan / honest gaps
 
-- **The shuffled-bag-label control has not been run for this tier.** Per
-  the standing backlog, this is the definitive test of whether §5/§6's
-  lag≥3 coherence is genuinely label-driven; without it, and given §5's
-  own p-vs-z tension, the spatial finding here is suggestive, not
-  definitive — weaker footing than mi-SVM's control-tested (and ultimately
-  negative) result, or Tier 4's control-pending-but-cleaner p<0.05 result.
 - **The inner-validation/true-test generalization gap (§3) is unexplained.**
   Mean inner-val bag accuracy (0.893) substantially exceeds the true
   pooled test accuracy (0.644). Plausible contributors — small inner-val
   N (7–8 bags), residual overfitting the current regularization doesn't
   fully remove, or a genuine distribution shift between training-fold
   bags and held-out bags — have not been distinguished from one another.
-- **The K=2 softmax external-agreement bound (§5) is documented, not
-  fixed** — same status as Tier 4's identical issue.
+  Explicitly deferred (2026-09-29): would need several more real Tier 3
+  refits under different regularization to chase down, and the tier's
+  spatial claim is already dropped (§5a) regardless of the outcome.
 - **No hyperparameter sweep.** Dropout/L2/attn_dim/sub-bag size were fixed
   from the smoke-testing process (§2) and the π_min-derived formula
   respectively, not tuned against the true test folds (which would itself
@@ -249,15 +325,27 @@ simpler Tier 0 tree ensembles at the one task that matters most.
 ## 9. Verification
 
 - **New `tests/test_stage6_attention_mil.py`, `tests/test_stage6_attention_bag_eval.py`,
-  `tests/test_stage6_shuffle_control.py`** (the last covers the shuffle
-  infrastructure that exists but hasn't been run for this tier yet).
+  `tests/test_stage6_shuffle_control.py`** — the shuffle-control test file
+  covers `src/mil/shuffle_control.py`'s permutation logic (pure numpy);
+  `scripts/stage6_shuffled_label_control.py`'s own attention dispatch (added
+  2026-09-29, `pipeline/mil_attention_stage.py` gaining optional
+  `loader`/`store_path`/`bag_level_path` overrides) was smoke-tested on
+  fold_0 before the real 5-fold shuffled run, confirmed correct wiring
+  (separate output paths, 44/59 bags relabeled) and a directionally sensible
+  result (early stop at epoch 15 vs. the real fit's 40, `sub_bag_null_rate`
+  jumping from 0.0000 to 0.3368) before being trusted for the full run.
+- **New `tests/test_stage5_spatial.py` cases for `hard_diagnostic_threshold`**
+  (2026-09-29): confirms mi-SVM/EM stay at a flat 0.5, confirms the K=2
+  joint-softmax cutoff is exactly 1/6, confirms the cutoff loosens (but
+  stays below 0.5) as K grows.
 - **Full suite re-run against `tests/` (this pass, 2026-09-29): 152
   passed, 2 failed** — the same two pre-existing `test_config_manager.py`
   failures present throughout this project's history, unrelated to Tier 3
   or to anything touched this stage.
 - **Real data, full pipeline**: fit (5 folds) → store + `attention_bag_level.json`
   → spatial validation → bag-level eval against all four Tier 0 references
-  ran end-to-end with no errors.
+  → shuffled-label control (5 folds) → shuffled spatial validation ran
+  end-to-end with no errors.
 - **`bag_posterior` correctness** (§2, bug 3) verified two ways before
   being trusted for the real run: consistency against `call()`'s own
   batched computation, and a behavioral test that a bag's decision resists

@@ -205,13 +205,14 @@ project. The shuffled-bag-label control (still not run for any tier, per
 Stage 5's own §3) is the one check that could actually distinguish these —
 not a comparison to `viable_legacy`, which was never fit for that purpose.
 
-### External agreement vs `viable_legacy`: degenerate for a real, discovered reason
+### External agreement vs `viable_legacy`: degenerate for a real, discovered reason — now fixed
 
-Both variants: **ARI=0.0000, AMI=0.0000, "diagnostic": 288,678/288,678 —
-every single instance.** This is not the CVAE finding nothing, and not a bug
-in Stage 5's own code (unchanged, already trusted for mi-SVM/EM). It is a
-**structural property of the `1 - max_k p_k` convention applied to a genuine
-K-way softmax, specific to K=2**:
+Both variants, under the *original* flat 0.5 threshold: **ARI=0.0000,
+AMI=0.0000, "diagnostic": 288,678/288,678 — every single instance.** This
+was not the CVAE finding nothing, and not a bug in Stage 5's own code
+(unchanged, already trusted for mi-SVM/EM). It was a **structural property
+of the `1 - max_k p_k` convention applied to a genuine K-way softmax,
+specific to K=2**:
 
 The convention was designed for mi-SVM, where each class's score comes from
 an *independent* one-vs-rest classifier — `max_k p_k` can legitimately fall
@@ -226,18 +227,31 @@ hard-diagnostic threshold at every possible confidence level, including
 maximal uncertainty.** The external-agreement check can therefore never call
 anything "non-diagnostic" for a K=2 softmax source, regardless of what the
 posterior actually encodes. (The bound loosens toward, but never reaches,
-0.5 as K grows — `(K-1)/(2K-1)` — so this would also affect a K=6 softmax
-source, just less severely; worth flagging for Tier 3 if its attention head
-is a plain softmax too.)
+0.5 as K grows — `(K-1)/(2K-1)` — this was flagged as a concern for Tier 3
+too, and confirmed directly once Tier 3 was built — docs/stage6_attention_mil.md §5.)
 
-**What this does and doesn't affect**: the *hard-threshold* ARI/AMI check is
-uninformative for both variants as implemented — not fixed in this pass,
-since a principled replacement threshold (e.g. a distribution-relative cut
-rather than a fixed 0.5 inherited from a differently-shaped score source)
-needs its own justification, not an ad hoc patch chosen to make a number look
-better. The *continuous* non-diagnostic mass used by the lag-band statistics
-above is unaffected — real per-instance variation exists within `[0, 1/3]`,
-and that is exactly what Moran's I and the variogram measured.
+**Fixed 2026-09-29**, not just documented: `hard_diagnostic_threshold()`
+(`scripts/stage5_spatial_validation.py`) rescales the cutoff for a
+joint-softmax source to half the maximum non-diagnostic mass the
+construction can ever produce, `(K-1)/(2·(2K-1))` = 1/6 at K=2, instead of a
+flat 0.5 inherited from mi-SVM's differently-shaped independent-score
+source (which is left on 0.5, unaffected — already non-degenerate there).
+Recomputed under the corrected threshold (threshold=0.1667):
+
+| variant | ARI | AMI | "diagnostic" |
+|---|---|---|---|
+| reconstruction | −0.0148 | +0.0009 | 26,221/288,678 (9.1%) |
+| encoder_head | −0.0458 | +0.0089 | 246,678/288,678 (85.5%) |
+
+No longer structurally degenerate (no longer 100%/0.0000 for either), but
+also not a positive finding — both ARI values are slightly *negative*
+(worse than chance agreement with `viable_legacy`), and the two variants
+now disagree sharply with each other on how much of the dataset is
+"diagnostic" (9% vs 86%), which the flat-0.5 version's shared 100% had
+been masking. The *continuous* non-diagnostic mass used by the lag-band
+statistics above was never affected by any of this — real per-instance
+variation exists within `[0, 1/3]` regardless of the threshold, and that is
+exactly what Moran's I and the variogram measured throughout.
 
 ## 5. Closing the gap: Tier 1/2 bag-level accuracy — and a second, more serious
    circularity bug this pass found and had to exclude
@@ -260,6 +274,26 @@ aggregate: mi-SVM and the CNN **disagree on 9 of 58 bags**
 one reusing the other's predictions — checked directly because the exact
 numeric match to a previously-seen delta was, correctly, suspicious enough
 to verify before trusting it.
+
+**Extended to the other three Tier 0 references (2026-09-29), closing the
+gap this section originally left open:**
+
+| reference | Tier 0 bag_acc | mi-SVM Δ | 95% CI | p | significant? |
+|---|---|---|---|---|---|
+| 1D-CNN | 0.6034 | +0.0862 | [−0.017, +0.190] | 0.126 | no |
+| Apollo (RF+SVM) | 0.7586 | −0.0690 | [−0.190, +0.035] | 0.238 | no |
+| Random Forest | 0.8103 | −0.1207 | [−0.225, −0.017] | 0.046 | **yes, worse** |
+| XGBoost | 0.8103 | −0.1207 | [−0.225, −0.017] | 0.046 | **yes, worse** |
+
+Same qualitative shape as Tier 3's later table (docs/stage6_attention_mil.md
+§4) and Tier 4's own table above: not distinguishable from the CNN or from
+Apollo, but significantly behind the two tree ensembles specifically. Across
+every tier evaluated in this project so far — Tier 0 itself, mi-SVM, Tier 4
+both variants, and Tier 3 — RF and XGBoost have never once been beaten by a
+statistically significant margin. **mi-SVM's own spatial claim is
+separately dropped** (docs/stage5_spatial_validation.md, shuffled-label
+control) — this bag-accuracy result stands on its own and is unaffected by
+that, since it was never a spatial claim to begin with.
 
 **EM (`em/constrained`): EXCLUDED — bag_acc=1.0000 is not a real result.**
 The raw number this script computed is a perfect, trivial 1.0000

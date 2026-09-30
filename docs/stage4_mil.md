@@ -162,21 +162,45 @@ findings, not the clean picture the synthetic tests showed:
   every fold/class (e.g. fold_0 class 0: `...1594, 2222, 1528, 1422`, still
   moving). It hit the iteration ceiling, not a fixed point. `max_iters` should
   be raised before trusting these posteriors fully.
-- **EM's shrinkage diagnostic (§1) fired `collapsed=True` in 4 of 5 folds.**
-  $\pi_b$ converged to ~0.02-0.03 (essentially the numerical floor) with
-  population $\sigma \to 0$ -- EM found no bag-to-bag signal in most folds.
-  fold_0 was the one exception (`shrinkage_ratio=5.851`, not collapsed,
-  $\pi_b \approx 0.031$) -- the SAME code, different folds, a genuinely
-  fold-dependent (not deterministic-bug-shaped) outcome, consistent with a
-  real, borderline signal rather than a simple implementation error.
-- **$\pi_b$'s external correlation against `viable_legacy`**: not computed as
-  a correlation directly; instead assessed via Stage 5's external-agreement
-  check on the hard diagnostic/non-diagnostic assignment (ARI/AMI vs
-  `viable_legacy`), which was effectively null for both methods -- see
-  docs/stage5_spatial_validation.md. NMF cluster-proportion correlation is
-  not yet computed at all (this stage's real compute cost pushed it out of
-  scope for this pass; `tissue_cluster` is wired through the loader and
-  available whenever this is picked up).
+- **EM's shrinkage diagnostic (§1) fired `collapsed=True` in most folds, but
+  which folds is itself unstable across nominally-identical re-runs.** The
+  original fit collapsed in 4/5 folds (fold_0 the exception,
+  `shrinkage_ratio=5.851`, $\pi_b \approx 0.031$). A second full 5-fold
+  refit (2026-09-29, same code, same `seed=42`, run to additionally persist
+  `pi_b`/`mu`/`sigma` per fold — previously computed and discarded every
+  run, see `results/{exp}/latent/em_diagnostics.json`) reproduces the
+  *qualitative* pattern (most folds collapse, 1–2 don't) but **not the same
+  folds**: this time fold_1/2/3 hit $\sigma=0.000$ exactly, while fold_0
+  (`shrinkage_ratio=1.320`) and fold_4 (`shrinkage_ratio=2.354`) did not.
+  Across both runs $\pi_b$ stays extremely tight to the floor either way —
+  59-bag range **[0.0200, 0.0443]**, std=0.0031. Which specific fold avoids
+  the boundary changing between two same-seed runs is itself evidence
+  pointing the same direction as the plan's own expectation ("$\sigma$
+  poorly determined with 58 bags") — a stably-identified $\sigma$ should not
+  flip which fold collapses under nominally identical conditions. This
+  falls short of the plan's own stated checkpoint-1 criterion (a formal
+  profile-likelihood interval, flat within 2 log-likelihood units across an
+  order of magnitude) — that would need a marginal-likelihood model this
+  codebase doesn't currently implement, a real additional undertaking, not
+  yet built.
+- **$\pi_b$'s external correlation, now computed both ways.** Stage 5's
+  existing hard-threshold clustering-agreement check (ARI/AMI vs
+  `viable_legacy`) was effectively null for both mi-SVM and EM — see
+  docs/stage5_spatial_validation.md. A second, complementary check — direct
+  Spearman correlation of the above per-bag $\pi_b$ (averaged across the
+  ~3.93 folds/bag where each bag is in training) against each of the 3
+  NMF/GMM `tissue_cluster` proportions, and against `viable_legacy`
+  fraction, run 2026-09-29 via `scripts/stage4_pi_b_external_validity.py`
+  — is **also null**: $\rho \in [-0.16, +0.14]$, every one of the 4
+  correlations $p > 0.19$ (n=59 bags). Two independent statistics (a
+  clustering-agreement metric and a continuous rank correlation) now agree:
+  whatever EM's $\pi_b$ is picking up, it is not tracking either
+  independent tissue-composition proxy available in this project. Given how
+  tight $\pi_b$'s own range is (essentially pinned near the floor for
+  nearly every bag), a null correlation here is close to expected rather
+  than a surprising additional finding — there is very little genuine
+  across-bag variation in $\pi_b$ for any proxy to track in the first
+  place.
 
 ### 6.1 A necessary fix found only by actually running this on real data
 

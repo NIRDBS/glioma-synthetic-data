@@ -648,8 +648,8 @@ the work, and updated in place as stages complete.
 | 4 | Latent store + Tier 1/2 | **done (code+tests); real fit running** | New `src/mil/` package: mi-SVM/MI-SVM (Tier 1, reuses Apollo unchanged) and label-proportion EM with hierarchical π_b (Tier 2, documented as Classification-EM + empirical-Bayes shrinkage, not a full Bayesian treatment). EM's cold start took three real debugging rounds to get right, each a genuine instance of a §5-named degeneracy (uniform-tie collapse → all-one-null-component; unconstrained argmax → π_b→0.98; wrong bootstrap floor → π_b→0.05 exactly) before landing on bootstrapping from mi-SVM's own validated split with the *caller's* π_init as the bootstrap floor, not EM's internal π_min. Latent-label store (`results/{exp}/latent/latent_labels.h5`) with fold-leakage assertion and alignment checksum, both tested including their negative cases. Constrained model (C) only, binary — model (M) and 6-class are still Stage 8. See [stage4_mil.md](stage4_mil.md). |
 | 5 | Spatial validation | **done — negative result** | Real exp_501 run, both formulations: neither shows tissue-scale coherence surviving the lag≥3 headline criterion. EM's variogram is exactly 0.0000 at every lag — direct confirmation of Stage 4's own `collapsed=True` finding (4/5 folds); its Moran's I still showed large z-scores (up to +26) purely because Moran's I is scale-free and can flag "significant" pattern in floating-point-level noise around a constant — exactly the failure mode the two-statistic design (variogram + Moran's I) exists to catch, and it caught it. mi-SVM produced a genuine, non-collapsed, spatially-varying posterior, but its variogram range is 2px (the plan's own criterion: 1-2px = filter, 10-20px = tissue) and lag≥3 Moran's I is not significant (p≈0.36-0.46). External agreement (ARI/AMI) vs `viable_legacy` is null for both. Two leads not yet chased: mi-SVM hadn't converged (churn still decreasing at the 10-iteration cap), and EM's collapse's root cause (genuine weak signal vs. this specific EM config) is undetermined. Shuffled-label control not run. Stopped here for review per explicit instruction — no Stage 6 work started. See [stage5_spatial_validation.md](stage5_spatial_validation.md). |
 | 6 | Tier 3/4 | **both done — mixed results** | Per the user's own reordering (Tier 4 first, cheap), Tier 4 (generative MIL from the CVAE, 'reconstruction' + 'encoder_head') was run first. Real fit: <1 minute (pure inference, zero new training). Bag-level: 'encoder_head' beats the weakest Tier 0 baseline (1D-CNN, 0.593) by +0.203, p=0.006 — but is statistically indistinguishable from the three strongest ones (Apollo/RF/XGBoost, all 0.76–0.81); 'reconstruction' beats none. Spatial: real, lag≥3-significant coherence for 'reconstruction' (p=0.028 at lag 3, unlike Tier 1/2's null/collapsed results) but range=3px, short of the plan's 10–20px tissue-scale bar. Two bugs found and documented, not hidden: the external-agreement (ARI/AMI) check is structurally degenerate for any K=2 softmax source (bounded non-diagnostic mass < 1/3, can never cross the 0.5 hard-diagnostic threshold); and a naive K-diagnostic-column bag-accuracy metric, applied retroactively to close Tier 1/2's own missing bag-accuracy number, turned out to be vacuously 1.0000 for EM specifically — Model (C)'s hard per-instance support restriction makes it recover the already-known bag label, not a genuine measurement — excluded, with a permanent code guard (`scripts/stage6_bag_eval.py`'s `diagnostic_column_competition_frac`) added so this can't silently repeat. mi-SVM's own bag accuracy (0.690, not significant vs the CNN) is genuine and reported. See [stage6_generative_mil.md](stage6_generative_mil.md). **Tier 3 (attention MIL) run second**: three real bugs found and fixed via smoke-testing before the real run (bag-identity overfitting → dropout/L2/centering; a fold-specific vanishing-gradient stall from cross-fold CVAE scale mismatch → LayerNorm; attention-free naive pooling giving chance-level accuracy despite excellent attention-weighted training loss → a dedicated `bag_posterior` method plus a separate persisted bag-level artifact). Real 5-fold fit clean, `sub_bag_null_rate=0.0000` throughout. Bag-level (n=59): 0.644 accuracy — not significantly different from the CNN (+0.051, p=0.604) but **significantly worse** than Apollo/RF/XGBoost (p=0.012/0.002/0.002) — the first tier with a significant loss, not just a non-significant tie. Spatial: lag-3 Moran's I=+0.024, between mi-SVM's null result and Tier 4's positive ones, but with a real mean-p (0.111, not significant) vs mean-z (+5.6, suggestive) tension driven by high across-slide heterogeneity — flagged, not resolved, without the shuffled-label control (not yet run for this tier). Same K=2 external-agreement degeneracy as Tier 4, confirmed directly. See [stage6_attention_mil.md](stage6_attention_mil.md). **Update 2026-09-30**: shuffled-label controls now run for every tier that can produce one (attention here; both cbr variants, via a full CVAE retrain on Modal GPU — this project's first real GPU training run), and **all have failed** — attention's shuffled coherence is 2.6× the real fit's at lag 3; `reconstruction`'s shuffled result is larger than its real one at every headline lag; `encoder_head`'s shuffled result is numerically indistinguishable from its real one. **Every spatial-coherence claim in this project is now dropped.** The K=2 external-agreement threshold bug is also fixed (not just documented) — see docs/stage5_spatial_validation.md §6 for the full cross-tier synthesis and §13 for what this reopens for Stage 7. |
-| 7 | CVAE soft conditioning | **on hold (2026-09-30)** | Deliberately paused, not merely unstarted: every candidate conditioning posterior's spatial claim failed its shuffled-label control (Stage 6 row, above), and rather than pick a source anyway, the user chose to hold off and reconsider whether conditional generation is still the right next contribution. See backlog §13. |
-| 8 | Mixture model + 6-class | not started | |
+| 7 | CVAE soft conditioning | **not pursued (2026-09-30, deliberate)** | Every candidate conditioning posterior's spatial claim failed its shuffled-label control (Stage 6 row, above), removing the one property that would have clearly justified picking one source over the others. User decision: does not add enough to justify starting, given the results already in hand. See [mil_tiers_findings.md](mil_tiers_findings.md) §7 and backlog §13. |
+| 8 | Mixture model + 6-class | **not pursued (2026-09-30, deliberate)** | Judged not to add further evidence: the constrained model (C) already shows no tier recovering label-driven instance-level structure under 5x less demanding conditions (binary, hard support) than the full mixture (M) would require. See [mil_tiers_findings.md](mil_tiers_findings.md) §7. |
 
 ---
 
@@ -1106,40 +1106,46 @@ then on.
 
 ---
 
-## 13. Backlog after Stage 6 (2026-09-30) — where things stand, for continuity
+## 13. Backlog after Stage 6 (2026-09-30) — experimental programme concluded
 
-Stages 0–6 (all four tiers) are done and committed. This is the durable list of what's left,
-so a later session (compacted or not) can pick up without re-deriving it. Update this list
-as items close rather than letting the record go stale.
+**Stages 0–6 are done and committed; Stages 7–8 are deliberately not pursued (2026-09-30 user
+decision) — the experimental programme is considered complete.** This list is kept for
+continuity (a later session can pick either stage back up without re-deriving why they were
+skipped), not as an active TODO. The consolidated, structured findings from Stages 0–6 are in
+[mil_tiers_findings.md](mil_tiers_findings.md) — that is the reference for drafting the paper's
+Results/Discussion, not this backlog.
 
-**Every tier's shuffled-label control is now done, and every one has failed — no MIL
-formulation in this project currently has a spatial-coherence claim that survives.**
+**Every tier's shuffled-label control is done, and every one has failed — no MIL
+formulation in this project has a spatial-coherence claim that survives.**
 mi-SVM (2026-09-29), attention/Tier 3 (2026-09-29/30), and both Tier 4 variants
 (2026-09-30, `reconstruction` and `encoder_head`, via a full CVAE retrain on Modal GPU) all
 show comparable-or-larger lag≥3 coherence under permuted labels than under the real ones —
 `encoder_head`'s shuffled result is numerically indistinguishable from its real one. EM never
 produced a claim to test (it collapsed first). See docs/stage5_spatial_validation.md §6 for
-the full cross-tier synthesis. **Stage 7 is now on hold by deliberate user decision** (below)
-— the earlier plan to "wait for reconstruction's control" resolved negatively, and rather than
-pick a conditioning source anyway, the user chose to pause Stage 7 and reconsider whether
-conditional generation is still the right next contribution at all.
+the full cross-tier synthesis and mil_tiers_findings.md §2 for the consolidated table.
 
-### New training still needed
-- **Stage 7 — CVAE soft conditioning: ON HOLD (deliberate, 2026-09-30), not just unstarted.**
-  Given every candidate posterior's spatial claim has now failed (above), the user chose to
-  hold off on starting Stage 7 entirely rather than pick a conditioning source and proceed —
-  revisit whether conditional generation is still the right next contribution before resuming
-  this stage, not just which posterior to use. If resumed, the mechanical plan is unchanged:
-  replace `to_categorical(y_s)` with a latent-store lookup, add a simplex sampler for generation
-  (not corner enumeration), rework CbR (currently tied to one-hot corners), add a stop-gradient
-  guard if the condition ends up coming from the CVAE's own encoder head. The source tension,
-  if this resumes: `encoder_head` (circular — conditions the CVAE on its own head — but the
-  strongest bag classifier of any tier, tied with Apollo/RF/XGBoost) vs. mi-SVM or attention
-  (independent of the CVAE, but both markedly weaker bag classifiers, attention significantly
-  worse than the tree ensembles specifically).
-- **Stage 8 — mixture model (M) + 6-class.** Relax (C) to (M) (instance state ranges over all
-  $K{+}1$ types, not just $\{$nulls, own-bag-class$\}$); new 6-class MIL configs. The plan's own
-  pre-registered identifiability criterion (§10, checkpoint 2) is unchecked.
+**Why Stages 7–8 stop here, not just "on hold":**
+- **Stage 7 (CVAE soft conditioning)** would need to pick a posterior to condition generation
+  on; every candidate's spatial claim failed, removing the one property (demonstrated
+  label-driven structure) that would have clearly justified one choice over the others. The
+  user judged this insufficient reason to proceed with an arbitrary pick.
+- **Stage 8 (mixture model (M) + 6-class)** was judged not to add further evidence: the
+  constrained model (C) already shows no tier recovering label-driven instance-level structure
+  under conditions 5x less demanding (binary, hard support) than the full mixture would
+  require — relaxing the constraint or adding classes was judged unlikely to change that
+  conclusion enough to be worth the compute.
+
+### Reference only — mechanical plan if either stage is resumed later
+- **Stage 7**: replace `to_categorical(y_s)` with a latent-store lookup, add a simplex sampler
+  for generation (not corner enumeration), rework CbR (currently tied to one-hot corners), add
+  a stop-gradient guard if the condition ends up coming from the CVAE's own encoder head. The
+  source tension, if this resumes: `encoder_head` (circular — conditions the CVAE on its own
+  head — but the strongest bag classifier of any tier, tied with Apollo/RF/XGBoost) vs. mi-SVM
+  or attention (independent of the CVAE, but both markedly weaker bag classifiers, attention
+  significantly worse than the tree ensembles specifically).
+- **Stage 8**: relax (C) to (M) (instance state ranges over all $K{+}1$ types, not just
+  $\{$nulls, own-bag-class$\}$); new 6-class MIL configs. The plan's own pre-registered
+  identifiability criterion (§10, checkpoint 2) is unchecked.
 
 ### Validation / loose ends
 - **Shuffled-bag-label control: done for every tier that can produce one; every one failed.**

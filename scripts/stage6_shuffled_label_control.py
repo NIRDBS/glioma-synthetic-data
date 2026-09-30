@@ -13,13 +13,19 @@ fold splitting -- everything downstream of that is identical to a real
 fit): pipeline/mil_fit_stage.py's _fit_one_formulation for misvm/em,
 pipeline/mil_attention_stage.py's mil_attention_stage for attention (its
 frozen CVAE trunk is untouched by this -- only the attention head refits,
-same as any other real attention fit). Writes to a SEPARATE store path (and,
-for attention, a separate bag-level JSON too) so a shuffled run can never
-collide with or corrupt the real latent-label store / artifacts.
+same as any other real attention fit), pipeline/modal_cvae.py's
+run_on_modal for Tier 4's cvae (a full CVAE retrain, GPU, since Tier 4
+conditions on the CVAE's own weights rather than a separate frozen-trunk
+model -- the one tier whose control needs new training, not just a
+downstream head). Writes to a SEPARATE store path (and, for
+attention/cvae, separate bag-level/model output paths too) so a shuffled
+run can never collide with or corrupt the real latent-label store or
+artifacts that Tier 3/4's REAL results depend on.
 
 Usage:
     python scripts/stage6_shuffled_label_control.py --config exp_501 --method misvm
     python scripts/stage6_shuffled_label_control.py --config exp_501 --method attention
+    python scripts/stage6_shuffled_label_control.py --config exp_501 --method cvae [--epochs N]
 """
 import argparse
 import sys
@@ -41,10 +47,24 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
        seed=42, permutation_seed=123, store_suffix='shuffled',
        attn_dim=32, dropout_rate=0.3, l2=1e-3, center_by_bag=True,
        sub_bag_size=None, n_per_bag_per_epoch=50, max_epochs=200, patience=15,
-       fold_names=None):
+       fold_names=None, cvae_epochs=None):
     from src.utils.config_manager import ConfigManager
 
     config = ConfigManager.load_config(config_name)
+
+    if method == 'cvae':
+        # Unlike misvm/em/attention, the permutation happens INSIDE the
+        # remote container (cvae_stage.run_local, given just the seed) --
+        # there is no local loader to substitute and hand off, since Modal
+        # containers build their own loader from the config alone. See
+        # pipeline/modal_cvae.py::run_on_modal's docstring.
+        from pipeline.modal_cvae import run_on_modal
+        print(f"\n{'='*80}\nSHUFFLED-LABEL CONTROL: cvae (Modal GPU)  ({config_name})\n{'='*80}")
+        result = run_on_modal(config_name, epochs=cvae_epochs,
+                              permutation_seed=permutation_seed, store_suffix=store_suffix)
+        print(f"\n  Shuffled-label CVAE retrain complete -> {result['models_cvae_dir']}")
+        return result
+
     n_classes = num_classes_of(config)
     mil_cfg = config.get('mil', {})
     pi_min = pi_min if pi_min is not None else mil_cfg.get('pi_floor', 0.02)
@@ -96,7 +116,9 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Shuffled-bag-label control")
     parser.add_argument('--config', required=True)
-    parser.add_argument('--method', required=True, choices=['misvm', 'em', 'attention'])
+    parser.add_argument('--method', required=True, choices=['misvm', 'em', 'attention', 'cvae'])
+    parser.add_argument('--epochs', type=int, default=None,
+                        help="cvae only: override epoch count (smoke-test use)")
     parser.add_argument('--pi-min', type=float, default=None)
     parser.add_argument('--max-iters', type=int, default=10)
     parser.add_argument('--svm-subsample-per-bag', type=int, default=500)
@@ -118,4 +140,5 @@ if __name__ == '__main__':
        permutation_seed=args.permutation_seed, attn_dim=args.attn_dim,
        dropout_rate=args.dropout_rate, l2=args.l2, center_by_bag=not args.no_center_by_bag,
        sub_bag_size=args.sub_bag_size, n_per_bag_per_epoch=args.n_per_bag_per_epoch,
-       max_epochs=args.max_epochs, patience=args.patience, fold_names=args.folds)
+       max_epochs=args.max_epochs, patience=args.patience, fold_names=args.folds,
+       cvae_epochs=args.epochs)

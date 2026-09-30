@@ -230,8 +230,25 @@ def _train_one_fold(fold_data, config, cvae_config, epochs, batch_size, samples_
     gc.collect()
 
 
-def run_local(config, epochs=None):
-    """Train the CVAE locally for every fold and generate synthetic pools."""
+def run_local(config, epochs=None, permutation_seed=None, model_out_dir=None,
+             synthetic_out_dir=None):
+    """
+    Train the CVAE locally for every fold and generate synthetic pools.
+
+    ``permutation_seed``: if given, substitutes the loader's own y_class with
+    an exact permutation of the true label multiset (src/mil/shuffle_control.py
+    -- the same technique already used for Tiers 1-3's shuffled-bag-label
+    controls, docs/MIL_REFRAME_PLAN.md backlog §13) BEFORE any fold splitting,
+    then trains completely unchanged from there. This is what Tier 4's own
+    control needs: a full CVAE retrain under permuted labels, since (unlike
+    Tiers 1-3) Tier 4 conditions directly on the CVAE's own weights rather
+    than on a separate, frozen-trunk-based model.
+
+    ``model_out_dir``/``synthetic_out_dir``: override the config's own output
+    paths -- unused by the real training run (unchanged behaviour), used by a
+    shuffled-label run so it can never overwrite the real CVAE weights that
+    Tier 3's frozen trunk and Tier 4's CbR both depend on.
+    """
     import tensorflow as tf
     from pipeline._common import make_loader, num_classes_of, set_seeds
 
@@ -240,6 +257,14 @@ def run_local(config, epochs=None):
     print(f"TensorFlow {tf.__version__} | devices: {tf.config.list_physical_devices()}")
 
     loader = make_loader(config)
+    if permutation_seed is not None:
+        from src.mil.shuffle_control import apply_permuted_labels, permuted_bag_label_map
+        label_map = permuted_bag_label_map(loader.groups, loader.y_class, seed=permutation_seed)
+        n_moved = sum(1 for b in label_map
+                     if label_map[b] != loader.y_class[loader.groups == b][0])
+        print(f"  [shuffled-label control] permutation_seed={permutation_seed}  "
+              f"{n_moved}/{len(label_map)} bags received a label different from their true one")
+        loader.y_class = apply_permuted_labels(loader.groups, label_map)
     n_features = loader.X.shape[1]
     num_classes = num_classes_of(config)
 
@@ -250,8 +275,8 @@ def run_local(config, epochs=None):
     samples_per_class = int(cvae_cfg['samples_per_class'])
     learning_rate = float(cvae_cfg['learning_rate'])
 
-    model_out_dir = config['paths']['models_cvae_dir']
-    synthetic_out_dir = config['paths']['synthetic_dir']
+    model_out_dir = model_out_dir or config['paths']['models_cvae_dir']
+    synthetic_out_dir = synthetic_out_dir or config['paths']['synthetic_dir']
 
     for fold_data in loader:
         _train_one_fold(

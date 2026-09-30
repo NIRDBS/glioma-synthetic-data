@@ -68,9 +68,32 @@ INPUTS_PREFIX = "inputs"      # /vol/inputs/<h5 filename>
 OUTPUTS_PREFIX = "outputs"    # /vol/outputs/<relative results path>
 
 
+def _effective_output_dirs(config, store_suffix):
+    """
+    The real training run passes ``store_suffix=None`` and gets the config's
+    own paths, unchanged. A shuffled-label control run passes a suffix (e.g.
+    'shuffled') so its weights land in a sibling directory instead of
+    overwriting the real CVAE weights that Tier 3's frozen trunk and Tier 4's
+    CbR both depend on -- used identically on the remote (write) side and the
+    local (download) side so the two never disagree about where a run's
+    files live.
+    """
+    models_dir = config["paths"]["models_cvae_dir"]
+    synthetic_dir = config["paths"]["synthetic_dir"]
+    if store_suffix:
+        models_dir = f"{models_dir}_{store_suffix}"
+        synthetic_dir = f"{synthetic_dir}_{store_suffix}"
+    return models_dir, synthetic_dir
+
+
 @app.function(gpu="T4", volumes={VOL_MOUNT: volume}, timeout=60 * 60 * 6)
-def train_cvae_remote(config_name: str, epochs=None, h5_name: str = None):
-    """GPU worker: train the CVAE for `config_name` and stage outputs to the Volume."""
+def train_cvae_remote(config_name: str, epochs=None, h5_name: str = None,
+                      permutation_seed: int = None, store_suffix: str = None):
+    """GPU worker: train the CVAE for `config_name` and stage outputs to the Volume.
+
+    ``permutation_seed``/``store_suffix``: see cvae_stage.run_local and
+    _effective_output_dirs -- None/None for a real run (unchanged behaviour);
+    both set together for Tier 4's shuffled-bag-label control."""
     import os
     import shutil
 
@@ -87,12 +110,15 @@ def train_cvae_remote(config_name: str, epochs=None, h5_name: str = None):
     if not processed_file.exists():
         shutil.copy(src_h5, processed_file)
 
+    models_dir, synthetic_dir = _effective_output_dirs(config, store_suffix)
+
     # Train + generate locally inside the container
-    run_local(config, epochs=epochs)
+    run_local(config, epochs=epochs, permutation_seed=permutation_seed,
+             model_out_dir=models_dir, synthetic_out_dir=synthetic_dir)
 
     # Stage outputs onto the volume, preserving their relative paths
     out_root = Path(VOL_MOUNT) / OUTPUTS_PREFIX
-    for rel in (config["paths"]["models_cvae_dir"], config["paths"]["synthetic_dir"]):
+    for rel in (models_dir, synthetic_dir):
         rel = Path(rel)
         if rel.exists():
             dst = out_root / rel
@@ -103,10 +129,7 @@ def train_cvae_remote(config_name: str, epochs=None, h5_name: str = None):
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy(f, target)
     volume.commit()
-    return {
-        "models_cvae_dir": config["paths"]["models_cvae_dir"],
-        "synthetic_dir": config["paths"]["synthetic_dir"],
-    }
+    return {"models_cvae_dir": models_dir, "synthetic_dir": synthetic_dir}
 
 
 def _upload_inputs(config):
@@ -130,10 +153,10 @@ def _safe_listdir(prefix):
         return []
 
 
-def _download_outputs(config):
+def _download_outputs(config, store_suffix=None):
     """Pull /vol/outputs/<rel> back into the local results dirs."""
     from pathlib import PurePosixPath
-    for rel in (config["paths"]["models_cvae_dir"], config["paths"]["synthetic_dir"]):
+    for rel in _effective_output_dirs(config, store_suffix):
         # Normalise to forward-slash so it matches Modal volume paths (Linux)
         remote_prefix = f"{OUTPUTS_PREFIX}/{rel.replace(chr(92), '/')}"
         entries = _safe_listdir(remote_prefix)
@@ -159,21 +182,29 @@ def _download_outputs(config):
         print(f"  [modal] downloaded {remote_prefix} -> {rel}")
 
 
-def run_on_modal(config_name, epochs=None):
+def run_on_modal(config_name, epochs=None, permutation_seed=None, store_suffix=None):
     """
     Driver invoked by cvae_stage(backend='modal'): upload dataset, run CVAE on a
     GPU, download weights + synthetic pools back to the local results dirs.
+
+    ``permutation_seed``/``store_suffix``: both None for a real run (default,
+    unchanged behaviour). Both set together to run Tier 4's shuffled-bag-label
+    control on Modal GPU -- e.g. permutation_seed=123, store_suffix='shuffled'
+    (matching the convention scripts/stage6_shuffled_label_control.py already
+    uses for Tiers 1-3) writes to results/{exp}/models/cvae_shuffled/ and
+    .../data/synthetic_shuffled/, never touching the real weights Tier 3's
+    frozen trunk and Tier 4's CbR depend on.
     """
     from src.utils.config_manager import ConfigManager
 
     config = ConfigManager.load_config(config_name)
-    print(f"\n[modal] CVAE on GPU for {config_name}")
+    print(f"\n[modal] CVAE on GPU for {config_name}"
+         + (f"  [shuffled-label control, seed={permutation_seed}]" if permutation_seed else ""))
     with app.run():
         h5_name = _upload_inputs(config)
-        train_cvae_remote.remote(config_name, epochs=epochs, h5_name=h5_name)
-        _download_outputs(config)
+        train_cvae_remote.remote(config_name, epochs=epochs, h5_name=h5_name,
+                                 permutation_seed=permutation_seed, store_suffix=store_suffix)
+        _download_outputs(config, store_suffix=store_suffix)
     print(f"[modal] CVAE artifacts synced locally for {config_name}")
-    return {
-        "models_cvae_dir": config["paths"]["models_cvae_dir"],
-        "synthetic_dir": config["paths"]["synthetic_dir"],
-    }
+    models_dir, synthetic_dir = _effective_output_dirs(config, store_suffix)
+    return {"models_cvae_dir": models_dir, "synthetic_dir": synthetic_dir}

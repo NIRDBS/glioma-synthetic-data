@@ -58,7 +58,16 @@ def _fold_idx(fold_name):
     return int(fold_name.split('_')[1])
 
 
-def run(config_name, shuffled=False, fold_names=None, seed=42, n_boot=1000, out_path=None):
+def run(config_name, store_suffix=None, fold_names=None, seed=42, n_boot=1000, out_path=None):
+    """
+    ``store_suffix``: None for the real CVAE; 'shuffled' for the shuffled-
+    bag-label-trained CVAE; 'alpha0' for the alpha=0 ablation (§5) -- any
+    suffix pipeline.modal_cvae._effective_output_dirs understands.
+    `build_cvae_config`'s own `alpha` value only ever affects `train_step`,
+    never `.predict()`, so which config's `alpha` gets read here has zero
+    effect on inference -- ``config_name`` need not be switched to
+    'exp_501_alpha0' for this to score that variant's weights correctly.
+    """
     from src.utils.config_manager import ConfigManager
 
     config = ConfigManager.load_config(config_name)
@@ -68,18 +77,22 @@ def run(config_name, shuffled=False, fold_names=None, seed=42, n_boot=1000, out_
             f"counterfactual probe is K=2-only (Delta has no natural K>2 generalisation, "
             f"docs/mil_tiers_methodology.md §1) -- config {config_name!r} has {n_classes} classes")
 
-    store_suffix = 'shuffled' if shuffled else None
     cvae_weights_dir, _ = _effective_output_dirs(config, store_suffix)
     baseline_dir = config['paths']['models_baseline_dir']
 
-    label = 'SHUFFLED' if shuffled else 'REAL'
+    label = store_suffix.upper() if store_suffix else 'REAL'
     print(f"\n{'='*80}\nCOUNTERFACTUAL PROBE ({label}): {config_name}\n{'='*80}")
     print(f"  cvae_weights_dir -> {cvae_weights_dir}")
-    if shuffled:
+    if store_suffix == 'shuffled':
         print("  NOTE: this CVAE's decoder condition '0'/'1' is a PERMUTED label from "
               "training (permutation_seed=123), not true mutant/wildtype. Delta here means "
               "D(z, permuted=1) - D(z, permuted=0). Every check below is still scored "
               "against the TRUE labels. See docs/counterfactual_probe.md.")
+    elif store_suffix == 'alpha0':
+        print("  NOTE: this CVAE was trained with the auxiliary class head's loss weight "
+              "(alpha) set to 0 -- the class head received no training signal at all, so "
+              "its own accuracy (logged in the training history) is meaningless; only "
+              "z_mean/the decoder are of interest here. See docs/counterfactual_probe.md §5.")
 
     loader = make_loader(config)
     full_bag_ids = loader.groups
@@ -196,7 +209,7 @@ def run(config_name, shuffled=False, fold_names=None, seed=42, n_boot=1000, out_
               f"fold_sign_agreement={info['fold_sign_agreement_frac']:.2f}")
 
     report = {
-        'config': config_name, 'shuffled': shuffled, 'n_bags': len(bag_ids_sorted),
+        'config': config_name, 'store_suffix': store_suffix, 'n_bags': len(bag_ids_sorted),
         'n_folds': len(per_fold_mean_delta),
         'delta_norm_bootstrap_ci': delta_norm_ci,
         'cross_fold_stability': {
@@ -229,7 +242,7 @@ def run(config_name, shuffled=False, fold_names=None, seed=42, n_boot=1000, out_
     }
 
     if out_path is None:
-        suffix = '_shuffled' if shuffled else ''
+        suffix = f'_{store_suffix}' if store_suffix else ''
         out_dir = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \
             / 'counterfactual_probe'
         out_path = out_dir / f'report{suffix}.json'
@@ -254,12 +267,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="CVAE counterfactual probe")
     parser.add_argument('--config', required=True)
     parser.add_argument('--shuffled', action='store_true',
-                        help="score the already-trained shuffled-label CVAE instead of the real one")
+                        help="shorthand for --store-suffix shuffled")
+    parser.add_argument('--store-suffix', default=None,
+                        help="score an already-trained CVAE variant instead of the real one, "
+                             "e.g. 'shuffled' or 'alpha0' -- any suffix "
+                             "pipeline.modal_cvae._effective_output_dirs understands")
     parser.add_argument('--folds', nargs='+', default=None,
                         help="subset of fold names, e.g. fold_0 (smoke-test use)")
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--n-boot', type=int, default=1000)
     parser.add_argument('--out-path', default=None)
     args = parser.parse_args()
-    run(args.config, shuffled=args.shuffled, fold_names=args.folds, seed=args.seed,
+    store_suffix = args.store_suffix or ('shuffled' if args.shuffled else None)
+    run(args.config, store_suffix=store_suffix, fold_names=args.folds, seed=args.seed,
        n_boot=args.n_boot, out_path=args.out_path)

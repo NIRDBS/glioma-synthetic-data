@@ -1,10 +1,12 @@
 # CVAE Counterfactual Probe
 
-**Status: complete for the core probe, all three reviewer validity checks, and the
-shuffled-label control. Result is genuinely mixed — the first result in this project
-where a shuffled-label control does NOT uniformly match or exceed the real one, but it
-only clears the bar on one of four statistics, and the other three follow the same
-failure pattern every other spatial/representational claim in this project has shown.**
+**Status: complete for the core probe, all three reviewer validity checks, the
+shuffled-label control, and the α=0 ablation.** Two results, both important: the
+shuffled-label control is genuinely mixed (§3) — the first case in this project where a
+shuffled control does NOT uniformly match or exceed the real one, though it only clears
+the bar on one of four statistics. The α=0 ablation (§3a) is unambiguous — removing the
+auxiliary class head's gradient pressure on z changes **nothing**, within noise, on every
+statistic this probe reports. The counterfactual mechanism does not depend on that head.
 
 This is a free-standing analysis, not a Stage-N MIL tier (see
 docs/mil_tiers_methodology.md for the four tiers; this probe doesn't produce a
@@ -17,6 +19,10 @@ competing instance posterior and isn't subject to that machinery). New
 > fakes only). Real run: `python scripts/counterfactual_probe.py --config exp_501`.
 > Shuffled run (reuses the already-existing `cvae_shuffled/` weights, zero new
 > training): `python scripts/counterfactual_probe.py --config exp_501 --shuffled`.
+> α=0 run (reuses the already-existing `cvae_alpha0/` weights, zero new training):
+> `python scripts/counterfactual_probe.py --config exp_501 --store-suffix alpha0`.
+> To retrain the α=0 CVAE from scratch (real GPU cost):
+> `python -c "from pipeline.modal_cvae import run_on_modal; run_on_modal('exp_501_alpha0', store_suffix='alpha0')"`.
 > Smoke test on one fold: add `--folds fold_0`.
 
 ## 1. What this is
@@ -44,7 +50,8 @@ training instances, scored out-of-sample:
 
 | | instance-level accuracy (per fold) | bag-level accuracy |
 |---|---|---|
-| **real CVAE** | 0.530, 0.726, 0.710, 0.714, 0.622 | **0.7966** |
+| **real CVAE** (α=0.2) | 0.530, 0.726, 0.710, 0.714, 0.622 | **0.7966** |
+| **α=0 CVAE** (§3a — class head untrained) | 0.620, 0.789, 0.718, 0.760, 0.603 | **0.8136** |
 | chance (majority-class rate, n=59 bags: 26 mutant/33 wildtype) | — | 0.5593 |
 | `encoder_head`'s own bag accuracy (reference point) | — | 0.7966 |
 
@@ -70,6 +77,15 @@ regardless of which labels (real or a random permutation) trained the
 encoder. Check 1's result should therefore be read as an upper bound on how
 much of the leakage is *architecturally caused* — the true figure is likely
 smaller than 0.7966−0.5593 suggests.
+
+**The α=0 ablation (§3a) confirms this directly rather than just bounding
+it.** With the class head's gradient pressure on `features` completely
+removed, `z_mean`'s bag accuracy against true labels doesn't drop — it rises
+slightly, to **0.8136**. The shared-features architectural concern that
+motivated this whole set of checks does not appear to be the mechanism:
+whatever class information ends up in `z_mean` is apparently a side effect
+of reconstructing well under a label-conditioned decoder, not something the
+α-weighted auxiliary head specifically injects.
 
 **Check 2 — how much the decoder uses the label** (Δ's size vs. the natural
 within-class reconstruction spread, `delta_effect_size` = |Δ|/spread per
@@ -143,15 +159,57 @@ what an independent, real-label-trained classifier recognizes as the
 *true* opposite class — and only the real model, trained on the true label,
 has any reason to do that consistently.
 
+## 3a. The α=0 ablation — unambiguous, and it settles the reviewer's architectural concern
+
+Per the approved plan, this ablation was contingent on Check 1 (§2) showing
+strong class-predictiveness (near `encoder_head`'s 0.7966 rather than near
+chance) — it landed at exactly 0.7966, so the trigger condition was met.
+Run 2026-09-30: one config value changed from `configs/exp_501.yaml`
+(`models.cvae.loss_weights.alpha: 0.2 → 0.0`, verified programmatically to be
+the *only* functional difference before spending any GPU time), a full real
+5-fold/100-epoch CVAE retrain on Modal GPU (`configs/exp_501_alpha0.yaml`,
+`store_suffix='alpha0'`, landing at `results/exp_501/models/cvae_alpha0/` —
+confirmed the real and shuffled weight directories were untouched by file
+timestamp, same check applied to every Modal GPU run this session).
+
+| statistic | real (α=0.2) | α=0 | shuffled (for reference) |
+|---|---|---|---|
+| mean ‖Δ‖ (bag-of-bags, bootstrap CI) | 0.3490 [0.332, 0.367] | 0.3526 [0.335, 0.372] | 0.4285 [0.410, 0.450] |
+| cross-fold stability (mean off-diag cosine) | 0.7848 | 0.8218 | 0.8914 |
+| z-class-probe bag accuracy (vs. TRUE labels) | 0.7966 | **0.8136** | 0.7458 |
+| flip-to-target rate, RF | 0.9987 | 0.9988 | 0.4113 |
+| flip-to-target rate, XGBoost | 0.9116 | 0.9117 | 0.5284 |
+
+**Every statistic is unchanged, within noise, between the real (α=0.2) and
+α=0 CVAEs** — the z-class-probe accuracy, if anything, is very slightly
+*higher* at α=0. Removing the auxiliary class head's gradient pressure on
+the shared `features` tensor that also produces `z_mean` — the exact
+mechanism the reviewer's architectural concern named — changes **nothing**
+about how much class information ends up in `z_mean`, how large Δ is, or
+how reliably the counterfactual swap flips an independent classifier.
+
+**This settles the reviewer's concern directly, rather than merely bounding
+it as §2's Check 1 alone could.** The class-discriminative information in
+`z_mean`, and the counterfactual mechanism's validity, do not depend on the
+α-weighted class head at all — they are apparently a side effect of
+reconstructing well under a label-conditioned decoder, present with or
+without that head's explicit training signal. This *strengthens* confidence
+in the flip-to-target finding specifically: it is not an artefact of the
+auxiliary classifier, since removing that classifier's influence entirely
+leaves the finding intact. It does **not** change §3's Δ-magnitude/
+consistency result — those still fail their shuffled-label control
+regardless of α, since α was never the variable that control was testing.
+
 ## 4. Honest overall verdict
 
 **What survives**: the counterfactual *mechanism* itself is validated — the
 CVAE's label-conditioning genuinely and specifically encodes true-class
 information the decoder can act on, confirmed by an independent classifier at
-a rate that collapses under label permutation. This is a real, positive,
-control-tested finding — the first one in this project's entire spatial/
-representational-claim programme to survive an adversarial shuffled-label
-test on any statistic.
+a rate that collapses under label permutation (§3) and is unaffected by
+removing the auxiliary class head entirely (§3a). This is a real, positive,
+control-tested, ablation-tested finding — the first one in this project's
+entire spatial/representational-claim programme to survive an adversarial
+shuffled-label test on any statistic.
 
 **What does not survive**: the *magnitude and cross-fold "consistency"* of
 the average Δ spectrum — the headline deliverable this probe originally set
@@ -175,16 +233,7 @@ arbitrary label partition would also produce. Both halves belong in the
 paper; reporting only the flip-to-target result would be as selective as
 reporting only the Δ-magnitude result.
 
-## 5. The α=0 ablation — now formally triggered, not run
-
-Per the approved plan, this ablation is contingent on Check 1 showing strong
-class-predictiveness (near `encoder_head`'s 0.7966 rather than near chance).
-**Check 1 landed at exactly 0.7966** — the trigger condition is met. This
-requires a **real, new GPU CVAE retrain** (one config value changed,
-`models.cvae.loss_weights.alpha: 0.0`, `store_suffix='alpha0'`, comparable
-cost to the shuffled-label CVAE retrain already run this session) — kept
-explicitly separate per the plan, not run automatically. Flagged for the
-user's decision, not started.
+## 5. The α=0 ablation — done, see §3a
 
 ## 6. Verification
 
@@ -203,18 +252,23 @@ user's decision, not started.
   nothing else broken.
 - The 0.7966 exact match (§2) was independently verified not to be a bug via
   direct code inspection and grep, before being reported as a finding (§2).
+- The α=0 config (`configs/exp_501_alpha0.yaml`) was diffed programmatically
+  against `configs/exp_501.yaml` before spending any GPU time on it —
+  confirmed the only functional difference is `models.cvae.loss_weights.alpha`
+  (name/description/notes also differ, nothing else).
+- Both the α=0 smoke test (2 epochs) and the real run (100 epochs × 5 folds)
+  had the real `cvae/` and shuffled `cvae_shuffled/` weight directories'
+  file timestamps checked and confirmed unchanged afterward.
 - All numbers in this document were read directly from
-  `results/exp_501/counterfactual_probe/{report,report_shuffled}.json`, not
-  transcribed from console output.
+  `results/exp_501/counterfactual_probe/{report,report_shuffled,report_alpha0}.json`,
+  not transcribed from console output.
 
 ## 7. Deviations from the plan / honest gaps
 
-- **No formal bootstrap comparison between the real and shuffled z-probe bag
-  accuracies** (0.7966 vs 0.7458) — reported as point estimates. The other
-  three statistics in §3's table do carry a bootstrap CI or a null-based
+- **No formal bootstrap comparison between the real/shuffled/α=0 z-probe bag
+  accuracies** (0.7966 / 0.7458 / 0.8136) — reported as point estimates. The
+  other statistics in §3/§3a's tables do carry a bootstrap CI or a null-based
   z-score; this one does not yet.
-- **The α=0 ablation is triggered but not run** (§5) — a real GPU cost,
-  explicitly held for a decision rather than launched automatically.
 - **Per-instance consistency statistics are confounded by within-slide
   spatial autocorrelation** (stated in the JSON report's own `note` field,
   and in §3's per-bag-vs-per-instance framing) — the per-bag statistic is

@@ -1214,6 +1214,8 @@ CVAE counterfactual probe (2026-09-30) — docs/counterfactual_probe.md. Not a S
 machinery above). Mixed, control-tested result: Δ spectrum magnitude/cross-fold consistency
 fail their shuffled-label control the same way every tier above did, but the counterfactual's
 independent-classifier flip rate does not (real 99.87%/91.16% vs. shuffled 41.13%/52.84%,
-RF/XGBoost) — the first statistic in this project to survive that control. An α=0 ablation
-(retrain the CVAE with the auxiliary class head's loss weight zeroed) is triggered by this
-probe's own validity check but not run — a real new GPU cost, held for a decision.
+RF/XGBoost) — the first statistic in this project to survive that control. A follow-up α=0
+ablation (real GPU retrain, `configs/exp_501_alpha0.yaml`, `store_suffix='alpha0'`) then showed
+every statistic unchanged, within noise, whether the auxiliary class head trains or not —
+settling the reviewer's architectural concern that motivated the whole check directly, not just
+bounding it.

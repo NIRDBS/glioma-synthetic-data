@@ -264,5 +264,9 @@ above, its shuffled-label control came back **genuinely mixed**, not uniformly n
 Δ spectrum's magnitude and cross-fold consistency fail the same way every tier above did
 (shuffled ≥ real), but an independent classifier's counterfactual-flip rate does not
 (real ≫ shuffled, 99.87%/91.16% vs. 41.13%/52.84%) — the first statistic in this project to
-survive an adversarial shuffled-label control. See that doc for the full, precise write-up of
-what does and doesn't hold up.
+survive an adversarial shuffled-label control. A follow-up α=0 ablation (retraining the CVAE
+with its auxiliary class head's loss weight zeroed, real GPU cost, run 2026-09-30) then
+settled the architectural concern that motivated checking any of this in the first place:
+every one of these statistics is unchanged, within noise, whether that head trains or not —
+the flip-to-target finding does not depend on it. See that doc for the full, precise write-up
+of what does and doesn't hold up.

@@ -1207,3 +1207,13 @@ the full cross-tier synthesis and mil_tiers_findings.md §2 for the consolidated
 - The paper's Methodology/Experimental Design revision — analysis delivered (chat, 2026-09-28);
   drafting is the user's own.
 - Coarser 6-class grouping (post-Stage-8 idea, in memory) — still deferred, not started.
+
+### A free-standing analysis added after this backlog was written
+CVAE counterfactual probe (2026-09-30) — docs/counterfactual_probe.md. Not a Stage-N tier
+(doesn't produce a competing instance posterior, isn't subject to the bag-accuracy/spatial
+machinery above). Mixed, control-tested result: Δ spectrum magnitude/cross-fold consistency
+fail their shuffled-label control the same way every tier above did, but the counterfactual's
+independent-classifier flip rate does not (real 99.87%/91.16% vs. shuffled 41.13%/52.84%,
+RF/XGBoost) — the first statistic in this project to survive that control. An α=0 ablation
+(retrain the CVAE with the auxiliary class head's loss weight zeroed) is triggered by this
+probe's own validity check but not run — a real new GPU cost, held for a decision.

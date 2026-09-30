@@ -256,3 +256,13 @@ under 5× less demanding conditions (binary, hard support) than the full mixture
 The experimental programme is considered complete for the purposes of writing up Stages 0–6's
 findings; docs/MIL_REFRAME_PLAN.md §13 carries the full backlog if either stage is revisited
 later.
+
+**One further, free-standing analysis was added after this section was written**: a CVAE
+counterfactual probe (docs/counterfactual_probe.md) — decode the same latent `z` under both
+class labels and treat the difference as a learned "IDH effect" spectrum. Unlike every result
+above, its shuffled-label control came back **genuinely mixed**, not uniformly negative: the
+Δ spectrum's magnitude and cross-fold consistency fail the same way every tier above did
+(shuffled ≥ real), but an independent classifier's counterfactual-flip rate does not
+(real ≫ shuffled, 99.87%/91.16% vs. 41.13%/52.84%) — the first statistic in this project to
+survive an adversarial shuffled-label control. See that doc for the full, precise write-up of
+what does and doesn't hold up.

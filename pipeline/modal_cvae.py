@@ -66,6 +66,7 @@ app = modal.App(APP_NAME, image=image)
 VOL_MOUNT = "/vol"
 INPUTS_PREFIX = "inputs"      # /vol/inputs/<h5 filename>
 OUTPUTS_PREFIX = "outputs"    # /vol/outputs/<relative results path>
+RESUME_PREFIX = "resume_checkpoints"  # /vol/resume_checkpoints/<resume_tag>/*.weights.h5
 
 
 def _effective_output_dirs(config, store_suffix):
@@ -88,12 +89,20 @@ def _effective_output_dirs(config, store_suffix):
 
 @app.function(gpu="T4", volumes={VOL_MOUNT: volume}, timeout=60 * 60 * 6)
 def train_cvae_remote(config_name: str, epochs=None, h5_name: str = None,
-                      permutation_seed: int = None, store_suffix: str = None):
+                      permutation_seed: int = None, store_suffix: str = None,
+                      resume_tag: str = None, epoch_offset: int = 0):
     """GPU worker: train the CVAE for `config_name` and stage outputs to the Volume.
 
     ``permutation_seed``/``store_suffix``: see cvae_stage.run_local and
     _effective_output_dirs -- None/None for a real run (unchanged behaviour);
-    both set together for Tier 4's shuffled-bag-label control."""
+    both set together for Tier 4's shuffled-bag-label control.
+
+    ``resume_tag``/``epoch_offset``: if ``resume_tag`` is given, downloads
+    that tag's checkpoint from /vol/resume_checkpoints/{resume_tag}/ (staged
+    there by _upload_resume_checkpoint) into this container, and continues
+    training from it for ``epochs`` MORE epochs rather than training
+    ``epochs`` from scratch -- see cvae_stage._train_one_fold's docstring.
+    """
     import os
     import shutil
 
@@ -110,11 +119,25 @@ def train_cvae_remote(config_name: str, epochs=None, h5_name: str = None,
     if not processed_file.exists():
         shutil.copy(src_h5, processed_file)
 
+    resume_from_dir = None
+    if resume_tag:
+        resume_from_dir = "/root/resume_checkpoint"
+        Path(resume_from_dir).mkdir(parents=True, exist_ok=True)
+        remote_prefix = f"{RESUME_PREFIX}/{resume_tag}"
+        for entry in volume.listdir(remote_prefix):
+            local_path = Path(resume_from_dir) / Path(entry.path).name
+            with open(local_path, "wb") as fh:
+                for chunk in volume.read_file(entry.path):
+                    fh.write(chunk)
+        print(f"  [modal] downloaded resume checkpoint {remote_prefix} -> {resume_from_dir} "
+              f"({len(list(Path(resume_from_dir).iterdir()))} files)")
+
     models_dir, synthetic_dir = _effective_output_dirs(config, store_suffix)
 
     # Train + generate locally inside the container
     run_local(config, epochs=epochs, permutation_seed=permutation_seed,
-             model_out_dir=models_dir, synthetic_out_dir=synthetic_dir)
+             model_out_dir=models_dir, synthetic_out_dir=synthetic_dir,
+             resume_from_dir=resume_from_dir, epoch_offset=epoch_offset)
 
     # Stage outputs onto the volume, preserving their relative paths
     out_root = Path(VOL_MOUNT) / OUTPUTS_PREFIX
@@ -144,6 +167,31 @@ def _upload_inputs(config):
     with volume.batch_upload() as batch:
         batch.put_file(str(processed_file), remote)
     return processed_file.name
+
+
+def _upload_resume_checkpoint(local_dir, resume_tag):
+    """
+    Upload an existing LOCAL per-fold checkpoint (encoder/decoder .weights.h5
+    files, e.g. results/exp_501/models/cvae/) to the Volume under
+    resume_checkpoints/{resume_tag}/, so a remote container can download and
+    continue training from it (train_cvae_remote's resume_tag). Idempotent
+    in the same spirit as _upload_inputs: skips a file already on the volume
+    under this tag with the same name.
+    """
+    local_dir = Path(local_dir)
+    weight_files = sorted(local_dir.glob("*.weights.h5"))
+    if not weight_files:
+        raise FileNotFoundError(f"no .weights.h5 files found in {local_dir}")
+    remote_prefix = f"{RESUME_PREFIX}/{resume_tag}"
+    existing = {e.path for e in _safe_listdir(remote_prefix)}
+    with volume.batch_upload() as batch:
+        for f in weight_files:
+            remote = f"{remote_prefix}/{f.name}"
+            if remote in existing:
+                continue
+            batch.put_file(str(f), remote)
+    print(f"  [modal] uploaded {len(weight_files)} checkpoint file(s) from {local_dir} "
+         f"-> {VOLUME_NAME}:{remote_prefix}")
 
 
 def _safe_listdir(prefix):
@@ -182,7 +230,8 @@ def _download_outputs(config, store_suffix=None):
         print(f"  [modal] downloaded {remote_prefix} -> {rel}")
 
 
-def run_on_modal(config_name, epochs=None, permutation_seed=None, store_suffix=None):
+def run_on_modal(config_name, epochs=None, permutation_seed=None, store_suffix=None,
+                 resume_local_dir=None, resume_tag=None, epoch_offset=0):
     """
     Driver invoked by cvae_stage(backend='modal'): upload dataset, run CVAE on a
     GPU, download weights + synthetic pools back to the local results dirs.
@@ -194,16 +243,33 @@ def run_on_modal(config_name, epochs=None, permutation_seed=None, store_suffix=N
     uses for Tiers 1-3) writes to results/{exp}/models/cvae_shuffled/ and
     .../data/synthetic_shuffled/, never touching the real weights Tier 3's
     frozen trunk and Tier 4's CbR depend on.
+
+    ``resume_local_dir``/``resume_tag``/``epoch_offset``: continue training
+    from an existing LOCAL checkpoint (e.g. results/exp_501/models/cvae/,
+    which may predate a config's current epoch count) rather than from
+    scratch. ``resume_local_dir`` is uploaded to the Volume under
+    ``resume_tag`` (an idempotent one-time cost -- skips files already
+    there), the remote container downloads it and continues for ``epochs``
+    MORE epochs, and ``epoch_offset`` (e.g. 70) makes the written history's
+    epoch numbers continue correctly (71, 72, ...) rather than restart at 1.
+    Combine with ``store_suffix`` to land the result in a sibling directory
+    first (e.g. 'resumed') rather than the canonical path, so it can be
+    verified before promoting it over the checkpoint it resumed from.
     """
     from src.utils.config_manager import ConfigManager
 
     config = ConfigManager.load_config(config_name)
-    print(f"\n[modal] CVAE on GPU for {config_name}"
-         + (f"  [shuffled-label control, seed={permutation_seed}]" if permutation_seed else ""))
+    label = (f"  [resuming '{resume_tag}' from epoch {epoch_offset}, +{epochs} more]"
+            if resume_tag else
+            (f"  [shuffled-label control, seed={permutation_seed}]" if permutation_seed else ""))
+    print(f"\n[modal] CVAE on GPU for {config_name}{label}")
+    if resume_local_dir is not None:
+        _upload_resume_checkpoint(resume_local_dir, resume_tag)
     with app.run():
         h5_name = _upload_inputs(config)
         train_cvae_remote.remote(config_name, epochs=epochs, h5_name=h5_name,
-                                 permutation_seed=permutation_seed, store_suffix=store_suffix)
+                                 permutation_seed=permutation_seed, store_suffix=store_suffix,
+                                 resume_tag=resume_tag, epoch_offset=epoch_offset)
         _download_outputs(config, store_suffix=store_suffix)
     print(f"[modal] CVAE artifacts synced locally for {config_name}")
     models_dir, synthetic_dir = _effective_output_dirs(config, store_suffix)

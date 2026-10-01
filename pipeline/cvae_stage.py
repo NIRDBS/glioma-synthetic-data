@@ -112,8 +112,25 @@ def _make_epoch_dataset(X_epoch, y_epoch, aug_cfg, num_classes, batch_size):
 
 
 def _train_one_fold(fold_data, config, cvae_config, epochs, batch_size, samples_per_class,
-                    learning_rate, num_classes, model_out_dir, synthetic_out_dir):
-    """Train the CVAE on one fold and generate + save its synthetic pool."""
+                    learning_rate, num_classes, model_out_dir, synthetic_out_dir,
+                    resume_from_dir=None, epoch_offset=0):
+    """
+    Train the CVAE on one fold and generate + save its synthetic pool.
+
+    ``resume_from_dir``: if given, loads that directory's
+    ``encoder_{fold_name}.weights.h5``/``decoder_{fold_name}.weights.h5`` into
+    the freshly-built CVAE BEFORE training starts, continuing from wherever
+    that checkpoint left off rather than from random initialisation. The
+    optimizer (Adam moments) is NOT restored -- only compile() is called
+    after, so it starts fresh; this is the standard, usually-acceptable
+    caveat of weight-only resume (a brief re-warm-up, not a correctness
+    issue). ``epochs`` is the number of NEW epochs to run from that
+    checkpoint (e.g. 30, not 100); ``epoch_offset`` (e.g. 70) is used only
+    for the printed/logged epoch numbers, so the history CSV correctly shows
+    epochs 71-100 rather than restarting the label at 1. None/0 (the
+    defaults) reproduce prior behaviour exactly -- fresh random init, no
+    resume, no offset.
+    """
     import tensorflow as tf
     from src.models.cvae import CVAE
 
@@ -141,6 +158,13 @@ def _train_one_fold(fold_data, config, cvae_config, epochs, batch_size, samples_
     # 2. Build + compile CVAE
     tf.keras.backend.clear_session()
     cvae = CVAE(cvae_config)
+    if resume_from_dir is not None:
+        enc_path = Path(resume_from_dir) / f"encoder_{fold_name}.weights.h5"
+        resume_dec_path = Path(resume_from_dir) / f"decoder_{fold_name}.weights.h5"
+        print(f"  [resume] loading {enc_path} / {resume_dec_path} "
+              f"(continuing from epoch_offset={epoch_offset})")
+        cvae.encoder.load_weights(str(enc_path))
+        cvae.decoder.load_weights(str(resume_dec_path))
     cvae.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate))
 
     # Annealing config (exp_201 has none -> constant weights)
@@ -158,21 +182,26 @@ def _train_one_fold(fold_data, config, cvae_config, epochs, batch_size, samples_
 
     fold_history = []
     for epoch in range(epochs):
+        abs_epoch = epoch_offset + epoch  # absolute epoch index, so a resumed run's
+        # annealing schedule (start_epoch/warmup_epochs, both defined in absolute
+        # epoch terms) picks up where it should, not restarted at the local loop's
+        # own epoch 0 -- irrelevant for a constant (non-annealed) beta/alpha, where
+        # epoch_offset defaults to 0 and this is a no-op.
         # --- weight schedules ---
         if is_annealing:
             beta_cfg = anneal_cfg.get('beta', {})
             start_beta_ep = beta_cfg.get('start_epoch', 10)
             warmup_beta = beta_cfg.get('warmup_epochs', 80)
-            cvae.beta = 0.0 if epoch < start_beta_ep else min(
-                max_beta, max_beta * ((epoch - start_beta_ep) / max(warmup_beta, 1)))
+            cvae.beta = 0.0 if abs_epoch < start_beta_ep else min(
+                max_beta, max_beta * ((abs_epoch - start_beta_ep) / max(warmup_beta, 1)))
 
             alpha_cfg = anneal_cfg.get('alpha', {})
             start_alpha_ep = alpha_cfg.get('start_epoch', 90)
             cooldown_alpha = alpha_cfg.get('warmup_epochs', 60)
-            if epoch < start_alpha_ep:
+            if abs_epoch < start_alpha_ep:
                 cvae.alpha = max_alpha
             else:
-                decay = 1.0 - ((epoch - start_alpha_ep) / max(cooldown_alpha, 1))
+                decay = 1.0 - ((abs_epoch - start_alpha_ep) / max(cooldown_alpha, 1))
                 cvae.alpha = max(0.0, max_alpha * decay)
         else:
             cvae.beta = max_beta
@@ -199,10 +228,10 @@ def _train_one_fold(fold_data, config, cvae_config, epochs, batch_size, samples_
         hist = h.history
         avg_loss = float(hist['total_loss'][0])
         acc = float(hist['accuracy'][0]) * 100
-        print(f"  Epoch {epoch+1}/{epochs}: loss={avg_loss:.4f} acc={acc:.2f}% "
+        print(f"  Epoch {epoch_offset+epoch+1}/{epoch_offset+epochs}: loss={avg_loss:.4f} acc={acc:.2f}% "
               f"(beta={cvae.beta:.3f} alpha={cvae.alpha:.2f})")
         fold_history.append({
-            'epoch': epoch + 1, 'total_loss': avg_loss,
+            'epoch': epoch_offset + epoch + 1, 'total_loss': avg_loss,
             'mse_loss': float(hist.get('mse_loss', [0])[0]),
             'cos_loss': float(hist.get('cos_loss', [0])[0]),
             'kl_loss': float(hist.get('kl_loss', [0])[0]),
@@ -231,7 +260,7 @@ def _train_one_fold(fold_data, config, cvae_config, epochs, batch_size, samples_
 
 
 def run_local(config, epochs=None, permutation_seed=None, model_out_dir=None,
-             synthetic_out_dir=None):
+             synthetic_out_dir=None, resume_from_dir=None, epoch_offset=0):
     """
     Train the CVAE locally for every fold and generate synthetic pools.
 
@@ -248,6 +277,11 @@ def run_local(config, epochs=None, permutation_seed=None, model_out_dir=None,
     paths -- unused by the real training run (unchanged behaviour), used by a
     shuffled-label run so it can never overwrite the real CVAE weights that
     Tier 3's frozen trunk and Tier 4's CbR both depend on.
+
+    ``resume_from_dir``/``epoch_offset``: see _train_one_fold's docstring --
+    load an existing per-fold checkpoint and continue training ``epochs``
+    MORE epochs from there (not retrain ``epochs`` from scratch), with
+    ``epoch_offset`` only affecting the epoch numbers written to history.
     """
     import tensorflow as tf
     from pipeline._common import make_loader, num_classes_of, set_seeds
@@ -282,6 +316,7 @@ def run_local(config, epochs=None, permutation_seed=None, model_out_dir=None,
         _train_one_fold(
             fold_data, config, cvae_config, n_epochs, batch_size, samples_per_class,
             learning_rate, num_classes, model_out_dir, synthetic_out_dir,
+            resume_from_dir=resume_from_dir, epoch_offset=epoch_offset,
         )
 
     print(f"\n CVAE stage complete. Weights: {model_out_dir} | Synthetic: {synthetic_out_dir}")

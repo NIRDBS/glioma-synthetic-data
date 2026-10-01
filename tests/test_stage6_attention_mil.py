@@ -393,6 +393,13 @@ def test_bag_posterior_is_attention_weighted_not_uniform():
     class, not a plain average over all of them."""
     n_features, latent_dim, num_classes = 4, 4, 2
     encoder = _identity_encoder(n_features, num_classes, seed=33)
+    # AttentionMIL's own Dense layers draw their random init from TF's global
+    # RNG state, not a seed passed to this test -- found to flake (depending
+    # on what earlier tests in the same process left that global state as)
+    # when the signal-vs-noise margin below happened to roll an unlucky
+    # initialisation. Pinned explicitly so this behavioral check is
+    # deterministic regardless of test execution order.
+    tf.keras.utils.set_random_seed(33)
     model = AttentionMIL(encoder, latent_dim, num_classes, attn_dim=4, dropout_rate=0.0,
                          l2=0.0, center_by_bag=False)
 

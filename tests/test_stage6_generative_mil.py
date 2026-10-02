@@ -231,6 +231,98 @@ def test_score_one_fold_cbr_not_in_default_methods_but_in_all_methods():
 
 
 # ---------------------------------------------------------------------------
+# 3b. latent_rf: a RandomForest fit on the frozen encoder's z_mean -- unlike
+# 'reconstruction'/'encoder_head', this variant DOES fit something per fold.
+# ---------------------------------------------------------------------------
+
+def test_compute_z_mean_returns_just_the_z_mean_output():
+    from src.mil.generative import compute_z_mean
+    X, _ = _fake_X(n_per_class=4, n_features=3, seed=1)
+    z_mean = compute_z_mean(X, FakeEncoder())
+    np.testing.assert_allclose(z_mean, X)
+
+
+def test_latent_rf_posteriors_separates_a_linearly_separable_problem():
+    from src.mil.generative import latent_rf_posteriors
+    X_train, y_train = _fake_X(n_per_class=20, n_features=3, seed=2)
+    X_val, y_val = _fake_X(n_per_class=10, n_features=3, seed=3)
+    rf_kwargs = {'n_estimators': 50, 'random_state': 42, 'n_jobs': 1}
+
+    posteriors = latent_rf_posteriors(X_train, y_train, X_val, rf_kwargs, seed=42)
+
+    assert set(posteriors) == {'train', 'val'}
+    assert posteriors['train'].shape == (40, 3)   # n_per_class*2, K+1=3
+    assert posteriors['val'].shape == (20, 3)
+    np.testing.assert_allclose(posteriors['train'].sum(axis=1), 1.0, atol=1e-5)
+    np.testing.assert_allclose(posteriors['val'].sum(axis=1), 1.0, atol=1e-5)
+
+    # A perfectly linearly-separable problem (sign of feature 0) should be
+    # trivial for an RF -- recovers the true val labels exactly.
+    val_pred = posteriors['val'][:, 1:].argmax(axis=1)
+    np.testing.assert_array_equal(val_pred, y_val)
+
+
+def test_latent_rf_posteriors_is_deterministic_given_a_seed():
+    from src.mil.generative import latent_rf_posteriors
+    X_train, y_train = _fake_X(n_per_class=15, n_features=3, seed=4)
+    X_val, _ = _fake_X(n_per_class=5, n_features=3, seed=5)
+    rf_kwargs = {'n_estimators': 20, 'n_jobs': 1}  # no random_state -- latent_rf_posteriors' own seed= must cover it
+
+    a = latent_rf_posteriors(X_train, y_train, X_val, rf_kwargs, seed=7)
+    b = latent_rf_posteriors(X_train, y_train, X_val, rf_kwargs, seed=7)
+    np.testing.assert_allclose(a['val'], b['val'])
+
+
+def test_score_one_fold_latent_rf_scatters_back_and_marks_in_sample(monkeypatch):
+    from pipeline import mil_fit_stage
+
+    monkeypatch.setattr(
+        'pipeline._cvae_gen.load_encoder_decoder',
+        lambda cvae_config, weights_dir, fold_name: (FakeEncoder(), FakeDecoder()))
+    monkeypatch.setattr(
+        'pipeline._cvae_gen.build_cvae_config',
+        lambda config, n_features: {})
+
+    full_bag_ids = np.array(['train_a', 'train_b', 'val_c', 'val_d'], dtype=object)
+    fold_data = {
+        'fold_name': 'fold_0',
+        # raw labels 2 -> binary 0 (Mutant), 5 -> binary 1 (Wildtype) -- both
+        # classes present, which latent_rf (unlike cbr) actually needs to fit.
+        'train': (np.array([[1.0, 0.5, 0.2], [-1.0, -0.5, -0.2]], dtype=np.float32), np.array([2, 5])),
+        'val': (np.array([[-1.0, -0.5, -0.2]], dtype=np.float32), np.array([1])),
+        'train_groups': np.array(['train_a', 'train_b'], dtype=object),
+        'val_groups': np.array(['val_c'], dtype=object),
+        'train_coords': None, 'val_coords': None,
+        'train_sample_ids': np.array(['train_a', 'train_b'], dtype=object),
+        'val_sample_ids': np.array(['val_c'], dtype=object),
+    }
+    config = {'models': {'cnn': {'num_classes': 2}}, 'paths': {}}
+    rf_kwargs = {'n_estimators': 10, 'random_state': 1, 'n_jobs': 1}
+
+    fold_name, variant_results = mil_fit_stage._score_one_fold_latent_rf(
+        fold_data, config, n_classes=2, full_bag_ids=full_bag_ids, full_coords=None,
+        cvae_weights_dir='unused', rf_kwargs=rf_kwargs, seed=1)
+
+    assert fold_name == 'fold_0'
+    assert len(variant_results) == 1
+    variant, posterior_full, in_sample_full = variant_results[0]
+    assert variant == 'rf'
+    assert posterior_full.shape == (4, 3)
+    # train_a/train_b in-sample (True); val_c out-of-sample (False);
+    # val_d never appeared in this fold at all -> NaN, untouched.
+    np.testing.assert_array_equal(in_sample_full, [True, True, False, False])
+    assert np.isnan(posterior_full[3]).all(), "val_d (not in this fold) must stay NaN"
+    assert not np.isnan(posterior_full[:3]).any()
+    np.testing.assert_allclose(posterior_full[:3].sum(axis=1), 1.0, atol=1e-5)
+
+
+def test_latent_rf_not_in_default_methods_but_in_all_methods():
+    from pipeline.mil_fit_stage import ALL_METHODS, METHODS
+    assert 'latent_rf' not in METHODS
+    assert 'latent_rf' in ALL_METHODS
+
+
+# ---------------------------------------------------------------------------
 # 4. scripts/stage6_bag_eval.py's circularity guard -- the real bug this
 # stage's own real-data run surfaced for EM (docs/stage6_generative_mil.md
 # §5): a method that hard-restricts every instance to {nulls, own-bag-class}

@@ -174,6 +174,20 @@ def _train_one_fold(fold_data, config, cvae_config, epochs, batch_size, samples_
     max_beta = cvae_config['loss_weights'].get('beta', 1.0)
     max_alpha = cvae_config['loss_weights'].get('alpha', 0.2)
 
+    # Windowed beta schedule: an explicit, arbitrary (not necessarily
+    # monotonic) per-window beta value -- e.g. an alternating
+    # [1.25,1,1.25,1,...] pattern, which the start/warmup linear-ramp
+    # annealing above has no way to express. Takes precedence over
+    # ``annealing`` if both are present (not expected to co-occur in
+    # practice). Windows are relative to THIS run's own local epoch loop
+    # (0-indexed from 0, not abs_epoch) -- i.e. "window 1" is this run's
+    # own epochs 1-10, matching how the schedule was specified, regardless
+    # of epoch_offset (which only affects history/annealing labelling).
+    beta_window_schedule = cvae_cfg.get('beta_window_schedule')
+    if beta_window_schedule:
+        window_size = int(beta_window_schedule['window_size'])
+        window_values = [float(v) for v in beta_window_schedule['values']]
+
     aug_cfg = config.get('augmentation', {})
     patient_cap = config.get('cv_strategy', {}).get('patient_cap', 500)
 
@@ -188,7 +202,11 @@ def _train_one_fold(fold_data, config, cvae_config, epochs, batch_size, samples_
         # own epoch 0 -- irrelevant for a constant (non-annealed) beta/alpha, where
         # epoch_offset defaults to 0 and this is a no-op.
         # --- weight schedules ---
-        if is_annealing:
+        if beta_window_schedule:
+            window_idx = min(epoch // window_size, len(window_values) - 1)
+            cvae.beta = window_values[window_idx]
+            cvae.alpha = max_alpha  # this schedule type only varies beta
+        elif is_annealing:
             beta_cfg = anneal_cfg.get('beta', {})
             start_beta_ep = beta_cfg.get('start_epoch', 10)
             warmup_beta = beta_cfg.get('warmup_epochs', 80)

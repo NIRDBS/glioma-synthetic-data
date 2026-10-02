@@ -264,93 +264,139 @@ def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_na
     gc.collect()
 
     # --- MODEL 4: 1D-CNN ---
-    print(f"  [4/4] 1D-CNN (epochs={cnn_cfg['epochs']})...")
+    cnn_backend = cnn_cfg.get('backend', 'local')
+    print(f"  [4/4] 1D-CNN (epochs={cnn_cfg['epochs']}, backend={cnn_backend})...")
     try:
-        import tensorflow as tf
-        from src.models.cnn import build_1d_cnn
-        from src.data.augmentation import AugmentedDataGenerator
-
-        tf.keras.backend.clear_session()
-        tf.random.set_seed(seed)
-
-        n_features = X_train.shape[1]
-        num_classes = cnn_cfg['num_classes']
-
-        # Inner split for early stopping -- NEVER the true held-out test fold
-        # (fold's own X_val/y_val, used only for the final accuracy below).
-        inner_val_fraction = cnn_cfg.get('inner_val_fraction', 0.15)
-        tr_idx, inner_val_idx = _inner_validation_split(
-            y_train, train_bag_ids, inner_val_fraction, seed)
-        X_fit, y_fit = X_train[tr_idx], y_train[tr_idx]
-        X_inner_val, y_inner_val = X_train[inner_val_idx], y_train[inner_val_idx]
-
-        # Single authoritative compile (dropout_rate/learning_rate/loss all
-        # forwarded here, and nowhere else) -- src/models/cnn.py's docstring.
-        cnn_model = build_1d_cnn(
-            input_shape=(n_features, 1), num_classes=num_classes,
-            learning_rate=cnn_cfg.get('learning_rate', 0.001),
-            dropout_rate=cnn_cfg.get('dropout_rate', 0.4),
-            loss=cnn_cfg['loss'],
-        )
-
-        X_inner_val_cnn = X_inner_val.reshape(-1, n_features, 1)
-        y_inner_val_oh = tf.keras.utils.to_categorical(y_inner_val, num_classes=num_classes)
-
-        aug_cfg = dict(config.get('augmentation', {}))
-        if aug_cfg.get('enabled', False):
-            gen = AugmentedDataGenerator(X_fit, y_fit, aug_cfg)
-            # get_tf_dataset(epochs=1) yields exactly one epoch's worth of
-            # (shuffled, augmented) batches from a from_generator dataset --
-            # .fit(dataset, epochs=N) does NOT reliably re-invoke the
-            # underlying Python generator fresh each outer epoch (confirmed:
-            # without .repeat(), a real training run hit "input ran out of
-            # data" after epoch 1). .repeat() makes the wrap-around explicit
-            # and documented instead of relying on .fit()'s own dataset-
-            # restart behaviour; steps_per_epoch bounds each epoch so Keras
-            # still sees the same amount of data per epoch as the unaugmented
-            # path. Each wrap-around still reshuffles/re-augments, since
-            # AugmentedDataGenerator draws fresh randomness every time its
-            # generator function itself is (re-)invoked.
-            steps_per_epoch = int(np.ceil(len(X_fit) / cnn_cfg['batch_size']))
-            train_ds = (
-                gen.get_tf_dataset(batch_size=cnn_cfg['batch_size'], epochs=1, shuffle=True)
-                .repeat()
-                .map(lambda x, y: (tf.expand_dims(x, -1), tf.one_hot(y, num_classes)),
-                     num_parallel_calls=tf.data.AUTOTUNE)
-                .prefetch(tf.data.AUTOTUNE)
-            )
-            fit_data_kwargs = dict(x=train_ds, steps_per_epoch=steps_per_epoch)
+        if cnn_backend == 'modal':
+            from pipeline.modal_cnn import run_cnn_on_modal
+            aug_cfg = dict(config.get('augmentation', {}))
+            acc = run_cnn_on_modal(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg,
+                                   model_dir, fold_name, seed, train_bag_ids)
         else:
-            X_fit_cnn = X_fit.reshape(-1, n_features, 1)
-            y_fit_oh = tf.keras.utils.to_categorical(y_fit, num_classes=num_classes)
-            fit_data_kwargs = dict(x=X_fit_cnn, y=y_fit_oh, batch_size=cnn_cfg['batch_size'])
-
-        early_stop = tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=cnn_cfg['early_stopping_patience'],
-            restore_best_weights=True,
-        )
-        history = cnn_model.fit(
-            **fit_data_kwargs,
-            validation_data=(X_inner_val_cnn, y_inner_val_oh),
-            epochs=cnn_cfg['epochs'],
-            callbacks=[early_stop],
-            verbose=0,
-        )
-        X_val_cnn = X_val.reshape(-1, n_features, 1)
-        y_pred_cnn = np.argmax(cnn_model.predict(X_val_cnn, verbose=0), axis=1)
-        accs['1D_CNN'] = float(accuracy_score(y_val, y_pred_cnn))
-        cnn_model.save(str(model_dir / f"cnn_{fold_name}.keras"))
-        print(f"        Val Acc: {accs['1D_CNN']:.4f}  ({len(history.history['loss'])} epochs, "
-              f"inner val={len(inner_val_idx)}/{len(y_train)})")
-        del cnn_model, X_inner_val_cnn, X_val_cnn, y_inner_val_oh
-        tf.keras.backend.clear_session()
-        gc.collect()
+            acc = train_cnn_only(X_train, y_train, X_val, y_val, cnn_cfg,
+                                 dict(config.get('augmentation', {})),
+                                 model_dir, fold_name, seed, train_bag_ids)
+        accs['1D_CNN'] = acc
     except Exception as e:
         print(f"        CNN training failed: {str(e)[:120]}")
         accs['1D_CNN'] = float('nan')
 
     return accs
+
+
+def train_cnn_only(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg, model_dir, fold_name,
+                   seed=42, train_bag_ids=None, progress_every=None):
+    """
+    Train just the 1D-CNN (extracted from train_four_models so it can be reused
+    unchanged by pipeline/modal_cnn.py's remote worker -- Apollo/RF/XGBoost
+    always train locally, only the CNN benefits from a GPU and was the
+    dominant per-fold wall-clock cost of the 4-model benchmark locally).
+
+    Saves ``model_dir/cnn_{fold_name}.keras`` and returns the held-out
+    (X_val, y_val) accuracy as a float (NaN on failure, swallowed by the
+    caller -- unchanged contract from the original inline block).
+
+    ``progress_every`` (None by default -- no change to the original local
+    behaviour/log volume): if set to an int, prints a flushed one-line
+    heartbeat ("epoch e/N loss=... val_loss=...") every that many epochs.
+    pipeline/modal_cnn.py's remote worker passes this, since Keras's own
+    ``verbose=0`` (kept here for parity with pre-Modal behaviour) leaves a
+    long remote job with zero progress signal in ``modal app logs`` --
+    silent-but-working becomes indistinguishable from silently stuck.
+    """
+    import tensorflow as tf
+    from src.models.cnn import build_1d_cnn
+    from src.data.augmentation import AugmentedDataGenerator
+
+    model_dir = Path(model_dir)
+    tf.keras.backend.clear_session()
+    tf.random.set_seed(seed)
+
+    n_features = X_train.shape[1]
+    num_classes = cnn_cfg['num_classes']
+
+    # Inner split for early stopping -- NEVER the true held-out test fold
+    # (fold's own X_val/y_val, used only for the final accuracy below).
+    inner_val_fraction = cnn_cfg.get('inner_val_fraction', 0.15)
+    tr_idx, inner_val_idx = _inner_validation_split(
+        y_train, train_bag_ids, inner_val_fraction, seed)
+    X_fit, y_fit = X_train[tr_idx], y_train[tr_idx]
+    X_inner_val, y_inner_val = X_train[inner_val_idx], y_train[inner_val_idx]
+
+    # Single authoritative compile (dropout_rate/learning_rate/loss all
+    # forwarded here, and nowhere else) -- src/models/cnn.py's docstring.
+    cnn_model = build_1d_cnn(
+        input_shape=(n_features, 1), num_classes=num_classes,
+        learning_rate=cnn_cfg.get('learning_rate', 0.001),
+        dropout_rate=cnn_cfg.get('dropout_rate', 0.4),
+        loss=cnn_cfg['loss'],
+    )
+
+    X_inner_val_cnn = X_inner_val.reshape(-1, n_features, 1)
+    y_inner_val_oh = tf.keras.utils.to_categorical(y_inner_val, num_classes=num_classes)
+
+    if aug_cfg.get('enabled', False):
+        gen = AugmentedDataGenerator(X_fit, y_fit, aug_cfg)
+        # get_tf_dataset(epochs=1) yields exactly one epoch's worth of
+        # (shuffled, augmented) batches from a from_generator dataset --
+        # .fit(dataset, epochs=N) does NOT reliably re-invoke the
+        # underlying Python generator fresh each outer epoch (confirmed:
+        # without .repeat(), a real training run hit "input ran out of
+        # data" after epoch 1). .repeat() makes the wrap-around explicit
+        # and documented instead of relying on .fit()'s own dataset-
+        # restart behaviour; steps_per_epoch bounds each epoch so Keras
+        # still sees the same amount of data per epoch as the unaugmented
+        # path. Each wrap-around still reshuffles/re-augments, since
+        # AugmentedDataGenerator draws fresh randomness every time its
+        # generator function itself is (re-)invoked.
+        steps_per_epoch = int(np.ceil(len(X_fit) / cnn_cfg['batch_size']))
+        train_ds = (
+            gen.get_tf_dataset(batch_size=cnn_cfg['batch_size'], epochs=1, shuffle=True)
+            .repeat()
+            .map(lambda x, y: (tf.expand_dims(x, -1), tf.one_hot(y, num_classes)),
+                 num_parallel_calls=tf.data.AUTOTUNE)
+            .prefetch(tf.data.AUTOTUNE)
+        )
+        fit_data_kwargs = dict(x=train_ds, steps_per_epoch=steps_per_epoch)
+    else:
+        X_fit_cnn = X_fit.reshape(-1, n_features, 1)
+        y_fit_oh = tf.keras.utils.to_categorical(y_fit, num_classes=num_classes)
+        fit_data_kwargs = dict(x=X_fit_cnn, y=y_fit_oh, batch_size=cnn_cfg['batch_size'])
+
+    early_stop = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        patience=cnn_cfg['early_stopping_patience'],
+        restore_best_weights=True,
+    )
+    callbacks = [early_stop]
+    if progress_every:
+        total_epochs = cnn_cfg['epochs']
+
+        def _heartbeat(epoch, logs):
+            if epoch == 0 or (epoch + 1) % progress_every == 0:
+                print(f"        epoch {epoch + 1}/{total_epochs}  "
+                     f"loss={logs.get('loss'):.4f}  val_loss={logs.get('val_loss'):.4f}",
+                     flush=True)
+        callbacks.append(tf.keras.callbacks.LambdaCallback(on_epoch_end=_heartbeat))
+
+    history = cnn_model.fit(
+        **fit_data_kwargs,
+        validation_data=(X_inner_val_cnn, y_inner_val_oh),
+        epochs=cnn_cfg['epochs'],
+        callbacks=callbacks,
+        verbose=0,
+    )
+    X_val_cnn = X_val.reshape(-1, n_features, 1)
+    y_pred_cnn = np.argmax(cnn_model.predict(X_val_cnn, verbose=0), axis=1)
+    acc = float(accuracy_score(y_val, y_pred_cnn))
+    model_dir.mkdir(parents=True, exist_ok=True)
+    cnn_model.save(str(model_dir / f"cnn_{fold_name}.keras"))
+    print(f"        Val Acc: {acc:.4f}  ({len(history.history['loss'])} epochs, "
+          f"inner val={len(inner_val_idx)}/{len(y_train)})")
+    del cnn_model, X_inner_val_cnn, X_val_cnn, y_inner_val_oh
+    tf.keras.backend.clear_session()
+    gc.collect()
+    return acc
 
 
 def print_benchmark_summary(per_fold_accs, title="BENCHMARK COMPLETE"):

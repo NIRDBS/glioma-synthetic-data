@@ -183,6 +183,57 @@ def test_train_four_models_cnn_survives_multiple_epochs_with_augmentation():
     assert not np.isnan(accs['1D_CNN'])
 
 
+def test_train_four_models_dispatches_cnn_to_modal_when_configured(monkeypatch):
+    """models.cnn.backend: 'modal' must route the CNN step through
+    pipeline.modal_cnn.run_cnn_on_modal instead of training locally -- checked
+    by stubbing that function (so this stays a fast, network-free unit test;
+    the real Modal path itself is verified separately via a manual smoke run,
+    consistent with this project's standing practice of not hitting external
+    services from the pytest suite) and asserting it alone was called, with
+    Apollo/RF/XGBoost still trained for real."""
+    calls = {}
+
+    def fake_run_cnn_on_modal(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg,
+                              model_dir, fold_name, seed, train_bag_ids=None):
+        calls['called'] = True
+        calls['fold_name'] = fold_name
+        return 0.42
+
+    import pipeline.modal_cnn
+    monkeypatch.setattr(pipeline.modal_cnn, 'run_cnn_on_modal', fake_run_cnn_on_modal)
+
+    rng = np.random.default_rng(11)
+    n_features = 16
+    y, bag_ids = _synthetic_bagged_dataset(n_bags=6, min_size=6, max_size=9, seed=11)
+    X_train = rng.normal(size=(len(y), n_features)).astype(np.float32)
+    X_val = rng.normal(size=(10, n_features)).astype(np.float32)
+    y_val = rng.integers(0, 3, size=10)
+
+    config = {
+        'models': {
+            'apollo': {'n_features': 5, 'random_state': 42},
+            'random_forest': {'n_estimators': 5, 'class_weight': 'balanced',
+                              'random_state': 42, 'n_jobs': 1},
+            'xgboost': {'objective': 'multi:softprob', 'random_state': 42, 'n_jobs': 1,
+                       'tree_method': 'hist'},
+            'cnn': {'num_classes': 3, 'optimizer': 'adam', 'loss': 'categorical_crossentropy',
+                   'batch_size': 8, 'epochs': 1, 'early_stopping_patience': 1,
+                   'dropout_rate': 0.4, 'inner_val_fraction': 0.25, 'backend': 'modal'},
+        },
+        'augmentation': {'enabled': False},
+    }
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        accs = train_four_models(X_train, y, X_val, y_val, config, tmp, 'fold_modal', seed=11,
+                                 train_bag_ids=bag_ids)
+
+    assert calls.get('called') is True
+    assert calls['fold_name'] == 'fold_modal'
+    assert accs['1D_CNN'] == 0.42
+    assert not np.isnan(accs['Apollo'])  # the other 3 models still trained for real, locally
+
+
 def test_dropout_rate_reaches_the_built_model():
     from tensorflow.keras import layers
     model = build_1d_cnn(input_shape=(64, 1), num_classes=3, dropout_rate=0.73)

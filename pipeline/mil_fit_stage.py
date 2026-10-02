@@ -29,13 +29,13 @@ import numpy as np
 
 from pipeline._common import make_loader, num_classes_of, prepare_fold, set_seeds
 from src.mil.em import fit_em, score_em
-from src.mil.generative import instance_posteriors_from_cvae
+from src.mil.generative import instance_posteriors_from_cvae, compute_z_mean, latent_rf_posteriors
 from src.mil.misvm import fit_misvm, predict_misvm
 from src.mil.store import write_posteriors
 
 METHODS = ('misvm', 'em')
 CBR_VARIANTS = ('reconstruction', 'encoder_head')
-ALL_METHODS = METHODS + ('cbr',)
+ALL_METHODS = METHODS + ('cbr', 'latent_rf')
 
 
 def _config_hash(config):
@@ -177,10 +177,53 @@ def _score_one_fold_cbr(fold_data, config, n_classes, full_bag_ids, full_coords,
     return fold_name, results
 
 
+def _score_one_fold_latent_rf(fold_data, config, n_classes, full_bag_ids, full_coords,
+                              cvae_weights_dir, rf_kwargs, seed):
+    """
+    A third CVAE-derived Tier 4 variant: fit a plain RandomForestClassifier on
+    the frozen encoder's z_mean for this fold (src/mil/generative.py::
+    latent_rf_posteriors), using Tier 0's own RF hyperparameters
+    (``rf_kwargs``) for a same-classifier, different-features comparison
+    against Tier 0's raw-spectrum RF. Unlike ``_score_one_fold_cbr``, this
+    DOES fit something per fold -- mirrors ``_fit_one_fold``'s contract
+    (full-dataset scatter-back) rather than being "free" inference.
+    """
+    from pipeline._cvae_gen import build_cvae_config, load_encoder_decoder
+
+    fold_name = fold_data['fold_name']
+    fd = prepare_fold(fold_data, config, cap_train=False)
+    n_features = fd.X_train.shape[1]
+
+    print(f"\n  [latent_rf] fold={fold_name}  train={fd.X_train.shape[0]}  val={fd.X_val.shape[0]}")
+
+    cvae_config = build_cvae_config(config, n_features)
+    encoder, _ = load_encoder_decoder(cvae_config, cvae_weights_dir, fold_name)
+
+    z_mean_train = compute_z_mean(fd.X_train, encoder)
+    z_mean_val = compute_z_mean(fd.X_val, encoder)
+    posteriors = latent_rf_posteriors(z_mean_train, fd.y_train, z_mean_val, rf_kwargs, seed=seed)
+
+    train_mask_full = np.isin(full_bag_ids, fold_data['train_sample_ids'])
+    val_mask_full = np.isin(full_bag_ids, fold_data['val_sample_ids'])
+    n_full = len(full_bag_ids)
+    K1 = posteriors['train'].shape[1]
+
+    posterior_full = np.full((n_full, K1), np.nan, dtype=np.float32)
+    in_sample_full = np.zeros(n_full, dtype=bool)
+    posterior_full[train_mask_full] = posteriors['train']
+    in_sample_full[train_mask_full] = True
+    posterior_full[val_mask_full] = posteriors['val']
+    in_sample_full[val_mask_full] = False
+
+    import tensorflow as tf
+    tf.keras.backend.clear_session()
+    return fold_name, [('rf', posterior_full, in_sample_full)]
+
+
 def _fit_one_formulation(method, loader, config, n_classes, store_path, pi_min,
                          max_iters, seed, svm_subsample_per_bag=500,
                          cvae_weights_dir=None, cbr_temperature=1.0,
-                         em_diagnostics_path=None):
+                         rf_kwargs=None, em_diagnostics_path=None):
     full_bag_ids = loader.groups
     full_coords = loader.coords
     config_hash = _config_hash(config)
@@ -195,6 +238,10 @@ def _fit_one_formulation(method, loader, config, n_classes, store_path, pi_min,
             fold_name, variant_results = _score_one_fold_cbr(
                 fold_data, config, n_classes, full_bag_ids, full_coords,
                 cvae_weights_dir, cbr_temperature)
+        elif method == 'latent_rf':
+            fold_name, variant_results = _score_one_fold_latent_rf(
+                fold_data, config, n_classes, full_bag_ids, full_coords,
+                cvae_weights_dir, rf_kwargs or {}, seed)
         else:
             fold_name, variant, posterior_full, in_sample_full, em_diagnostics = _fit_one_fold(
                 fold_data, config, method, n_classes, pi_min, max_iters, seed,
@@ -230,10 +277,10 @@ def mil_fit_stage(config, output_dir=None, methods=METHODS, pi_min=None, max_ite
                      5 folds' worth of independent data copies at once).
     """
     if backend == 'modal':
-        if 'cbr' in methods:
+        if 'cbr' in methods or 'latent_rf' in methods:
             raise ValueError(
-                "backend='modal' does not support method='cbr' yet -- it is inference-only "
-                "and cheap enough to run with backend='local' (see docs/stage6_generative_mil.md)")
+                "backend='modal' does not support method='cbr'/'latent_rf' yet -- both are "
+                "cheap enough to run with backend='local' (see docs/stage6_generative_mil.md)")
         from pipeline.modal_mil_fit import run_mil_fit_parallel
         return run_mil_fit_parallel(config, methods=methods, pi_min=pi_min,
                                     max_iters=max_iters, seed=seed)
@@ -244,6 +291,7 @@ def mil_fit_stage(config, output_dir=None, methods=METHODS, pi_min=None, max_ite
     pi_min = pi_min if pi_min is not None else mil_cfg.get('pi_floor', 0.02)
     svm_subsample_per_bag = mil_cfg.get('svm_subsample_per_bag', 500)
     cbr_temperature = mil_cfg.get('cbr_temperature', 1.0)
+    rf_kwargs = config['models'].get('random_forest', {})
     cvae_weights_dir = config['paths'].get('models_cvae_dir')
 
     store_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
@@ -254,6 +302,8 @@ def mil_fit_stage(config, output_dir=None, methods=METHODS, pi_min=None, max_ite
           f"svm_subsample_per_bag={svm_subsample_per_bag}")
     if 'cbr' in methods:
         print(f"  cbr_temperature={cbr_temperature}  cvae_weights_dir={cvae_weights_dir}")
+    if 'latent_rf' in methods:
+        print(f"  latent_rf rf_kwargs={rf_kwargs}  cvae_weights_dir={cvae_weights_dir}")
     print(f"  store -> {store_path}")
 
     loader = make_loader(config)
@@ -262,7 +312,8 @@ def mil_fit_stage(config, output_dir=None, methods=METHODS, pi_min=None, max_ite
     for method in methods:
         _fit_one_formulation(method, loader, config, n_classes, store_path, pi_min,
                              max_iters, seed, svm_subsample_per_bag=svm_subsample_per_bag,
-                             cvae_weights_dir=cvae_weights_dir, cbr_temperature=cbr_temperature)
+                             cvae_weights_dir=cvae_weights_dir, cbr_temperature=cbr_temperature,
+                             rf_kwargs=rf_kwargs)
         results[method] = str(store_path)
 
     print(f"\n  MIL fit stage complete -> {store_path}")
@@ -277,11 +328,12 @@ if __name__ == '__main__':
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
 
-    parser = argparse.ArgumentParser(description="Fit MIL formulations (mi-SVM, EM, cbr)")
+    parser = argparse.ArgumentParser(description="Fit MIL formulations (mi-SVM, EM, cbr, latent_rf)")
     parser.add_argument('--config', required=True, help="experiment config name, e.g. exp_501")
     parser.add_argument('--methods', nargs='+', default=list(METHODS), choices=list(ALL_METHODS),
                         help="default is mi-SVM+EM only; 'cbr' (Tier 4, inference-only, no "
-                             "training) must be requested explicitly")
+                             "training) and 'latent_rf' (Tier 4, a RandomForest fit on the "
+                             "frozen CVAE encoder's z_mean) must be requested explicitly")
     parser.add_argument('--pi-min', type=float, default=None)
     parser.add_argument('--max-iters', type=int, default=10)
     parser.add_argument('--backend', default='local', choices=['local', 'modal'],

@@ -1,7 +1,7 @@
 """
 Tier 4: generative MIL (docs/MIL_REFRAME_PLAN.md §4) -- promotes the existing
-CVAE into two zero-training-cost instance classifiers, reusing weights the
-CVAE stage already trained and saved per fold:
+CVAE into instance classifiers, reusing weights the CVAE stage already
+trained and saved per fold:
 
 - 'reconstruction': Classification by Reconstruction's per-instance,
   class-conditional decoder MSE (pipeline/evaluation_stage.py::_cbr_predictions),
@@ -11,19 +11,28 @@ CVAE stage already trained and saved per fold:
   term as part of ordinary CVAE training) -- discarded by CbR today
   (evaluation_stage.py takes ``encoder.predict(...)[0]``, the z_mean, never
   ``[3]``, the class prediction).
+- 'latent_rf': a plain ``RandomForestClassifier`` fit on the frozen encoder's
+  z_mean (``latent_rf_posteriors``, below) -- unlike the two above, this DOES
+  train something per fold, so it is not "zero-training-cost"; it exists to
+  answer a different question than either (does the CVAE's latent space beat
+  Tier 0's raw-spectrum RF, same classifier, different features), not to
+  extend the "free" framing those two variants are named for.
 
-Neither variant models a non-diagnostic class explicitly -- both are K-way,
-over diagnostic classes only (the decoder is never conditioned on "not
-diagnostic", and the auxiliary head was trained against y_bag one-hot, which
-is also always one of the K diagnostic classes). So both are lifted to the
-store's (K+1)-way convention the same way src/mil/misvm.py's Platt margins
-are: non-diagnostic mass = 1 - max_k p_k, renormalised.
+None of the three variants model a non-diagnostic class explicitly -- all are
+K-way, over diagnostic classes only (the decoder is never conditioned on "not
+diagnostic", the auxiliary head was trained against y_bag one-hot, and the
+latent RF is fit on the same y_bag). All three are lifted to the store's
+(K+1)-way convention the same way src/mil/misvm.py's Platt margins are:
+non-diagnostic mass = 1 - max_k p_k, renormalised.
 
-No new training anywhere in this module -- both variants score with the SAME
-per-fold CVAE weights the ``cvae`` pipeline stage already produced
-(results/{exp}/models/cvae/{encoder,decoder}_{fold}.weights.h5), which is
-what makes this tier "cheap" relative to Tier 1/2/3 (docs/MIL_REFRAME_PLAN.md
-Stage 6 reordering).
+'reconstruction'/'encoder_head' score with the SAME per-fold CVAE weights the
+``cvae`` pipeline stage already produced
+(results/{exp}/models/cvae/{encoder,decoder}_{fold}.weights.h5), with no new
+training -- what makes those two "cheap" relative to Tier 1/2/3
+(docs/MIL_REFRAME_PLAN.md Stage 6 reordering). 'latent_rf' reuses the same
+encoder weights for its input features but does fit a fresh classifier per
+fold (cheap in absolute terms -- a plain RF on a 32-d input -- just not
+"zero-training-cost" the way the other two are).
 """
 import numpy as np
 
@@ -73,6 +82,50 @@ def class_probs_to_posterior(class_probs):
     quantity (like -mse) that needs one to become a probability at all.
     """
     return _to_K1_posterior(class_probs)
+
+
+def compute_z_mean(X, encoder, batch_size=256):
+    """Just the encoder's z_mean output. Reused by ``instance_posteriors_from_cvae``
+    (inline, for 'reconstruction'/'encoder_head') and by ``latent_rf_posteriors``
+    below, which needs TRAIN z_mean as well as val -- the other two variants
+    never do, since neither one fits anything."""
+    n_features = X.shape[1]
+    X_exp = X.reshape(-1, n_features, 1)
+    z_mean, _, _, _ = encoder.predict(X_exp, batch_size=batch_size, verbose=0)
+    return z_mean
+
+
+def latent_rf_posteriors(z_mean_train, y_train, z_mean_val, rf_kwargs, seed=42):
+    """
+    A third CVAE-derived classifier, distinct from both 'reconstruction' and
+    'encoder_head' in a way that matters: those two are zero-training-cost
+    (score with weights the ``cvae`` stage already produced); this one DOES
+    fit something -- a plain ``RandomForestClassifier`` on the frozen
+    encoder's z_mean. The question it answers is different too: does the
+    CVAE's learned latent space, fed through the SAME classifier Tier 0
+    already uses on raw spectra, do better or worse than Tier 0's own RF?
+    Pass ``rf_kwargs=config['models']['random_forest']`` unchanged for that
+    comparison to be apples-to-apples (same hyperparameters, only the input
+    features differ: 571-band spectrum vs 32-d z_mean).
+
+    Returns {'train': (n_train, K+1), 'val': (n_val, K+1)}. 'train' is
+    in-sample (this fold's own fit) -- included only for the caller's
+    in_sample bookkeeping, same convention as every other MIL formulation's
+    train-side posterior.
+    """
+    from sklearn.ensemble import RandomForestClassifier
+
+    rf = RandomForestClassifier(
+        n_estimators=rf_kwargs.get('n_estimators', 100),
+        class_weight=rf_kwargs.get('class_weight', 'balanced'),
+        random_state=rf_kwargs.get('random_state', seed),
+        n_jobs=rf_kwargs.get('n_jobs', -1),
+    )
+    rf.fit(z_mean_train, y_train)
+    return {
+        'train': class_probs_to_posterior(rf.predict_proba(z_mean_train)),
+        'val': class_probs_to_posterior(rf.predict_proba(z_mean_val)),
+    }
 
 
 def instance_posteriors_from_cvae(X, encoder, decoder, num_classes, temperature=1.0,

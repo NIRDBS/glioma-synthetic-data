@@ -119,6 +119,67 @@ def test_resume_continues_training_rather_than_restarting(tmp_path):
     )
 
 
+def test_beta_window_schedule_applies_exact_per_window_values(tmp_path):
+    """An explicit, non-monotonic windowed beta schedule (e.g. an alternating
+    [1.25,1,1.25,...] pattern the start/warmup linear-ramp annealing has no
+    way to express) -- confirms the RECORDED beta column matches the
+    schedule exactly, per window, including the last-value-repeats behaviour
+    once more epochs run than the schedule has windows for."""
+    import pandas as pd
+
+    cvae_config = _tiny_cvae_config()
+    config = _minimal_config()
+    config['models']['cvae']['beta_window_schedule'] = {
+        'window_size': 3, 'values': [0.5, 2.0, 1.0],
+    }
+    fold_data = _tiny_fold_data(seed=5)
+
+    model_dir = tmp_path / 'model'
+    synth_dir = tmp_path / 'synth'
+    # 8 epochs, window_size=3 -> windows [0,0,0, 1,1,1, 2,2] -> beta
+    # [0.5,0.5,0.5, 2.0,2.0,2.0, 1.0,1.0] (the 3rd window's value, 1.0,
+    # covers epoch 7 too even though the schedule has no 4th window listed).
+    _train_one_fold(
+        fold_data, config, cvae_config, epochs=8, batch_size=8, samples_per_class=4,
+        learning_rate=0.001, num_classes=2,
+        model_out_dir=str(model_dir), synthetic_out_dir=str(synth_dir),
+    )
+    hist = pd.read_csv(model_dir / 'history_fold_0.csv')
+    expected_beta = [0.5, 0.5, 0.5, 2.0, 2.0, 2.0, 1.0, 1.0]
+    np.testing.assert_allclose(hist['beta'].tolist(), expected_beta)
+
+
+def test_beta_window_schedule_windows_are_relative_to_this_run_not_epoch_offset():
+    """Windows must index off the LOCAL loop epoch, not epoch_offset+epoch --
+    a resumed/branched run's schedule should restart at its own 'window 1',
+    not continue counting from wherever epoch_offset left off."""
+    import tempfile
+    from pathlib import Path
+
+    import pandas as pd
+
+    cvae_config = _tiny_cvae_config()
+    config = _minimal_config()
+    config['models']['cvae']['beta_window_schedule'] = {
+        'window_size': 2, 'values': [0.5, 2.0],
+    }
+    fold_data = _tiny_fold_data(seed=6)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        model_dir = Path(tmp) / 'model'
+        synth_dir = Path(tmp) / 'synth'
+        _train_one_fold(
+            fold_data, config, cvae_config, epochs=4, batch_size=8, samples_per_class=4,
+            learning_rate=0.001, num_classes=2,
+            model_out_dir=str(model_dir), synthetic_out_dir=str(synth_dir),
+            epoch_offset=100,  # large offset -- must NOT affect window indexing
+        )
+        hist = pd.read_csv(model_dir / 'history_fold_0.csv')
+        # epoch LABELS reflect the offset (101-104); beta still restarts at window 0.
+        assert list(hist['epoch']) == [101, 102, 103, 104]
+        np.testing.assert_allclose(hist['beta'].tolist(), [0.5, 0.5, 2.0, 2.0])
+
+
 def test_resume_without_resume_from_dir_is_unaffected():
     """epoch_offset/resume_from_dir both default to None/0 -- confirms the
     existing (non-resume) call path's history still starts at epoch 1,

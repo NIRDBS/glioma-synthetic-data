@@ -21,7 +21,7 @@ paths:
   data_output_dir: "results/exp_602/data"
   processed_file: "data/processed/glioma_mil.h5"
 
-  models_baseline_dir: "results/exp_602/models/trtr"
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED, zero retrain cost -- see exp_607.yaml
   models_tstr_dir: "results/exp_602/models/tstr"
   models_tsrtr_dir: "results/exp_602/models/tsrtr"
   models_cvae_dir: "results/exp_602/models/cvae"
@@ -34,7 +34,7 @@ tsrtr:
   cvae_weights_dir: "results/exp_602/models/cvae"
 
 pipeline:
-  stages: [cvae]   # this sweep only needs the CVAE -- no baseline classifiers required
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]   # trtr reuses exp_501's (see models_baseline_dir)
 
 preprocessing:
   spatial_median_filter: true
@@ -85,11 +85,12 @@ models:
     optimizer: "adam"
     loss: "categorical_crossentropy"
     batch_size: 256
-    epochs: 100
-    early_stopping_patience: 10
+    epochs: 200
+    early_stopping_patience: 20
     inner_val_fraction: 0.15
     random_state: 42
     dropout_rate: 0.6
+    backend: "modal"   # CNN only -- Apollo/RF/XGBoost still train locally (fast on CPU)
 
   cvae:
     num_classes: 2

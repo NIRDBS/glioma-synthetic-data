@@ -21,7 +21,7 @@ paths:
   data_output_dir: "results/exp_601/data"
   processed_file: "data/processed/glioma_mil.h5"
 
-  models_baseline_dir: "results/exp_601/models/trtr"
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED, zero retrain cost -- see exp_607.yaml
   models_tstr_dir: "results/exp_601/models/tstr"
   models_tsrtr_dir: "results/exp_601/models/tsrtr"
   models_cvae_dir: "results/exp_601/models/cvae"

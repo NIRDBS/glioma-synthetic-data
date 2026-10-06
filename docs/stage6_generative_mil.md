@@ -495,3 +495,103 @@ work — cannot silently repeat.
   (`_score_one_fold_cbr` returning a *list* of `(variant, posterior,
   in_sample)` from one shared per-fold computation) is the template for any
   future tier that produces more than one variant per fold cheaply.
+
+## 9. Update, 2026-10-02 — re-run against the β-tuned CVAE (`exp_607`), plus a new variant and a new test
+
+Tier 4 was re-run end to end against `exp_607`'s CVAE (β=0.25, the
+least-collapsed generator from the Suite 600 β sweep,
+docs/beta_sweep_findings.md). The motivation was that §3/§4's original
+numbers came from `exp_501`'s β=2.0 CVAE, whose decoder was later shown to
+be badly mode-collapsed — the question was whether a materially better
+generator changes Tier 4's verdict. **It does not.**
+
+No code changes were needed to re-point Tier 3/4 at a different experiment's
+CVAE (`--config exp_607`); both already resolve weights from
+`paths.models_cvae_dir`.
+
+### 9.1 Bag-level accuracy (n=59 bags, TRTR references)
+
+A third variant was added this round — **`latent_rf`**: a plain
+RandomForest (Tier 0's own hyperparameters) fit on the frozen encoder's
+`z_mean`, i.e. the same classifier Tier 0 uses on raw spectra, fed the
+CVAE's 32-d latent instead. Unlike `reconstruction`/`encoder_head` it does
+train something per fold, so it is not "zero-training-cost"
+(`src/mil/generative.py::latent_rf_posteriors`,
+`pipeline/mil_fit_stage.py --methods latent_rf`).
+
+| Variant | bag_acc | vs CNN (0.712) | vs Apollo (0.763) | vs RF/XGB (0.814) |
+|---|---|---|---|---|
+| `encoder_head` | 0.763 | +0.051, n.s. | ±0.000, n.s. | −0.051, p=0.072 |
+| `reconstruction` | 0.729 | +0.017, n.s. | −0.051, n.s. | −0.085, p=0.070 |
+| `latent_rf` | 0.729 | +0.017, n.s. | −0.034, n.s. | **−0.085, p=0.008** |
+
+Same verdict as §3, now with a *correctly trained* CNN reference (exp_501's
+TRTR CNN was refit — it had been badly undertrained at 0.593, inflating
+every earlier CNN-referenced delta; it is 0.712 here). Against the two
+strongest Tier 0 classifiers, all three variants are flat-to-worse, and
+`latent_rf` is significantly worse. The CVAE's latent space does not beat
+the raw spectrum through the same classifier.
+
+### 9.2 Spatial validation — coherence is present, and §9.3 shows it is not diagnostic
+
+Pooled Moran's I, 59 slides, lag ≥3 headline (lags 1–2 contaminated by the
+3×3 median filter, §4):
+
+| Variant | lag 3 | lag 4 | lag 5 | variogram range |
+|---|---|---|---|---|
+| `reconstruction` | I=+0.144, p=0.0003 | I=+0.107, p=0.021 | I=+0.085, p=0.048 | 4 px |
+| `encoder_head` | I=+0.056, p=0.059 | I=+0.044, p=0.100 | I=+0.037, p=0.132 | 3 px |
+
+`reconstruction` shows real, significant coherence through lag 4–5;
+`encoder_head` does not reach significance at any lag. **No shuffled-label
+control has been run for `exp_607`** — the control that killed every
+equivalent claim for `exp_501` (§4a). Until it is, this is an uncontrolled
+result, and §4a's cross-tier pattern is the prior.
+
+### 9.3 Key-instance utility test — the coherence is not diagnostic structure
+
+The new falsification test defined in docs/mil_tiers_methodology.md §10.2,
+run with `reconstruction` as the selection signal (the only variant with
+significant coherence, §9.2) and Tier 0's own RF as the classifier.
+Implementation: `scripts/cvae_weighted_rf_vote.py`. Baseline is Tier 0's
+unmodified RF, all instances, equal vote (bag_acc 0.814):
+
+| Variant | bag_acc | Δ | p |
+|---|---|---|---|
+| Weighted vote (same RF, CVAE P1 as vote weight) | 0.814 | ±0.000 | 1.000 |
+| Key-instance vote (same RF, median split, 0 fallbacks) | 0.797 | −0.017 | 0.680 |
+| **Key-instance train** (new RF on key-only instances) | **0.763** | **−0.051** | 0.230 |
+
+All three fail to improve on equal-vote pooling, and the strongest form of
+the test — actually training on the selected instances — is the worst of
+the three. **This is the substantive finding of this update**: the
+instances `reconstruction`'s posterior selects are not the instances the
+decision depends on. A posterior can be spatially coherent at lag ≥3
+(§9.2) and still be selecting on something the classification task does not
+use — exactly the gap §9.2 of the methodology exists to close, and the
+reason spatial coherence alone should not be reported as evidence that a
+MIL formulation has found diagnostic instances.
+
+Caveats, per the methodology's own instruction: the key-instance-train RF
+sees ~50% of the training instances (118k vs 236k per fold), so its deficit
+conflates "selection removes signal" with "less training data hurts" — **a
+random-50% control has not been run** and is required before the strong
+reading. The key/non-key split was 50/50 on training data by construction
+(median split) but swung from 25.5% to 62.7% key on validation across the
+five folds, which is itself a cross-fold inconsistency worth noting: the
+five independently-trained CVAEs do not place their non-diagnostic mass on
+a common scale.
+
+### 9.4 A second CbR convention, discovered here
+
+`evaluation_stage.py`'s automatic CbR (the number that appears inside
+`stats_eval`'s TRTR-vs-TSTR/TSRTR output) and `scripts/stage6_bag_eval.py`'s
+Tier 4 CbR use **different bag-decision rules** and therefore report
+different numbers for the same model and data: the former takes a hard
+argmin(MSE) per instance then a majority vote (bag_acc 0.746 for exp_607);
+the latter mean-pools the softmax posterior across the bag then takes the
+argmax (0.729). Both are defensible; only the second is the project's
+documented Tier 0/1/2/4 shared machinery (docs/mil_tiers_methodology.md §9),
+so it is the canonical one for cross-tier comparison. The `stats_eval`
+side-computation should not be quoted alongside Tier 4 numbers without
+saying which convention produced it.

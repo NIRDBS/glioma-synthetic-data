@@ -1,18 +1,20 @@
 # MIL Tiers — Methodology Reference
 
-Consolidated methods reference for the four MIL tiers (docs/MIL_REFRAME_PLAN.md
-§4), written for transcription into the paper's Methods section. This file is
+Consolidated methods reference for the MIL tiers (docs/MIL_REFRAME_PLAN.md
+§4, plus Tier 5 — §8 below — added after that plan's original scope), written
+for transcription into the paper's Methods section. This file is
 **methodology only** — no results, no headline numbers. Results live in
 docs/stage4_mil.md (Tiers 1–2), docs/stage5_spatial_validation.md (spatial
-validation + the shuffled-label control), and docs/stage6_generative_mil.md
-(Tiers 3–4). Update this file when a formulation's method changes; update the
-stage docs when a number changes.
+validation + the shuffled-label control), docs/stage6_generative_mil.md
+(Tiers 3–4), and docs/tier5_bayesian_mil.md (Tier 5). Update this file when a
+formulation's method changes; update the stage docs when a number changes.
 
 Code: `src/mil/common.py`, `src/mil/misvm.py`, `src/mil/em.py`,
-`src/mil/attention.py`, `src/mil/generative.py`, `src/mil/store.py`,
-`src/mil/shuffle_control.py`. Fitting: `pipeline/mil_fit_stage.py` (Tiers
-1/2/4), `pipeline/mil_attention_stage.py` (Tier 3), `pipeline/mil_eval_stage.py`
-(Tier 0). Evaluation: `scripts/stage6_bag_eval.py` (Tiers 0/1/2/4),
+`src/mil/attention.py`, `src/mil/generative.py`, `src/mil/bayes.py`,
+`src/mil/store.py`, `src/mil/shuffle_control.py`. Fitting:
+`pipeline/mil_fit_stage.py` (Tiers 1/2/4/5), `pipeline/mil_attention_stage.py`
+(Tier 3), `pipeline/mil_eval_stage.py` (Tier 0). Evaluation:
+`scripts/stage6_bag_eval.py` (Tiers 0/1/2/4/5),
 `scripts/stage6_attention_bag_eval.py` (Tier 3), `scripts/stage5_spatial_validation.py`
 (all tiers), `scripts/stage6_shuffled_label_control.py`.
 
@@ -417,14 +419,136 @@ statistics (§9) use directly.
 
 ---
 
-## 8. Bag-level classification evaluation
+## 8. Tier 5 — Bayesian MIL (Gibbs sampling)
 
-**Shared machinery** (Tiers 0/1/2/4, `src/utils/statistical_evaluation.py`):
+A proper Bayesian treatment of the same Model (C) latent structure Tier 2
+fits by EM — same four states per instance
+($z_{bi}\in\{0_1,0_2,0_3,Y_b\}$), same per-bag diagnostic fraction $\pi_b$ —
+but with every unknown given a prior and a posterior **distribution**
+instead of a single point estimate. Motivation (your words, paraphrased):
+Tier 2 "has too many components and possible failing points"; a Bayesian
+fit is "simpler and much more informative" because its worst case is
+*informative failure* — reporting high uncertainty / non-convergence
+honestly — rather than Tier 2's worst case of confidently relabelling noise
+as diagnostic. Code: `src/mil/bayes.py`; fit via
+`pipeline/mil_fit_stage.py --methods bayes_mil` (dispatches to
+`_fit_one_fold_bayes_mil`); spatial validation via
+`scripts/stage5_spatial_validation.py --method bayes_mil` (default variant
+`gibbs`). Results: docs/tier5_bayesian_mil.md.
+
+**Generative model, per fold.** Each instance $i$ in bag $b$ has a Gaussian
+emission conditioned on its latent state $z_{bi}$: the 3 null components
+and the bag's own diagnostic class are each a full-covariance Gaussian over
+a PCA-reduced spectrum ($d{=}10$ components — chosen empirically, §8.3),
+with a Normal-Inverse-Wishart (NIW) prior/posterior — the conjugate choice,
+so each component's mean/covariance has a closed-form posterior given the
+instances currently assigned to it. $\pi_b \sim \mathrm{Beta}(a,b)$ per
+bag, with $(a,b)$ themselves given a weak hyper-prior and fit from the
+population of bags (empirical-Bayes-by-MCMC, the Bayesian analogue of
+Tier 2's hierarchical shrinkage, §6).
+
+**Gibbs sweep**, one iteration:
+1. **$z$** — for every instance, an exact categorical draw (Gumbel-max)
+   over its 4 allowed states (Model (C) enforced by masking the other
+   $K{-}1$ diagnostic classes to $-\infty$ log-probability, never sampled —
+   `allowed_states_mask`, checked by an adversarial test).
+2. **Component params** ($\mu_k,\Sigma_k$) — NIW posterior draw per
+   component, conditioned on whichever instances $z$ currently assigns it.
+3. **$\pi_b$** — conjugate Beta draw per bag, conditioned on its own
+   instances' current diagnostic count.
+4. **$(a,b)$** — the one non-conjugate step: Metropolis-Hastings on
+   $(\log a,\log b)$, since no closed form exists for the Beta
+   distribution's own shape hyperparameters.
+
+Rao-Blackwellized posterior accumulation (averaging the exact per-step
+responsibilities, not just the hard $z$ draws) over retained
+post-burn-in, thinned draws.
+
+### 8.1 Multimodality, not non-identifiability — a diagnosis that was initially wrong
+
+A naive single-chain fit from a $k$-means-on-pooled-data initialization
+recovers planted ground truth in a controlled synthetic test at only
+$\sim$62% accuracy, not the near-100% a correct, well-mixed sampler should
+reach. The first hypothesis — that null/diagnostic labels are
+likelihood-equivalent under this model, i.e. a genuine non-identifiability
+— was **wrong**, and was corrected within the same investigation: a
+truth-initialized chain's marginal log-likelihood is 241 nats **higher**
+than the $k$-means-trapped chain's mode (not tied, which non-identifiability
+would require). The model is identified; single-site Gibbs from a poor
+init gets stuck in a real, inferior local mode, because $k$-means on
+pooled data has no way to know which cluster should map to which bag's
+diagnostic class.
+
+**Fix — structure-aware initialization** (`_structure_aware_init`):
+cluster into $M{+}K$ groups, then assign each cluster to a state by *which
+class's bags dominate its usage* (greedy, most-distinctive-class first,
+null states as a random-tie-break fallback) — giving the sampler a starting
+point that already respects Model (C)'s per-bag class restriction, instead
+of an unconstrained clustering that doesn't know such a restriction exists.
+Combined with **multi-chain selection** (`fit_bayes_mil_chains`: run several
+dispersed chains, keep the one with the highest marginal log-likelihood,
+report Gelman-Rubin $\hat R$ across chains on the mean-$\pi_b$ trace as a
+convergence diagnostic), this recovers planted ground truth exactly
+(accuracy 1.000, exact $\pi_b$ recovery, $\hat R \approx 1.00$) across
+three independent synthetic seeds. **`fit_bayes_mil_chains` is the real
+entry point; `fit_bayes_mil` is the single-chain primitive and should not
+be used directly on real data** — a test
+(`test_naive_kmeans_init_is_trapped_which_is_why_structure_aware_init_exists`)
+pins both the naive-init failure and the >50-nat likelihood gap, so a
+future change that silently reintroduces single-chain naive-init use would
+be caught.
+
+**On real data, $\hat R$ turned out not to be the whole story.** Applying
+this to `exp_608` found a second, R-hat-invisible failure mode: since most
+bags are training bags in several folds, a bag's $\hat\pi_b$ can be
+cross-checked across independently-fit folds, and this disagrees with
+$\hat R$'s own verdict for 2 of 5 folds (one fold with good $\hat R$ turns
+out to disagree with the cross-fold consensus; one fold with bad $\hat R$
+turns out to agree with it). $\hat R$ only checks a fold's own chains
+against each other, never against another fold's independent fit — numbers
+and the recommended fix (a cross-fold consistency diagnostic, run
+alongside $\hat R$) are in docs/tier5_bayesian_mil.md §2/§2.1/§7, not
+duplicated here since this file is methodology only.
+
+### 8.2 The same bag-classification circularity as Tier 2
+
+Model (C) is enforced throughout sampling and scoring, exactly as for
+Tier 2 (§6.2): an instance's posterior can only ever place diagnostic mass
+on its own bag's already-known class. Confirmed directly on real held-out
+data (`k_diagnostic_columns_competition_frac=0.0000`, §9.1's diagnostic).
+A naive bag-classification accuracy computed from this tier's posterior is
+therefore equally vacuous — the same trap as Tier 2, re-discovered here
+rather than assumed, and excluded from this tier's real evidence for the
+same reason (§9.1).
+
+### 8.3 PCA dimensionality — chosen empirically, not by a variance-explained target
+
+The Gibbs sampler needs a low-dimensional emission space to keep per-
+iteration NIW updates cheap; $d{=}10$ principal components (of 571
+fingerprint-region bands) were used, at which explained variance ratio is
+only $\approx$79%, well short of maybe the only decimal fraction an
+unfamiliar reader would expect for "enough" variance on a spiky signal like
+Raman. Checked empirically rather than assumed: Tier 0's RF reaches
+identical bag accuracy from the raw 571 bands and from a 10-component PCA
+projection (0.7966 both ways); 60 components is *worse* (0.7797); and 98%
+explained variance is not reachable at any practical dimension (120
+components only reaches 89.3%) because this dataset's Raman variance
+spectrum is heavy-tailed/noise-dominated past the first handful of
+components — the same noise-floor property an earlier within-slide
+analysis found independently (docs/stage0_findings.md). $d{=}10$ loses no
+diagnostic signal a downstream RF can use; it is not a compromise made for
+this tier's sake.
+
+---
+
+## 9. Bag-level classification evaluation
+
+**Shared machinery** (Tiers 0/1/2/4/5, `src/utils/statistical_evaluation.py`):
 `aggregate_bag_scores_across_folds` pools each fold's out-of-sample
 instances to a bag decision under a chosen rule (§4's four rules for Tier 0;
 mean-pooling of the $(K{+}1)$ posterior's diagnostic columns, renormalised,
-for Tiers 1/2/4 — column 0 answers a different question and is excluded from
-this comparison specifically), respecting the cross-fold duplicate-bag
+for Tiers 1/2/4/5 — column 0 answers a different question and is excluded
+from this comparison specifically), respecting the cross-fold duplicate-bag
 averaging (§2) throughout, never pooling instances first and losing the
 fold boundary. `bag_level_bootstrap`: a class-stratified bootstrap
 (1000 resamples) over *bag* decisions — not instances — for the primary
@@ -442,21 +566,21 @@ this task; Apollo/RF/XGBoost are meaningfully stronger and should also be
 reported (`--reference-model {apollo,rf,xgb}` on both bag-eval scripts) —
 reporting only the CNN comparison would be selective.
 
-### 8.1 A circularity trap specific to Model (C)-constrained methods
+### 9.1 A circularity trap specific to Model (C)-constrained methods
 
 `scripts/stage6_bag_eval.py`/`stage6_attention_bag_eval.py` both compute a
 diagnostic fraction — the share of instances where more than one diagnostic
 column is simultaneously non-negligible — before trusting a bag-accuracy
 number at all. Near zero means the method hard-restricts every instance to
 its own bag's already-known class throughout scoring (Model (C) enforced at
-inference, not just fitting — Tier 2, §6.2), making the resulting
+inference, not just fitting — Tier 2, §6.2; Tier 5, §8.2), making the resulting
 "accuracy" a trivial 1.0000 that recovers the given label rather than a
 learned one. This is checked automatically, not assumed from the method
 name, because it is not visible from the accuracy number alone.
 
 ---
 
-## 9. Spatial validation
+## 10. Spatial validation
 
 Applies identically to any tier's stored posterior (`src/evaluation/spatial.py`,
 `scripts/stage5_spatial_validation.py`) — models never see `coords` during
@@ -494,7 +618,7 @@ earlier unsupervised cluster selection, used here only as an independent
 *reference* computation from a different pipeline, explicitly **not**
 ground truth (§1).
 
-### 9.1 The shuffled-bag-label control
+### 10.1 The shuffled-bag-label control
 
 The definitive test of whether a lag $\ge 3$ finding is genuinely tied to
 the true label. `src/mil/shuffle_control.py::permuted_bag_label_map`
@@ -513,12 +637,71 @@ formulation-specific mechanism that produces lag-band structure from raw
 spatial autocorrelation in the features, independent of which label a
 region happens to be fit toward).
 
+### 10.2 The key-instance utility test
+
+A second, independent falsification test, and the one that is *cheapest to
+run* — no retraining of the MIL formulation, no GPU, no permutation. It asks
+the question spatial coherence cannot: **are the instances a formulation
+selects actually the informative ones?**
+
+Spatial coherence says a formulation's per-instance posterior has structure
+on the slide. It does not say that structure is *diagnostic* structure.
+Raman maps of tissue are spatially autocorrelated in many ways that have
+nothing to do with tumour class — acquisition gradients, tissue folds,
+stroma/necrosis boundaries — so a posterior can be smooth, significantly
+non-random at lag $\ge 3$, and still be selecting on something clinically
+irrelevant. This test closes that gap by checking downstream utility
+directly:
+
+1. Take the formulation's own per-instance posterior and binarise it into
+   "key" vs "not key" (the threshold is formulation-specific; for a $K{=}2$
+   joint softmax use a **median split** on non-diagnostic mass, *not* an
+   absolute 0.5 — §7's bound makes 0.5 structurally unreachable, which
+   silently turns the filter into a no-op).
+2. Fit Tier 0's own RF — same hyperparameters, same raw spectral features,
+   nothing else changed — on **only** the key training instances.
+3. At inference, apply the same threshold to decide which validation
+   instances are key, score only those, and pool to a bag decision with
+   Tier 0's ordinary majority vote.
+4. Compare against Tier 0's unmodified RF (all instances, equal vote) with
+   the same bag-level bootstrap as §8.
+
+**Reading it.** If the selected instances carry the diagnostic signal, a
+classifier restricted to them should match or beat the one that votes over
+everything — the discarded instances were supposed to be noise. If it comes
+out **worse**, the selection is actively removing diagnostic content, and
+whatever spatial structure the formulation shows is not the structure the
+task depends on. A null result (no difference) is weak evidence either way:
+it is consistent with "the selection is uninformative but harmless," since
+a strong classifier voting over thousands of instances per bag is robust to
+losing half of them.
+
+**Two confounds to state whenever this is reported.** (i) The restricted RF
+trains on fewer instances (half, under a median split), so a deficit
+conflates "selection removes signal" with "less training data hurts" — a
+random-subset control of the same size separates them and should be run
+before any strong claim. (ii) A bag whose key set is empty needs a
+documented fallback (revert to all its instances), and the number of bags
+that hit it must be reported, not silently absorbed.
+
+Two weaker variants of the same idea reuse the *already-trained* Tier 0 RF
+and change only the pooling, which removes confound (i) entirely at the cost
+of testing a weaker claim (does the posterior improve aggregation, rather
+than does it identify the informative instances): a **weighted vote**, where
+each instance's vote is weighted by the formulation's per-instance class
+probability, and a **key-instance vote**, where only key instances' existing
+votes are counted. Implementation of all three:
+`scripts/cvae_weighted_rf_vote.py`.
+
 ---
 
-## 10. What is not yet covered by this reference
+## 11. What is not yet covered by this reference
 
-- **Stage 7 (CVAE soft conditioning)** and **Stage 8 (mixture model /
-  6-class)** are not started; no methodology to document yet.
+- **Stage 7 (CVAE soft conditioning)** is not started; no methodology to
+  document yet. **Stage 8 (mixture model / 6-class)** has a single
+  exploratory run (`exp_661`, binary-style Model (C) extended to $K{=}6$) —
+  results in docs/beta_sweep_findings.md §5, not promoted to methodology
+  since nothing about the *formulation* changed, only $K$.
 - **Tier 3's shuffled-label control** has not been run (would need a full
   per-fold retrain, cheap relative to Tier 4's — no CVAE retrain required,
   since the trunk is frozen and reused as-is).
@@ -526,3 +709,10 @@ region happens to be fit toward).
   retrain (the trunk itself, not just a downstream head) — this project's
   first real GPU training run; not started, pending a cheap Modal GPU
   validation first per standing project practice.
+- **Tier 5's shuffled-label control** has not been run either — same
+  priority as Tier 3's (no CVAE involved, a full per-fold Gibbs refit is
+  the only cost) and not yet done.
+- **Tier 5's two non-converged folds** (`exp_608` folds 2/3, $\hat R$ 9.09
+  and 11.81, docs/tier5_bayesian_mil.md §2) have not been investigated
+  further or excluded from the pooled spatial-validation numbers — deferred
+  at your request.

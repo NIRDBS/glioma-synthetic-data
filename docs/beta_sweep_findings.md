@@ -169,7 +169,7 @@ TSTR delta is ever significant either. Full per-β numbers in §1's tables.
 - No consolidated multi-seed or multi-split repetition exists for any config
   here — every number is a single run / single CV split, the same standing
   caveat as the rest of this project (docs/beta_sweep_methodology.md §7,
-  docs/mil_tiers_methodology.md §8). With a 40-cell comparison grid and
+  docs/mil_tiers_methodology.md §9). With a 40-cell comparison grid and
   α=0.05 uncorrected, 1-2 nominally "significant" cells are plausible by
   chance alone — none of the single-cell results above (β=0.25's CNN TSRTR
   gain in particular) should be read as confirmed without replication.
@@ -181,3 +181,112 @@ TSTR delta is ever significant either. Full per-β numbers in §1's tables.
 - `exp_608`/`609` have not had Tier 3/4 run against their CVAEs yet (only
   `exp_607` has) — would need the same recipe if the β=0.25 CbR/encoder_head
   pattern is worth confirming across the sweep.
+
+## 5. Update, 2026-10-06 — 6-class exploratory extension (`exp_661`)
+
+A single exploratory run at $K{=}6$ (the methylation-derived LGm1–LGm6
+grades, Stage 8 of docs/MIL_REFRAME_PLAN.md), β=0.5 (the best-performing
+binary β), own TRTR/CVAE/TSTR/TSRTR/stats_eval — not reusing exp_501's
+binary baseline, since the task itself is different. **One run, one CV
+split — explicitly exploratory, not a conclusion**, per the same
+single-split caveat as §4.
+
+**Severe, structural class imbalance.** The 6-class stratification over 59
+bags gives LGm1–LGm6 only 5/12/9/13/15/5 bags respectively — LGm1 and LGm6
+have 5 bags each, a hard statistical-power floor no amount of modelling
+fixes (`configs/exp_661.yaml`'s own notes record this going in).
+
+**Bag-level accuracy (n=59, chance ≈ 0.167 for 6 balanced classes, though
+classes here are not balanced):**
+
+| Model | TRTR | TSTR | TSRTR ($r{=}1.0$) |
+|---|---|---|---|
+| Apollo | 0.322 | 0.271 | 0.373 |
+| RF | 0.288 | 0.203 | 0.271 |
+| XGBoost | 0.288 | 0.305 | 0.305 |
+| CNN | 0.203 | 0.203 | 0.288 |
+| CbR | — | 0.305 | 0.305 |
+
+No TSTR or TSRTR delta against TRTR is significant at any model
+(`bag_significant_95=False` throughout, bootstrap CIs all straddling zero) —
+unlike the binary sweep (§2), synthetic data neither clearly helps nor hurts
+here; the dominant signal is the class-imbalance floor above, not β or the
+synthetic regimen.
+
+**Was training class-balanced?** Checked directly rather than assumed,
+because an unweighted fit on this imbalance (5/12/9/13/15/5 bags, and
+`patient_cap` — §3 of docs/mil_tiers_methodology.md — caps *per slide*, not
+per class, so instance counts still scale with each class's bag count)
+could produce exactly a "always predict the biggest class" artifact that
+would masquerade as a genuine confusion finding. Two of the four
+classifiers use explicit inverse-frequency `class_weight`, two do not:
+
+| Model | class-weighted? | where |
+|---|---|---|
+| Apollo (RF+SVM) | **yes** — hardcoded, not config-driven | `src/models/baselines.py:29,43` (`balanced_subsample` / `balanced`) |
+| RF (standalone) | **yes** | `configs/exp_661.yaml:88` (`class_weight: "balanced"`), read at `pipeline/_common.py:239` |
+| XGBoost | **no** — no `class_weight`/`sample_weight` param at all | `pipeline/_common.py:252-258` |
+| 1D-CNN | **no** — no `class_weight`/`sample_weight` passed to `.fit()`; only within-class mixup (doesn't rebalance across classes) | `pipeline/_common.py:382-388` |
+
+No oversampling/SMOTE anywhere in this pipeline for any model.
+
+**Confusion-matrix analysis, per model, not pooled** (pooling across
+balanced and unbalanced classifiers would hide exactly the artifact this
+check is for). Predicted-class share vs. true share (8%/20%/15%/22%/25%/8%
+for LGm1–LGm6) and per-class recall:
+
+| Model | weighted | LGm1 pred-share | LGm2 pred-share | LGm1 recall | LGm6 recall |
+|---|---|---|---|---|---|
+| Apollo | yes | 0.05 | 0.24 | 0.00 | 0.20 |
+| RF | yes | 0.02 | 0.27 | 0.00 | 0.00 |
+| XGBoost | no | 0.00 | 0.24 | 0.00 | 0.00 |
+| CNN | no | 0.00 | **0.63** | 0.00 | 0.00 |
+
+**The CNN alone shows a majority-class collapse** — 63% of all its
+predictions land on LGm2 against a 20% true share, far beyond the other
+three (24–27%, all close to LGm2's own base rate). This is consistent with
+your hypothesis, but specifically for the CNN: **XGBoost is equally
+unweighted and does not show it** (24%, same as the two weighted models),
+so "unweighted training" alone does not predict the collapse — something
+particular to the CNN (already documented elsewhere as this task's weakest
+classifier by a wide margin) rather than a general property of skipping
+`class_weight`.
+
+**LGm1/LGm6 unrecoverability and the LGm2↔LGm3 / LGm4↔LGm5 confusions
+survive explicit class-weighting**, which argues against reading them as
+pure imbalance artifacts:
+- LGm1 recall is 0.00 for **all four** models, weighted or not — balancing
+  did not rescue it.
+- LGm6 recall is 0.00 for three of four; only Apollo (weighted) recovers a
+  single bag (1/5).
+- The LGm2↔LGm3 confusion is, if anything, **strongest in RF** (weighted):
+  67% of true LGm3 bags are called LGm2, more than in either unweighted
+  model. Explicit inverse-frequency reweighting should have suppressed
+  this if it were mainly a frequency artifact, and it did not.
+
+Pooled across all four for reference (236 bag-decisions, mixing weighted
+and unweighted models — read with the above caveat, the CNN's column
+disproportionately inflates the LGm2 counts):
+
+| true \ pred | LGm1 | LGm2 | LGm3 | LGm4 | LGm5 | LGm6 |
+|---|---|---|---|---|---|---|
+| **LGm1** (n=20) | 0 | 8 | 3 | 0 | 8 | 1 |
+| **LGm2** (n=48) | 2 | **27** | 7 | 5 | 7 | 0 |
+| **LGm3** (n=36) | 0 | 21 | **3** | 7 | 4 | 1 |
+| **LGm4** (n=52) | 1 | 10 | 3 | **15** | 19 | 4 |
+| **LGm5** (n=60) | 1 | 11 | 2 | 23 | **19** | 4 |
+| **LGm6** (n=20) | 0 | 4 | 1 | 6 | 8 | **1** |
+
+**Tentative reading, not acted on.** The LGm2↔LGm3 and LGm4↔LGm5
+confusions and the LGm1/LGm6 floor look like genuine properties of this
+task (spectral similarity between adjacent grades, and a hard 5-bag power
+floor) rather than artifacts of skipped class-weighting — raising
+coarser-grouping as a post-hoc question worth asking, *not* a
+recommendation to re-run anything yet. This is a single-run, single-split
+finding at a task with a 5-bag class-size floor; it has not been checked
+against a different seed/split or a per-class-balanced CNN/XGBoost
+variant (the one re-run that would most directly test the remaining
+imbalance-artifact concern), and `mil_fit`/`mil_eval` (Tiers 1–5) were
+deliberately not run for this config (`exp_661.yaml`'s own scope note) —
+none of this project's MIL instance-selection findings have been tested at
+$K{=}6$ at all.

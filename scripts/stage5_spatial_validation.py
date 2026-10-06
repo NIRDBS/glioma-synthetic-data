@@ -207,11 +207,12 @@ def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Stage 5 spatial validation")
     parser.add_argument('--config', required=True)
-    parser.add_argument('--method', default='em', choices=['em', 'misvm', 'cbr', 'attention'])
+    parser.add_argument('--method', default='em',
+                        choices=['em', 'misvm', 'cbr', 'attention', 'bayes_mil'])
     parser.add_argument('--variant', default=None,
                         help="defaults to 'constrained' for em, 'mi_svm' for misvm, "
                              "'reconstruction' for cbr (its other variant is 'encoder_head'), "
-                             "'attention' for attention")
+                             "'attention' for attention, 'gibbs' for bayes_mil")
     parser.add_argument('--max-lag', type=int, default=10)
     parser.add_argument('--n-perm', type=int, default=200)
     parser.add_argument('--seed', type=int, default=42)
@@ -222,7 +223,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     _DEFAULT_VARIANT = {'em': 'constrained', 'misvm': 'mi_svm', 'cbr': 'reconstruction',
-                        'attention': 'attention'}
+                        'attention': 'attention', 'bayes_mil': 'gibbs'}
     variant = args.variant or _DEFAULT_VARIANT[args.method]
     run(args.config, args.method, variant, max_lag=args.max_lag, n_perm=args.n_perm,
        seed=args.seed, store_path=args.store_path, out_path=args.out_path)

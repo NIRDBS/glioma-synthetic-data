@@ -169,7 +169,7 @@ def cosine_to_reference(vectors, reference):
     normalized_distance_to_reference -- deliberately paired the same way this
     project pairs Moran's I (scale-free) with the variogram (scale-sensitive,
     src/evaluation/spatial.py), since a scale-free statistic alone can read
-    as large on an otherwise-tiny effect (docs/mil_tiers_methodology.md §9).
+    as large on an otherwise-tiny effect (docs/mil_tiers_methodology.md §10).
 
     Returns (n,) float, NaN for any all-zero row or a zero reference.
     """

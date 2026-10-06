@@ -225,6 +225,11 @@
 \usepackage{float}
 \usepackage{graphicx}
 \usepackage{caption}
+\usepackage{todonotes}
+
+\usepackage{xcolor}
+\newif\ifdraft\drafttrue
+\newcommand{\TODO}[1]{\ifdraft{\color{red}[TODO: #1]}\fi}
 
 
 \usepackage[toc, page]{appendix}
@@ -275,12 +280,21 @@
 
 \title{
 %Synthetic Data Generation and Classification by Reconstruction in Spectral Diagnostics\\
-Optimization, Augmentation, and Statistical Validation for High-Dimensional Spectral Classification in Small Cohort Clinical Datasets
+Generative Augmentation of Raman Spectra for Glioma Classification
 }
+\author[1]{Andrei Iușan\thanks{These authors contributed equally to this work.}}
+\author[1]{Iulian Vasile\protect\footnotemark[1]}
+\author[1]{Daria Voiculescu}
+\author[1,2]{Ion Petre}
+\author[3,4]{Andrei P\u{a}un}
+\author[1,5]{Bogdan Oancea}
+\author[1,5]{Mihaela P\u{a}un}
 
-\author{Andrei Iușan}
-
-
+\affil[1]{National Institute of Research and Development for Biological Sciences, Romania}
+\affil[2]{Department of Mathematics and Statistics, University of Turku, Finland}
+\affil[3]{Research Institute for Artificial Intelligence ``Mihai Drăgănescu'', Romanian Academy}
+\affil[4]{Faculty of Mathematics and Computer Science, University of Bucharest, Romania}
+\affil[5]{Faculty of Business and Administration, University of Bucharest, Romania}
 
 
 \date{}
@@ -294,7 +308,7 @@ Access to sufficiently large biomedical datasets remains a major obstacle for ma
 %
 We analyze glioma biopsy spectra acquired from 58 tumor samples and consider both binary IDH-status classification and 6-class methylation subtype classification problems. To address the limited size and imbalance of the dataset, we develop a conditional variational autoencoder ($\beta$-CVAE) capable of generating class-conditioned synthetic Raman spectra. The generated data are evaluated in Train-on-Synthetic, Test-on-Real (TS/TR) and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) settings under a strict patient-isolated cross-validation protocol.
 %
-Models trained exclusively on synthetic data underperform models trained on real spectra, indicating a substantial domain gap between synthetic and real distributions. However, augmenting the real training data with synthetic spectra consistently improves classification performance across multiple models. These findings indicate that, even with a limited number of independent patient samples, generative models can capture sufficient structure to provide useful regularization for downstream classifiers.
+Models trained exclusively on synthetic spectra underperform models trained on real spectra, indicating a substantial domain gap between synthetic and real distributions. However, augmenting the real training data with synthetic data consistently improves classification performance across multiple models. These findings indicate that, even with a limited number of independent patient samples, generative models can capture sufficient structure to provide useful regularization for downstream classifiers.
 %
 We also investigate a reconstruction-based inference strategy, termed Classification by Reconstruction (CbR), in which class prediction is based on reconstruction error under different class conditions. Overall, the results support the use of deep generative augmentation as a practical strategy for improving machine learning robustness in Raman spectroscopy applications characterized by limited biomedical datasets.
 \end{abstract}
@@ -320,9 +334,9 @@ In this work, we investigated the use of a conditional variational autoencoder (
 
 A promising strategy for mitigating data scarcity in biomedical machine learning is synthetic data generation \cite{jordon2022synthetic}. In contrast to classical augmentation approaches such as additive noise injection or SMOTE, deep generative models attempt to learn the statistical structure of the underlying data distribution and generate novel samples consistent with the observed data manifold. Synthetic augmentation is especially attractive in biomedical spectroscopy because acquiring large numbers of independent patient samples is often expensive, time-consuming, and clinically constrained.
 
-A commonly used framework for evaluating the utility of synthetic data is the \emph{Train on Synthetic, Test on Real (TS/TR)} paradigm \cite{esteban2017real}. In TS/TR, a downstream classifier is trained exclusively on generated data and evaluated on held-out real data. If the resulting performance approaches the corresponding \emph{Train on Real, Test on Real (TR/TR)} baseline, this indicates that the generator has captured discriminative structure relevant to the downstream classification task. In practice, however, synthetic biomedical data often exhibit substantial domain gaps relative to real measurements, particularly in small-cohort settings.
+A commonly used framework for evaluating the utility of synthetic data is the \emph{Train-on-Synthetic, Test-on-Real (TS/TR)} paradigm \cite{esteban2017real}. In TS/TR, a downstream classifier is trained exclusively on generated data and evaluated on held-out real data. If the resulting performance approaches the corresponding \emph{Train-on-Real, Test-on-Real (TR/TR)} baseline, this indicates that the generator has captured discriminative structure relevant to the downstream classification task. In practice, however, synthetic biomedical data often exhibit substantial domain gaps relative to real measurements, particularly in small-cohort settings.
 
-Recent work has reported encouraging results for generative augmentation in Raman spectroscopy. Zhao et al.~\cite{zhao2024raman} investigated synthetic augmentation for in vivo skin cancer detection using a one-dimensional conditional GAN trained on Raman spectra. The generated spectra improved classification performance across several downstream models and increased robustness to spectral degradation. This suggests that synthetic spectra may act as a regularization mechanism against acquisition variability rather than simply increasing the volume of training data.
+Recent work has reported encouraging results for generative augmentation in Raman spectroscopy. Zhao et al.~\cite{zhao2024raman} investigated synthetic augmentation for \emph{in vivo} skin cancer detection using a one-dimensional conditional GAN trained on Raman spectra. The generated spectra improved classification performance across several downstream models and increased robustness to spectral degradation. This suggests that synthetic spectra may act as a regularization mechanism against acquisition variability rather than simply increasing the volume of training data.
 
 The practical utility of generative augmentation in biomedical Raman spectroscopy remains insufficiently understood. Existing studies have largely focused on binary classification tasks and single-site datasets, while the behavior of generative models under severe data scarcity and subtle multi-class grading settings remains unclear. Moreover, relatively little attention has been given to the possibility of using the generative model itself as part of the inference process. In this work, we investigate these questions in the context of glioma classification using a $\beta$-regularized conditional variational autoencoder ($\beta$-CVAE) evaluated under strict slide-isolated protocols.
 
@@ -357,12 +371,11 @@ LGm-6 & IDH-Wildtype & 5   \\
 \end{table}
 
 
-To ensure that spectra from the same tissue sample never appear in both training and testing sets, data splitting was performed at the \textit{slide level} using the stratified subject-disjoint five-fold evaluation protocol by Lita et al \cite{apollonov2024raman}. All recordings from a given subject were assigned exclusively to either the training or the test partition within each fold, preventing subject-level data leakage. A strictly non-overlapping partition, where each class was represented across all five folds, was not achievable due to dataset imbalance. Fold assignments were therefore determined manually to ensure that each class contributed no less than 15\% of its samples to each fold's test partition (see Appendix~\ref{app:cv_schema}). Five models were trained independently, each evaluated on its corresponding test partition, and performance metrics were aggregated across all five partitions.
-
+To ensure that spectra from the same tissue sample do not appear in both training and testing sets, data splitting was performed at \textit{patient level} using the stratified subject-disjoint five-fold evaluation protocol by Lita et al \cite{apollonov2024raman}. All recordings from a given subject were assigned exclusively to either the training or the test partition within each fold, preventing subject-level data leakage. A strictly non-overlapping partition, where each class was represented across all five folds, was not achievable due to dataset imbalance. Fold assignments were therefore determined manually to ensure that each class contributed no less than 15\% of its samples to each fold's test partition (see Appendix~\ref{app:cv_schema}). Five models were trained independently, each evaluated on its corresponding test partition, and performance metrics were aggregated across all five partitions.
 
 \subsection{Data Preprocessing}
 \label{sec:annotation}
-An important preprocessing step is separating tumor tissue spectra from both healthy tissue spectra and low signal spectra, such as those corresponding to non-biological background regions of the slide. In the absence of histopathological labeling of tumor regions we employ an unsupervised clustering method for selecting the highest quality signal spectra.
+\textcolor{red}{An important preprocessing step is separating tumor tissue spectra from both healthy tissue spectra and low signal spectra, such as those corresponding to non-biological background regions of the slide. In the absence of histopathological labeling of tumor regions, we formulate the problem in a Multiple Instance Learning (MIL) [\textbf{Citare posibila:} \cite{waqas2024exploring}] paradigm and attempt to infer the tumor vs. healthy spectra as a latent variable, modeled at training time. In the preprocessing stage, we employ an unsupervised clustering method for selecting the highest quality signal spectra that we will use later as a MIL problem.}
 
 For lack of a sufficiently robust automated method of separating viable spectra from low-quality spectra, we preferred an empirical approach, observing that the slides could be approximately separated into low-signal regions and one or two spectral clusters. Therefore, we developed a spatio-spectral annotation pipeline that operates on a per-slide basis, followed by visual inspection and selection of clustered spectra that we label as tumor. The pipeline consists of the following steps:
 
@@ -380,9 +393,7 @@ For lack of a sufficiently robust automated method of separating viable spectra 
 
     \item \emph{Signal filtering.} We applied a simple signal quality filter by removing spectra with low intensity, setting a threshold of 0.6 on the maximum intensity of the spectrum. This step eliminates spectra that are likely dominated by noise or background, as they typically have low overall intensity. We plotted a histogram of the maximum intensity values across all spectra per slide and observed that most of the spectra have a maximum intensity close to 1, while a small subset of spectra was below the fixed threshold, hence considered low quality and removed from the dataset. Our threshold choice is rather conservative; from the maximum intensity histograms, it can be observed that a higher threshold can be selected (see Fig. \ref{fig:preprocessing_cluster_spectra} e, f).
 
-    \item \emph{Spectral dimensionality reduction.} 
-
-    Non-negative Matrix Factorization (NMF) \cite{NMF1999} was applied independently to each slide to obtain a lower-dimensional, non-negative representation of the spectra. NMF has previously been used in Raman spectroscopy for spectral unmixing and feature extraction \cite{NMF1999,nmf_oncology_2022, Alix2022}. We used an NMF with 100 components, as it offered sufficient reconstruction for the purpose of signal separation. 
+    \item \emph{Spectral dimensionality reduction.} Non-negative Matrix Factorization (NMF) \cite{NMF1999} was applied independently to each slide to obtain a lower-dimensional, non-negative representation of the spectra. NMF has previously been used in Raman spectroscopy for spectral unmixing and feature extraction \cite{NMF1999,nmf_oncology_2022, Alix2022}. We used an NMF with 100 components, as it offered sufficient reconstruction for the purpose of signal separation. 
     
     \item \emph{Gaussian Mixture Model (GMM).} A 3-component GMM \cite{Dempster1977} was fitted to the coefficients obtained in the previous step. We then visually inspected the clustering and selected the spectra corresponding to the components with the strongest signal (see Fig. \ref{fig:preprocessing_cluster_spectra} a, b). In cases where more than one cluster had similar quality spectra, and the clusters were not spatially separated in distinct regions (see Fig. \ref{fig:preprocessing_cluster_spectra} c, d), we selected all of them as valid spectra.
 
@@ -409,8 +420,8 @@ For lack of a sufficiently robust automated method of separating viable spectra 
     \label{fig:preprocessing_cluster_spectra}
 \end{figure}
 
-    \item \emph{Per spectrum preprocessing.} For the spectra selected as relevant, we performed the following per spectrum processing steps: (i) [0, 1] normalization; (ii) airPLS with $\lambda=100$ and a second-order difference penalty (the results reported in this paper use this setting throughout). Appendix~\ref{app:baseline_correction} revisits this choice: a controlled comparison against IARPLS \cite{Ye2020} found the fixed $\lambda=100$ airPLS baseline differentially suppresses broad bands (57\% of amide~I retained vs.\ 90\% of the narrow 1004~$\text{cm}^{-1}$ band) and lets peak heights drift 16--55\% with specimen fluorescence, a confound that aligns with slide identity under our slide-grouped cross-validation. IARPLS with a fixed $\lambda=10^4$ corrects both; it is adopted for the revised pipeline referenced in Appendix~\ref{app:baseline_correction}, with $\lambda$'s remaining sensitivity reported rather than resolved.
-
+    \item \emph{Per spectrum preprocessing.} For the spectra selected as relevant, we performed the following per spectrum processing steps: (i) [0, 1] normalization; (ii) IARPLS \cite{Kizilov2025} with $\lambda=10^4$ and difference order $p=2$. We selected this method based on a test of a suite of models: GCV, L-curve, airPLS and IARPLS. The experiment suite for this selection can be found in Appendix \ref{app:baseline_correction}.
+    
     \item \emph{Saving spectra.} We saved the processed spectra to an HDF5 file for further ML tasks. Note that we used NMF only for clustering, but the processing for saved spectra was $3 \times 3$ median filtering followed by baseline correction.
 \end{enumerate}
 
@@ -494,7 +505,9 @@ This approach assumes that spectra reconstructed under the correct class conditi
 \section{Experimental Design}
 \label{sec:experimental_design}
 
-All experiments were conducted using strict slide-isolated 5-fold design (see Appendix \ref{app:cv_schema}), ensuring that spectra originating from the same biopsy sample never appeared simultaneously in training and evaluation sets, while keeping class balance into account. We evaluated the proposed framework under three complementary settings: Train-on-Real, Test-on-Real (TR/TR), Train-on-Synthetic, Test-on-Real (TS/TR), and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) \cite{esteban2017real}. We also evaluated the proposed Classification by Reconstruction (CbR) strategy as a reconstruction-based generative inference approach.
+\subsection{Baseline Correction}
+
+\textcolor{red}{All experiments were conducted using strict slide-isolated 5-fold design (see Appendix \ref{app:cv_schema}), ensuring that spectra originating from the same biopsy sample never appeared simultaneously in training and evaluation sets, while keeping class balance into account. We evaluated the proposed framework under three complementary settings: Train-on-Real, Test-on-Real (TR/TR), Train-on-Synthetic, Test-on-Real (TS/TR), and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) \cite{esteban2017real}. We also evaluated the proposed Classification by Reconstruction (CbR) strategy as a reconstruction-based generative inference approach.}
 
 \subsection{Classification Tasks}
 
@@ -578,7 +591,6 @@ Statistical significance was evaluated using bootstrap $p$-value estimates. Conf
 We performed a series of experiments to determine the effects of different design choices on the domain gap metric. Specifically, we tested (a) the reconstruction loss function (MSE, CosineLoss, or a combination of them), (b) the latent space dimension, and (c) the real-to-synthetic data ratio. Detailed results can be found in Appendix~\ref{app:extended_results}. The main findings are presented below.
 
 \subsection{Binary IDH Classification}
-
 \label{sec:results_binary}
 
 The binary classification is influenced by broad metabolic differences that can be detected using RS. Under the TR/TR setting, the best-performing discriminative models achieved accuracies above $70\%$ (see Table \ref{tab:binary_results}).
@@ -682,6 +694,7 @@ In this work, we addressed the problem of data scarcity in Raman spectroscopy-ba
 
 
 \printbibliography
+\nocite{*}
 
 \newpage
 \input{appendix}

@@ -290,7 +290,7 @@ these configs run `[trtr, cvae, tstr, tsrtr, stats_eval]`:
   as not directly comparable (pre-dates the CNN/Modal fix in §6).
 - Every variant in this sweep is a **single run per (β, schedule) configuration**,
   not a multi-seed average — the same single-CV-split caveat that applies to every
-  other formulation in this project (docs/mil_tiers_methodology.md §8 and
+  other formulation in this project (docs/mil_tiers_methodology.md §9 and
   throughout).
 - `exp_501`'s original epoch 1–70 loss history was permanently lost in an earlier
   resume-and-promote mistake (overwritten rather than concatenated, before

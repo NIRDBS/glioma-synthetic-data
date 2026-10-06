@@ -19,6 +19,7 @@ from typing import Optional
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import GroupShuffleSplit, train_test_split
+from sklearn.utils.class_weight import compute_class_weight, compute_sample_weight
 
 
 def set_seeds(config):
@@ -256,7 +257,10 @@ def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_na
         n_jobs=xgb_cfg['n_jobs'],
         tree_method=xgb_cfg['tree_method'],
     )
-    xgb_model.fit(X_train, y_train)
+    # XGBClassifier has no class_weight param (unlike RF/SVM above) -- the
+    # inverse-frequency weighting still needs to happen, just via sample_weight.
+    xgb_sample_weight = compute_sample_weight('balanced', y_train)
+    xgb_model.fit(X_train, y_train, sample_weight=xgb_sample_weight)
     accs['XGBoost'] = float(accuracy_score(y_val, xgb_model.predict(X_val)))
     xgb_model.save_model(str(model_dir / f"xgb_{fold_name}.json"))
     print(f"        Val Acc: {accs['XGBoost']:.4f}")
@@ -335,6 +339,18 @@ def train_cnn_only(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg, model_dir, 
     X_inner_val_cnn = X_inner_val.reshape(-1, n_features, 1)
     y_inner_val_oh = tf.keras.utils.to_categorical(y_inner_val, num_classes=num_classes)
 
+    # Inverse-frequency class weighting, computed on the fitting split only
+    # (never X_inner_val/X_val -- those must stay the real, unweighted
+    # distribution). Keras' class_weight is applied correctly for BOTH
+    # branches below, including the augmented tf.data.Dataset one -- Keras 3
+    # applies it via a per-batch argmax-on-y map (make_class_weight_map_fn),
+    # confirmed directly against the installed version rather than assumed
+    # from older TF/Keras docs that (incorrectly, for this version) say
+    # class_weight is Dataset-incompatible.
+    fit_classes = np.unique(y_fit)
+    fit_class_weights = compute_class_weight('balanced', classes=fit_classes, y=y_fit)
+    class_weight = dict(zip(fit_classes.tolist(), fit_class_weights.tolist()))
+
     if aug_cfg.get('enabled', False):
         gen = AugmentedDataGenerator(X_fit, y_fit, aug_cfg)
         # get_tf_dataset(epochs=1) yields exactly one epoch's worth of
@@ -381,6 +397,7 @@ def train_cnn_only(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg, model_dir, 
 
     history = cnn_model.fit(
         **fit_data_kwargs,
+        class_weight=class_weight,
         validation_data=(X_inner_val_cnn, y_inner_val_oh),
         epochs=cnn_cfg['epochs'],
         callbacks=callbacks,

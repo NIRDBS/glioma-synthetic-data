@@ -941,19 +941,74 @@ known-answer check this section exists to require.
 | **collapse at high $J$** | the failure mode predicted from the parameter-count/edge-count argument (§ the turn that proposed this build) | **confirmed directly**: on pure noise (no planted structure at all), $J{=}4.0$ collapses noticeably toward a single dominant state relative to $J{=}0$ |
 | blind classification | genuine, never-given-the-label classification end to end | 100% on a well-separated planted blob, after the two fixes above |
 
-### 8.4 Real-data run
+### 8.4 Real-data run — the $J{=}0$ control failed, and why that's informative rather than fatal
 
 `scripts/tier5_spatial_blind_bag_classification.py` — same genuine blind
-protocol as §4.3, swept over $J\in\{0,1,2,4\}$ per fold ($J{=}0$ is a
-built-in control: it should reproduce §4.3's already-measured numbers,
-0.710 mean / 0.698 pooled, confirming this is the same underlying fit
-machinery before trusting any $J{>}0$ result against it). Per-sweep cost
-measured directly before launching (not estimated): **~1.01× the
-non-spatial model's**, at real fold scale (225k instances) — the
-checkerboard z-step's sparse matrix operations are cheap relative to the
-NIW component-fitting step that dominates both models' cost equally; the
-3–8× theoretical slowdown estimated before building this was too
-pessimistic. Smoke-tested end to end on real `fold_0` data before the full
-launch (per this project's standing practice). Full sweep (5 folds × 4 $J$
-values × 3 chains, ~5 hours estimated from the measured per-chain cost):
-launched, results pending — to be added here once complete.
+protocol as §4.3, swept over $J\in\{0,1,2,4\}$ per fold (3 chains per
+fold per $J$, selected by `marginal_log_likelihood`, same convention as
+`fit_bayes_mil_chains`). Per-sweep cost measured directly before
+launching (not estimated): **~1.01× the non-spatial model's** at real
+fold scale (225k instances) — the checkerboard z-step's sparse-matrix
+operations are cheap relative to the NIW component-fitting step that
+dominates both models' cost equally; the 3–8× theoretical slowdown
+estimated before building this was too pessimistic. Smoke-tested end to
+end on real `fold_0` data before the full launch.
+
+**Results** (blind bag accuracy, mean across folds):
+
+| $J$ | fold_0 | fold_1 | fold_2 | fold_3 | fold_4 | mean |
+|---|---|---|---|---|---|---|
+| 0.0 | 0.571 | 0.750 | 0.857 | 0.636 | 0.333 | 0.630 |
+| 1.0 | 0.714 | 0.750 | 0.857 | 0.545 | 0.500 | 0.673 |
+| 2.0 | 0.571 | 0.500 | 0.786 | 0.545 | 0.500 | 0.581 |
+| 4.0 | 0.714 | 0.500 | 0.643 | 0.545 | 0.500 | 0.581 |
+
+**$J{=}0$ was included specifically as a control — it should reproduce
+§4.3's already-validated numbers (fold_0 0.643, fold_1 0.750, fold_2
+0.571, fold_3 1.000, fold_4 0.583, mean 0.710). It does not.** fold_1
+matches almost exactly (0.750 vs. 0.750); fold_0, fold_2, fold_3, and
+fold_4 all diverge substantially, fold_2 and fold_3 most of all (0.857
+vs. 0.571; 0.636 vs. 1.000).
+
+**Diagnosed before drawing any conclusion from the sweep, not assumed.**
+First checked whether the spatial pseudo-likelihood scorer itself
+disagrees with the exact closed-form scorer: on a well-separated planted
+signal (the same setup §8.3's blind-classification test uses), both
+score every held-out bag identically and correctly — the scorer is not
+broken, and the decision it produces is robust to the magnitude
+differences between the two approaches when the signal is unambiguous.
+That rules out a scoring bug and points at the other candidate: **the fit
+itself lands in a different mode.** `fit_bayes_mil_spatial`'s checkerboard
+Gibbs consumes random numbers in a completely different pattern from
+`fit_bayes_mil`'s one-shot vectorised draw — even at an identical seed,
+it walks a different path through the posterior. For fold_1 — already
+established (§2) as having three *mutually agreeing* chains, i.e. no real
+multimodality to be sensitive to — this makes no difference. For
+**fold_2 and fold_3 — the two folds this entire investigation has
+repeatedly found to be acutely multimodal** (§2's cross-fold consistency
+check, §2.1's chain-by-chain reinspection) — a different RNG path lands
+somewhere genuinely different, and the numbers diverge sharply, exactly
+where the rest of this document would predict they should.
+
+**Consequence: the $J{=}1/2/4$ vs. $J{=}0$ comparisons in this sweep are
+confounded by the same mode-selection sensitivity documented everywhere
+else in this tier, and the pattern in the table above (a mild uptick at
+$J{=}1$, a decline at $J{=}2/4$) cannot be attributed to the spatial
+coupling with any confidence** — it could equally be more of the same
+noise that made the $J{=}0$ control itself fail to reproduce. This is not
+a new problem specific to the spatial extension; it is the fourth
+independent surfacing of the same real-data multimodality problem this
+whole document has been documenting (the cross-fold check, §2; the
+chain-by-chain reinspection, §2.1; the Tier-0 cross-check, §2.1's
+addendum) — now showing up as "two different, mathematically-equivalent
+code paths land in different modes," rather than being fixed by building
+a more capable model on top.
+
+**What a trustworthy version of this comparison would need**: either many
+more chains per (fold, $J$) combination to make mode-selection noise
+small relative to any real $J$ effect, or using §2's cross-fold
+consistency check itself as an additional filter to identify, per fold,
+which $J$'s fit is landing in a cross-validated-trustworthy mode before
+comparing accuracy at all. Neither has been done — this section reports
+what was run and why it should not be over-interpreted, not a final
+verdict on whether spatial coupling helps on real data.

@@ -351,3 +351,88 @@ legitimate engineering work over §5a's outcome.
   batched computation, and a behavioral test that a bag's decision resists
   dilution by added noise instances (an attention model that had not
   actually learned to downweight noise would fail this).
+
+## 10. Update, 2026-10-12 — extended to the β sweep (607/608/609): shuffled-label control + the new key-instance utility test
+
+§5a's shuffled-label control was `exp_501`-only (β=2.0, the original,
+badly-collapsed CVAE). Closing that gap: the same control, plus the new
+key-instance utility test (docs/mil_tiers_methodology.md §10.2,
+`scripts/cvae_weighted_rf_vote.py`, extended this round to accept any
+tier's posterior via `--method`/`--variant`, not just Tier 4's), now run
+for all three Suite 600 β values (0.25/0.5/0.75).
+
+### 10.1 Spatial — shuffled-label control, all three β values
+
+Pooled Moran's I, lag 3 (headline), real vs. shuffled fit:
+
+| config (β) | real I / z | shuffled I / z | verdict |
+|---|---|---|---|
+| `607` (0.25) | +0.0742 / +19.10 | +0.0650 / +16.14 | **real > shuffled — the one exception** |
+| `608` (0.5) | +0.0541 / +13.10 | +0.0657 / +16.25 | shuffled > real — fails, same as `exp_501` |
+| `609` (0.75) | +0.0428 / +10.75 | +0.0610 / +15.24 | shuffled > real — fails, same as `exp_501` |
+
+`608` and `609` replicate `exp_501`'s finding exactly (§5a): shuffled
+coherence meets or beats real coherence, so the spatial claim fails at
+both of these β values too. `607` is the only config, across every tier and
+every β tested in this project to date, where the real fit shows *more*
+lag-3 coherence than its shuffled counterpart. The gap is real but modest
+(not the >2× margins seen in the clear failures) and no formal test has
+been run on the real-minus-shuffled difference itself — the project's
+existing convention only ever compared point estimates. Not yet treated as
+a surviving spatial claim; see §10.2 for the second, independent check
+before deciding whether this is worth a closer look.
+
+### 10.2 Key-instance utility test — first-ever run for Tier 3
+
+This test previously existed only for Tier 4 (CbR)'s `reconstruction`
+posterior (`docs/stage6_generative_mil.md` §9.3). It had never been run
+with attention's own posterior as the selection signal before this round,
+and a confound-(i) control (a same-size random-subsample, isolating
+"selection helps" from "less training data hurts") did not exist at all
+until this round. Baseline is the same shared Tier 0 RF reused from
+`exp_501` in every run (bag_acc≈0.8136) — identical across all three
+configs below, since only the posterior used for selection/weighting
+changes, not the classifier being scored:
+
+| config (β) | weighted vote | key-instance vote | **key_instance_train** | **random_subsample** (new) |
+|---|---|---|---|---|
+| `607` (0.25) | 0.7966 | 0.7966 | **0.8305** | 0.7966 |
+| `608` (0.5) | 0.8136 | 0.8136 | 0.7966 | 0.8136 |
+| `609` (0.75) | 0.7797 | 0.7966 | 0.7797 | 0.8136 |
+
+**Verified, 2026-10-12**: a `.predict()`-vs-`predict_proba()`-threshold bug
+was found and fixed in `scripts/cvae_weighted_rf_vote.py` (corrected one
+cell in `docs/stage6_generative_mil.md` §9.3/§10.2). All 9 (config × tier)
+key-instance cells, including this table's 9 attention/CbR values, were
+re-run post-fix; **none of this table's numbers changed** — re-confirmed
+identical to the above.
+
+`607` is again the only config where `key_instance_train` (a fresh RF
+fit on only the attention-selected key instances) beats its own
+size-matched random-subsample control — 0.8305 vs 0.7966, and also above
+the shared baseline (0.8136). `608` and `609` show no selection advantage:
+`608` ties baseline via random subsampling and selection does no better;
+`609`'s selection (0.7797) is actually below its own random-subsample
+control (0.8136).
+
+**Taken together with §10.1: `607`'s attention is the only result, across
+this entire project, where both independent falsification tests (spatial
+coherence and key-instance utility) point the same direction rather than
+failing.** Neither individually reaches the dramatic margins that
+characterize a clean failure elsewhere in this project, and neither has
+been checked for its own statistical significance beyond the existing
+per-variant bootstrap (none of the four key-instance variants' deltas vs.
+baseline are significant at `607`: p=0.69–0.79). This is flagged as the one
+candidate worth a closer look, not yet reported as a positive finding.
+
+## 11. Update, 2026-10-12 — v2 preprocessing (`exp_2.607`/`exp_2.608`)
+
+Same two tests, extended to the new fully-automated preprocessing
+(`src/data/preprocessing_v2.py`, no NMF/GMM/manual curation),
+β=0.25/0.5 (mirroring `607`/`608`). Attention fails its shuffled-label
+control at **both** v2 β values (real z=13.73/shuffled z=14.50 at β=0.25;
+11.56/14.38 at β=0.5) — does **not** replicate `607`'s v1 exception (§10.1).
+Key-instance: `exp_2.608` shows selection beating random
+(0.7966 vs 0.7797); `exp_2.607` does not (0.7966 vs 0.8136). Full numbers
+and the cross-tier comparison (CbR `encoder_head` is the exception under
+v2, not attention): `docs/experiment_inventory.md` §4.4/§4.5.

@@ -1,13 +1,12 @@
 """
-A new bag-aggregation experiment: keep Tier 0's existing RF (raw 571-band
-spectrum, unchanged, the same trained model everywhere else in this project)
-but replace its naive "1 instance = 1 vote" majority-vote pooling with two
-CVAE-informed alternatives, using exp_607's CbR 'reconstruction' posterior
-(src/mil/generative.py) -- the only Tier 3/4 variant that showed real,
-significant spatial coherence through lag 4-5 (results/exp_607/spatial_validation/
-stage5_cbr_reconstruction.json; 'encoder_head' was weaker/not significant at
-lag 3) -- as the per-instance signal deciding how much each instance's vote
-should count.
+The key-instance utility test (docs/mil_validation_test_suite.md §B): keep
+Tier 0's existing RF (raw 571-band spectrum, unchanged, the same trained
+model everywhere else in this project) but replace its naive "1 instance = 1
+vote" majority-vote pooling with alternatives informed by a given MIL tier's
+own per-instance posterior (any (method, variant) stored in a config's
+latent_labels.h5 -- originally built against exp_607's CbR 'reconstruction'
+posterior only; --method/--variant now make this reusable for any tier/config,
+e.g. attention's posterior, or CbR at a different beta).
 
 Three variants. The first two are pure post-hoc re-aggregation of two
 ALREADY-COMPUTED artifacts -- the shared TRTR RF's rf_fold_N.joblib and
@@ -44,7 +43,17 @@ re-aggregation of an old one:
   difference conflates "does key-instance filtering help" with "does less
   training data hurt."
 
-All three are compared against the plain majority-vote RF baseline (Tier 0's
+A fourth variant, the confound-(i) control for 'key_instance_train':
+
+- 'random_subsample': per fold, a fresh RandomForestClassifier fit on a
+  RANDOM subset of training instances the SAME SIZE as that fold's real
+  CVAE-selected key set (median split), scored on the identical
+  CVAE-selected key_val as 'key_instance_train' -- the only difference from
+  'key_instance_train' is which mechanism chose the training subset. If
+  'key_instance_train' does no better than this, the apparent effect is
+  attributable to training-set size, not CVAE selection.
+
+All four are compared against the plain majority-vote RF baseline (Tier 0's
 own rule, same already-trained model) via the same bag-level bootstrap used
 everywhere else in this project.
 
@@ -76,17 +85,31 @@ if str(PROJECT_ROOT) not in sys.path:
 from pipeline._common import make_loader, num_classes_of, prepare_fold
 from src.mil.store import read_posteriors
 from src.utils.statistical_evaluation import (
-    bag_decisions, bag_level_bootstrap, find_model_path, load_and_predict_proba,
-    summarize_bootstrap_diffs,
+    bag_decisions, bag_level_bootstrap, find_model_path, load_and_predict,
+    load_and_predict_proba, summarize_bootstrap_diffs,
 )
 
 
 def _collect_per_fold(config, cvae_config_name, method='cbr', variant='reconstruction'):
     """One pass over every fold: RF's per-instance P(class=1) (the shared
-    TRTR RF, unchanged), the CVAE's per-instance posterior for the SAME
-    out-of-sample instances (same order -- see module docstring/commit
-    message for the alignment argument), and the true bag id/label.
-    Returns concatenated 1-D arrays (pooled across folds)."""
+    TRTR RF, unchanged) AND its own ``.predict()`` hard label, the CVAE's
+    per-instance posterior for the SAME out-of-sample instances (same order
+    -- see module docstring/commit message for the alignment argument), and
+    the true bag id/label. Returns concatenated 1-D arrays (pooled across
+    folds).
+
+    Both ``rf_p1`` (continuous) and ``rf_pred_hard`` (``.predict()``) are
+    returned deliberately, not just the former thresholded at 0.5: confirmed
+    directly on real data that sklearn's ``RandomForestClassifier.predict()``
+    and ``(predict_proba()[:, 1] >= 0.5)`` can disagree on a real,
+    non-trivial fraction of instances (69/3686 for one bag, enough to flip
+    that bag's majority vote) -- a genuine floating-point-accumulation
+    quirk, not a tie-breaking edge case. The project's established
+    convention everywhere else (``load_and_predict``, used by
+    `scripts/stage6_bag_eval.py`/`pipeline/evaluation_stage.py`) is
+    ``.predict()``; any hard decision here must match it, or this script's
+    'baseline' silently stops being the same baseline every other number in
+    the project is compared against."""
     from src.utils.config_manager import ConfigManager
 
     cvae_config = ConfigManager.load_config(cvae_config_name).to_dict()
@@ -96,13 +119,14 @@ def _collect_per_fold(config, cvae_config_name, method='cbr', variant='reconstru
     loader = make_loader(config)
     full_bag_ids = loader.groups
 
-    all_rf_p1, all_cvae_p1, all_non_diag, all_bag_ids, all_y = [], [], [], [], []
+    all_rf_p1, all_rf_pred_hard, all_cvae_p1, all_non_diag, all_bag_ids, all_y = [], [], [], [], [], []
 
     for fold_idx, fold_data in enumerate(loader):
         fd = prepare_fold(fold_data, config, cap_train=False)
         rf_path = find_model_path(rf_dir, 'rf', '.joblib', fold_idx)
         rf_proba = load_and_predict_proba(rf_path, 'sklearn', fd.X_val)
         rf_p1 = rf_proba[:, 1]
+        rf_pred_hard_fold = load_and_predict(rf_path, 'sklearn', fd.X_val)
 
         data = read_posteriors(store_path, method, variant, fold_data['fold_name'])
         posterior, in_sample = data['posterior'], data['in_sample']
@@ -120,13 +144,14 @@ def _collect_per_fold(config, cvae_config_name, method='cbr', variant='reconstru
         cvae_p1 = diag_norm[:, 1]
 
         all_rf_p1.append(rf_p1)
+        all_rf_pred_hard.append(rf_pred_hard_fold)
         all_cvae_p1.append(cvae_p1)
         all_non_diag.append(non_diag)
         all_bag_ids.append(fd.val_bag_ids if fd.val_bag_ids is not None else fold_data['val_sample_ids'])
         all_y.append(fd.y_val)
         print(f"  fold_{fold_idx}: {len(rf_p1)} val instances")
 
-    return (np.concatenate(all_rf_p1), np.concatenate(all_cvae_p1),
+    return (np.concatenate(all_rf_p1), np.concatenate(all_rf_pred_hard), np.concatenate(all_cvae_p1),
            np.concatenate(all_non_diag), np.concatenate(all_bag_ids), np.concatenate(all_y))
 
 
@@ -164,6 +189,63 @@ def _collect_train_and_val_per_fold(config, cvae_config_name, method='cbr', vari
         })
         print(f"  {fold_data['fold_name']}: train={fd.X_train.shape[0]}  val={fd.X_val.shape[0]}")
     return per_fold
+
+
+def _fit_and_score_random_subsample_rf(per_fold, rf_kwargs, seed=123):
+    """Confound-(i) control for 'key_instance_train' (docs/mil_validation_test_suite.md
+    §B): per fold, train a fresh RF on a RANDOM subset of training instances
+    the SAME SIZE as that fold's real CVAE-selected key set, but score
+    validation using the identical CVAE-selected key_val as
+    'key_instance_train' -- the only thing that differs between this and
+    'key_instance_train' is which mechanism chose the training subset
+    (random vs. CVAE-selected), size held fixed. If 'key_instance_train'
+    and this control perform similarly, the apparent effect of key-instance
+    training is attributable to training-set SIZE, not CVAE selection; if
+    'key_instance_train' clearly beats this control, the CVAE's selection is
+    doing real work beyond just subsampling."""
+    from sklearn.ensemble import RandomForestClassifier
+
+    rng = np.random.default_rng(seed)
+    per_bag_fold_scores = {}
+    bag_true = {}
+    n_fallback = 0
+    for pf in per_fold:
+        threshold = float(np.median(pf['train_non_diag']))
+        key_train = pf['train_non_diag'] < threshold
+        key_val = pf['val_non_diag'] < threshold  # same val selection as key_instance_train
+
+        n_train, n_key = len(key_train), int(key_train.sum())
+        random_train = np.zeros(n_train, dtype=bool)
+        random_train[rng.choice(n_train, size=n_key, replace=False)] = True
+
+        rf = RandomForestClassifier(
+            n_estimators=rf_kwargs.get('n_estimators', 100),
+            class_weight=rf_kwargs.get('class_weight', 'balanced'),
+            random_state=rf_kwargs.get('random_state', seed),
+            n_jobs=rf_kwargs.get('n_jobs', -1),
+        )
+        rf.fit(pf['X_train'][random_train], pf['y_train'][random_train])
+        print(f"  {pf['fold_name']}: random_train={random_train.sum()}/{n_train} "
+             f"(size-matched to key_train={n_key})  "
+             f"key_val={key_val.sum()}/{len(key_val)} ({key_val.mean():.1%})")
+
+        bag_ids_val, y_val, X_val = pf['val_bag_ids'], pf['y_val'], pf['X_val']
+        for b in np.unique(bag_ids_val):
+            m = bag_ids_val == b
+            m_key = m & key_val
+            if not m_key.any():
+                m_key = m
+                n_fallback += 1
+            pred_b = rf.predict(X_val[m_key])
+            score = float((pred_b == 1).mean())
+            per_bag_fold_scores.setdefault(b, []).append(score)
+            bag_true[b] = int(y_val[m][0])
+
+    bags = np.array(sorted(per_bag_fold_scores))
+    bag_scores = np.array([np.mean(per_bag_fold_scores[b]) for b in bags])
+    bag_pred = (bag_scores >= 0.5).astype(int)
+    bag_true_arr = np.array([bag_true[b] for b in bags])
+    return bags, bag_pred, bag_true_arr, n_fallback
 
 
 def _fit_and_score_key_instance_train_rf(per_fold, rf_kwargs, seed=42):
@@ -229,18 +311,20 @@ def _weighted_vote_bag_decision(rf_p1, cvae_p1, bag_ids):
     return unique_bags, bag_pred
 
 
-def _key_instance_vote_bag_decision(rf_p1, non_diag_mass, bag_ids):
-    """Per bag: plain majority vote of RF's hard prediction, restricted to
-    'key' instances. 'Key' is a median split on non-diagnostic mass, NOT an
-    absolute 0.5 threshold: for this K=2 joint-softmax posterior,
-    non-diagnostic mass is provably bounded at (K-1)/(2K-1)=1/3
+def _key_instance_vote_bag_decision(rf_pred_hard, non_diag_mass, bag_ids):
+    """Per bag: plain majority vote of RF's hard prediction (``.predict()``,
+    NOT a manual ``predict_proba()>=0.5`` threshold -- see
+    ``_collect_per_fold``'s docstring for why these can genuinely disagree),
+    restricted to 'key' instances. 'Key' is a median split on non-diagnostic
+    mass, NOT an absolute 0.5 threshold: for this K=2 joint-softmax
+    posterior, non-diagnostic mass is provably bounded at (K-1)/(2K-1)=1/3
     (docs/mil_tiers_methodology.md §7) -- confirmed directly on this data
     (observed max=0.3333) -- so a 0.5 threshold is structurally unreachable
     and would make every instance 'key', a silent no-op. The median split
     gives a real, data-driven half/half separation instead. Falls back to
     all instances if a bag somehow has none (flagged, not silently
     dropped) -- shouldn't trigger under a median split but kept as a guard."""
-    rf_pred = (rf_p1 >= 0.5).astype(int)
+    rf_pred = rf_pred_hard
     key_threshold = float(np.median(non_diag_mass))
     key = non_diag_mass < key_threshold
     print(f"  key-instance threshold (median non-diagnostic mass): {key_threshold:.4f} "
@@ -262,11 +346,15 @@ def _key_instance_vote_bag_decision(rf_p1, non_diag_mass, bag_ids):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--config', default='exp_607', help="config whose RF/data to use (shares exp_501's TRTR)")
-    parser.add_argument('--cvae-config', default='exp_607', help="config whose CbR posterior to use as the weighting signal")
+    parser.add_argument('--cvae-config', default='exp_607', help="config whose posterior to use as the weighting signal")
+    parser.add_argument('--method', default='cbr', help="posterior source stored in latent_labels.h5, e.g. 'cbr', 'attention'")
+    parser.add_argument('--variant', default='reconstruction',
+                        help="e.g. 'reconstruction'/'encoder_head' for cbr, 'attention' for attention")
     parser.add_argument('--n-boot', type=int, default=1000)
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--random-subsample-seed', type=int, default=123)
     parser.add_argument('--skip-train-variant', action='store_true',
-                        help="skip 'key_instance_train' (fits a fresh RF per fold -- slower)")
+                        help="skip 'key_instance_train'/'random_subsample' (fits a fresh RF per fold -- slower)")
     args = parser.parse_args()
 
     from src.utils.config_manager import ConfigManager
@@ -276,18 +364,21 @@ def main():
     rf_kwargs = config['models'].get('random_forest', {})
 
     print(f"\n{'='*80}\nCVAE-WEIGHTED RF VOTE: RF from {config['paths']['models_baseline_dir']}, "
-         f"CbR/reconstruction from {args.cvae_config}\n{'='*80}")
-    rf_p1, cvae_p1, non_diag, bag_ids, y = _collect_per_fold(config, args.cvae_config)
+         f"{args.method}/{args.variant} from {args.cvae_config}\n{'='*80}")
+    rf_p1, rf_pred_hard, cvae_p1, non_diag, bag_ids, y = _collect_per_fold(
+        config, args.cvae_config, method=args.method, variant=args.variant)
     print(f"  pooled: {len(rf_p1)} out-of-sample instances, {len(np.unique(bag_ids))} unique bags")
 
     # Baseline: plain majority vote (Tier 0's own rule), same already-trained RF.
-    rf_pred_hard = (rf_p1 >= 0.5).astype(int)
+    # Uses rf_pred_hard (.predict()), NOT (rf_p1 >= 0.5) -- see _collect_per_fold's
+    # docstring: these can genuinely disagree, and only .predict() matches the
+    # project-wide convention (load_and_predict) this baseline must stay comparable to.
     baseline_bags, baseline_pred, baseline_true = bag_decisions(rf_pred_hard, bag_ids, y, rule='majority')
     baseline_true_by_bag = dict(zip(baseline_bags, baseline_true))
     baseline_pred_by_bag = dict(zip(baseline_bags, baseline_pred))
 
     weighted_bags, weighted_pred = _weighted_vote_bag_decision(rf_p1, cvae_p1, bag_ids)
-    key_bags, key_pred, n_fallback = _key_instance_vote_bag_decision(rf_p1, non_diag, bag_ids)
+    key_bags, key_pred, n_fallback = _key_instance_vote_bag_decision(rf_pred_hard, non_diag, bag_ids)
     assert np.array_equal(baseline_bags, weighted_bags) and np.array_equal(baseline_bags, key_bags)
 
     baseline_acc = accuracy_score(baseline_true, baseline_pred)
@@ -305,7 +396,7 @@ def main():
 
     if not args.skip_train_variant:
         print("\n  Fitting key_instance_train (a NEW RF per fold on key-only training instances)...")
-        per_fold = _collect_train_and_val_per_fold(config, args.cvae_config)
+        per_fold = _collect_train_and_val_per_fold(config, args.cvae_config, method=args.method, variant=args.variant)
         train_bags, train_pred, train_true, train_n_fallback = \
             _fit_and_score_key_instance_train_rf(per_fold, rf_kwargs, seed=args.seed)
         # Realign to baseline's bag order/dict (bag_level_bootstrap needs paired arrays).
@@ -318,6 +409,22 @@ def main():
             f'key_instance_train (NEW RF, median split, {train_n_fallback} bags fell back)',
             aligned_baseline_pred, train_pred, aligned_baseline_true, train_acc,
         ))
+
+        print("\n  Fitting random_subsample (confound-(i) control, size-matched random training set)...")
+        rs_bags, rs_pred, rs_true, rs_n_fallback = \
+            _fit_and_score_random_subsample_rf(per_fold, rf_kwargs, seed=args.random_subsample_seed)
+        aligned_rs_baseline_pred = np.array([baseline_pred_by_bag[b] for b in rs_bags])
+        aligned_rs_baseline_true = np.array([baseline_true_by_bag[b] for b in rs_bags])
+        assert np.array_equal(aligned_rs_baseline_true, rs_true), \
+            "bag true-label mismatch between baseline and random_subsample -- alignment bug"
+        rs_acc = accuracy_score(rs_true, rs_pred)
+        results.append((
+            f'random_subsample (confound-(i) control, size-matched, {rs_n_fallback} bags fell back)',
+            aligned_rs_baseline_pred, rs_pred, aligned_rs_baseline_true, rs_acc,
+        ))
+        print(f"\n  [confound check] key_instance_train vs random_subsample: "
+             f"{train_acc:.4f} vs {rs_acc:.4f}  "
+             f"({'selection beats size-matched random' if train_acc > rs_acc else 'no better than random subsampling of the same size' if train_acc <= rs_acc else ''})")
 
     for label, b_pred, cand_pred, b_true, cand_acc in results:
         _, _, diffs = bag_level_bootstrap(b_pred, cand_pred, b_true,

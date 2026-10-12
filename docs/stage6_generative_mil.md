@@ -559,12 +559,27 @@ unmodified RF, all instances, equal vote (bag_acc 0.814):
 | Variant | bag_acc | Δ | p |
 |---|---|---|---|
 | Weighted vote (same RF, CVAE P1 as vote weight) | 0.814 | ±0.000 | 1.000 |
-| Key-instance vote (same RF, median split, 0 fallbacks) | 0.797 | −0.017 | 0.680 |
+| Key-instance vote (same RF, median split, 0 fallbacks) | 0.814 | ±0.000 | 1.000 |
 | **Key-instance train** (new RF on key-only instances) | **0.763** | **−0.051** | 0.230 |
 
-All three fail to improve on equal-vote pooling, and the strongest form of
-the test — actually training on the selected instances — is the worst of
-the three. **This is the substantive finding of this update**: the
+**Correction, 2026-10-12**: the key-instance-vote row originally read 0.797
+(Δ−0.017, p=0.680), computed by thresholding the shared RF's
+`predict_proba()` at 0.5 instead of calling its own `.predict()` — these can
+genuinely disagree on real data (confirmed: sklearn's RandomForest flips
+69/3686 instances for one bag here, enough to change that bag's majority).
+Fixed in `scripts/cvae_weighted_rf_vote.py` (`_collect_per_fold` now returns
+and uses the model's own `.predict()` output); re-run on all 15
+(config × tier/variant) cells this project has used this script for (§10.2,
+§11, `docs/stage6_attention_mil.md` §10.2) and confirmed this is the
+**only** cell anywhere that the fix actually changed — every other baseline/
+weighted/key-instance-vote number already matched `.predict()` by
+coincidence. See `tests/test_cvae_weighted_rf_vote.py::test_collect_per_fold_returns_predict_not_thresholded_proba`
+for the regression test.
+
+Weighted vote and key-instance vote both tie equal-vote pooling exactly
+(neither helps nor hurts), and the strongest form of the test — actually
+training on the selected instances — is the only one that underperforms.
+**This is the substantive finding of this update**: the
 instances `reconstruction`'s posterior selects are not the instances the
 decision depends on. A posterior can be spatially coherent at lag ≥3
 (§9.2) and still be selecting on something the classification task does not
@@ -595,3 +610,107 @@ documented Tier 0/1/2/4 shared machinery (docs/mil_tiers_methodology.md §9),
 so it is the canonical one for cross-tier comparison. The `stats_eval`
 side-computation should not be quoted alongside Tier 4 numbers without
 saying which convention produced it.
+
+## 10. Update, 2026-10-12 — the two gaps §9.2/§9.3 flagged are now closed, and extended to 608/609
+
+§9.2 explicitly flagged `exp_607`'s CbR spatial result as uncontrolled
+("No shuffled-label control has been run for `exp_607`... until it is,
+this is an uncontrolled result"). §9.3 flagged the key-instance test's
+training-size confound as unresolved ("a random-50% control has not been
+run and is required before the strong reading"). Both are now closed, and
+both tests are extended to `608`/`609` (β=0.5/0.75) — requiring a full
+second CVAE per config, trained from scratch under permuted labels
+(`scripts/stage6_shuffled_label_control.py --method cvae`, since CbR's
+posterior is the CVAE's own encoder/decoder output — there is no CbR model
+independent of the CVAE weights themselves), before CbR's posterior could
+even be computed under the shuffled condition.
+
+### 10.1 Spatial — shuffled-label control, closing §9.2's gap
+
+Pooled Moran's I, lag 3 (headline), real vs. shuffled fit:
+
+| config (β) | variant | real I / z | shuffled I / z | verdict |
+|---|---|---|---|---|
+| `607` (0.25) | `reconstruction` | +0.1436 / +34.54 | +0.1497 / +37.09 | shuffled ≥ real — **fails** |
+| `607` (0.25) | `encoder_head` | +0.0557 / +12.93 | +0.0561 / +13.40 | ~identical — **fails** |
+| `608` (0.5) | `reconstruction` | +0.1570 / +38.88 | +0.1710 / +42.08 | shuffled > real — **fails** |
+| `608` (0.5) | `encoder_head` | +0.0594 / +13.79 | +0.0565 / +13.59 | ~identical — **fails** |
+| `609` (0.75) | `reconstruction` | +0.1577 / +38.56 | +0.1641 / +40.77 | shuffled > real — **fails** |
+| `609` (0.75) | `encoder_head` | +0.0612 / +14.12 | +0.0581 / +13.57 | ~identical — **fails** |
+
+§9.2's own prior ("given this pattern [mi-SVM, attention both failed], that
+result should be treated as provisional, not assumed to survive, until its
+own control is run") is confirmed exactly: `reconstruction`'s apparently
+strong real coherence (the largest raw Moran's I of any tier/variant in
+this project, I≈0.14–0.16) is matched or exceeded by its shuffled
+counterpart at all three β values, with no exception. `encoder_head`
+repeats the `exp_501` `encoder_head` pattern (real and shuffled agree to
+within noise) at all three β values too. **All six (config × variant)
+cells fail — this closes the "uncontrolled result" caveat definitively,
+in the same direction as every other tier tested in this project except
+one** (`607`'s attention — docs/stage6_attention_mil.md §10.1).
+
+### 10.2 Key-instance utility test — §9.3's confound control added, extended to 608/609
+
+The missing control: a fresh RF trained on a **random**, size-matched
+subset of training instances (not CVAE-selected), scored on the identical
+CVAE-selected validation instances `key_instance_train` uses — isolating
+"does the CVAE's selection help" from "does less training data hurt."
+Implementation added to `scripts/cvae_weighted_rf_vote.py`
+(`_fit_and_score_random_subsample_rf`, tested in
+`tests/test_cvae_weighted_rf_vote.py`, 6/6 passing). Shared baseline
+(the same Tier 0 RF reused from `exp_501` in every run) ≈0.8136. Numbers
+below are post-fix (see §9.3's correction note); `607`/`reconstruction`'s
+key-instance-vote cell is the only one that changed (0.7966 → 0.8136):
+
+| config (β) | variant | weighted | key-instance vote | **key_instance_train** | **random_subsample** (new) |
+|---|---|---|---|---|---|
+| `607` (0.25) | `reconstruction` | 0.8136 | 0.8136 | 0.7627 | 0.8136 |
+| `607` (0.25) | `encoder_head` | 0.7797 | 0.7966 | 0.7966 | 0.7966 |
+| `608` (0.5) | `reconstruction` | 0.8136 | 0.7966 | 0.7627 | 0.7627 |
+| `608` (0.5) | `encoder_head` | 0.7627 | 0.8136 | 0.8136 | 0.8136 |
+| `609` (0.75) | `reconstruction` | 0.8136 | 0.7797 | **0.7458** | 0.7627 |
+| `609` (0.75) | `encoder_head` | 0.7627 | 0.8136 | 0.8136 | 0.8136 |
+
+§9.3's original concern is resolved, and resolved against the selection
+hypothesis: `607`'s `reconstruction` `key_instance_train` (0.7627) is now
+directly compared to its size-matched random control (0.8136) rather than
+only to the full-data baseline, and the random control is **better**, not
+worse — the apparent deficit §9.3 found was not a training-size artifact
+masking a real selection benefit; a same-size random subset does strictly
+better than the CVAE's own choice of instances. `608`'s `reconstruction`
+ties its random control exactly (0.7627 both). `609`'s `reconstruction`
+is the clearest case in either direction found so far: `key_instance_train`
+(0.7458) is *significantly worse* than baseline (p=0.022) and also worse
+than its random-subsample control (0.7627, not independently significant,
+p=0.056) — CbR's `reconstruction` posterior is actively selecting instances
+that hurt a classifier trained on them, not merely failing to help.
+`encoder_head` shows no selection effect at any β — tied or worse than
+random at every config.
+
+**Conclusion, replacing §9.3's provisional reading**: CbR (both variants,
+all three tested β values) shows no case where CVAE-based key-instance
+selection beats a same-size random subset — one case (`609`
+`reconstruction`) shows selection significantly *hurting*. Unlike Tier 3's
+attention (docs/stage6_attention_mil.md §10.2), CbR has no combination that
+survives both this test and its own spatial shuffled-label control.
+
+## 11. Update, 2026-10-12 — v2 preprocessing (`exp_2.607`/`exp_2.608`): the one combination that DOES survive both tests
+
+Same two tests, extended to the new fully-automated preprocessing
+(`src/data/preprocessing_v2.py`), β=0.25/0.5. `reconstruction` fails its
+shuffled-label control at both β (real/shuffled z: 30.40/30.50 at β=0.25,
+34.90/35.07 at β=0.5 — shuffled ≈ real each time) and shows no key-instance
+advantage. **`encoder_head` is different: real spatial coherence beats
+shuffled at *both* β (10.89/8.46 at β=0.25, 10.54/7.98 at β=0.5), and its
+key-instance test also shows selection beating the size-matched random
+control at both β (0.8305 vs 0.7966 at β=0.25, 0.8136 vs 0.7797 at β=0.5).**
+This is the only tier/variant/preprocessing combination in the entire
+project where *both* independent falsification tests point the same
+direction at more than one data point — a more consistent signal than
+`607`'s v1 attention exception (one data point, `docs/stage6_attention_mil.md`
+§10). Neither family's real-vs-shuffled or selection-vs-random gap has been
+checked for its own statistical significance yet. Full numbers:
+`docs/experiment_inventory.md` §4.4/§4.5. Queued for a closer look
+alongside `607`'s attention (`docs/experiment_inventory.md` §9, gap #10),
+not yet investigated.

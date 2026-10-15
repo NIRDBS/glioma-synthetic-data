@@ -1,0 +1,166 @@
+# Exploratory: same model/training settings as exp_608 (Suite 600, flat
+# beta=0.5), but reading a NEW preprocessing pipeline (v3) that uses a FIXED
+# max-intensity threshold (0.4) for the strong-signal mask, in the same
+# automated, no-NMF/GMM-clustering spirit as v2 -- src/data/preprocessing_v3.py.
+# Motivation: an informal 0.6-vs-0.8 fixed-threshold comparison on the main
+# pipeline found looser cuts performing BETTER (counter-intuitive -- lower
+# signal intensity would be expected to mean lower quality). Confirmed
+# directly: v1's own current default dataset (glioma_mil.h5) already
+# corresponds to this same fixed-threshold family at threshold=0.6 (its
+# precomputed strong_signal_mask.npy files were built from exactly
+# max_intensity >= 0.6, _archive/dev_scripts/batch_process_all_slides.py) --
+# so 0.4 here tests a WIDER mask than the project's actual current default,
+# continuing the observed trend, not an isolated new idea. This is a
+# different preprocessing pipeline (v3, glioma-preproc-3.h5), not an instance
+# filter like exp_3.608's viable_legacy ablation -- nothing is reused from
+# exp_608/exp_501/exp_3.608: own TRTR, own CVAE, own everything.
+name: exp_4.608
+description: "v3-preprocessing (fixed threshold=0.4) replication of exp_608: same settings (beta=0.5, 120 epochs), new dataset (glioma-preproc-3.h5), full retrain -- nothing transferred"
+version: "1.0"
+
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  results_root: "results"
+  experiment_root: "results/exp_4.608"
+  data_output_dir: "results/exp_4.608/data"
+  processed_file: "data/processed/glioma-preproc-3.h5"   # <-- the only dataset-level change
+
+  models_baseline_dir: "results/exp_4.608/models/trtr"   # OWN TRTR -- nothing to reuse, dataset changed
+  models_tstr_dir: "results/exp_4.608/models/tstr"
+  models_tsrtr_dir: "results/exp_4.608/models/tsrtr"
+  models_cvae_dir: "results/exp_4.608/models/cvae"
+  synthetic_dir: "results/exp_4.608/synthetic"
+  quality_dir: "results/exp_4.608/data_quality"
+  statistical_dir: "results/exp_4.608/statistical_eval"
+
+tsrtr:
+  synth_ratio: 1.0
+  cvae_weights_dir: "results/exp_4.608/models/cvae"
+
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]
+
+preprocessing:
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+  airpls_lambda: 10000
+  airpls_porder: 1
+  normalization: "minmax"
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: false
+  ignore_samples: []
+
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+training:
+  random_seed: 42
+  verbose: 1
+
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # GPU job -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 120
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 0.5   # matches exp_608 exactly
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+mil:
+  pi_floor: 0.02
+  svm_subsample_per_bag: 500
+  cbr_temperature: 0.001
+  bayes: {}   # defaults: pca_components=10, n_chains=3, n_iter=600, burn_in=200, thin=5
+
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+notes: |
+  - Direct request: "4.608 with a fixed spectrum max intensity threshold at
+    0.4 ... in the same spirit as v2 preprocessing". New preprocessing
+    pipeline (v3, src/data/preprocessing_v3.py): identical to v2 (automated,
+    no NMF/GMM clustering, no manual curation) except the strong-signal mask
+    is a FIXED threshold (max_intensity > 0.4 after cube_normalize) instead
+    of v2's adaptive per-slide percentile rule.
+  - Policy for this experiment and its MIL tiers: only GPU training jobs
+    (CVAE, CNN) run on Modal; CPU-parallel work (mi-SVM's fold-parallel fit,
+    etc.) stays local -- best cost/time balance at the moment, per explicit
+    instruction, a deliberate departure from exp_2.607-609's mi-SVM-on-Modal
+    pattern.
+  - TRTR is OWN, not reused from exp_501/exp_608/exp_3.608/exp_2.608 -- the
+    training instances themselves changed (different pixels survive the
+    mask, different per-spectrum baseline-corrected values), so none of
+    those are valid references for this dataset.
+  - This dataset's HDF5 has no tissue_cluster/viable_legacy columns (v3 has
+    no clustering stage at all, same as v2) -- Tier 2 (EM) and the spatial-
+    validation script's external-agreement check are not applicable here
+    without further work; Tier 1 (mi-SVM) is unaffected.
+  - MIL tiers requested: Tier 1 (mi-svm), Tier 3 (attention), Tier 4 (cbr),
+    Tier 5 (bayes_mil) -- same pattern as exp_2.607-609/exp_3.608's backlog.

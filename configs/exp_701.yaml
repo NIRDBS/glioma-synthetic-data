@@ -1,0 +1,146 @@
+# Article §8.III ablation: CVAE latent dimension, 16/32/64. exp_608 IS the
+# latent_dim=32 point (already exists); this is latent_dim=16, otherwise
+# byte-identical to exp_608 (beta=0.5, 120 epochs, same v1 dataset
+# glioma_mil.h5, same CV splits, same model hyperparameters). TRTR is REUSED
+# from exp_501 (same reasoning as exp_607/608/609: TRTR doesn't touch the
+# CVAE at all, so it's identical regardless of latent_dim).
+name: exp_701
+description: "Latent-dim ablation (article S8.III): latent_dim=16, otherwise identical to exp_608 (beta=0.5, 120 epochs, TRTR reused from exp_501)"
+version: "1.0"
+
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  results_root: "results"
+  experiment_root: "results/exp_701"
+  data_output_dir: "results/exp_701/data"
+  processed_file: "data/processed/glioma_mil.h5"
+
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED -- see exp_607.yaml's note
+  models_tstr_dir: "results/exp_701/models/tstr"
+  models_tsrtr_dir: "results/exp_701/models/tsrtr"
+  models_cvae_dir: "results/exp_701/models/cvae"
+  synthetic_dir: "results/exp_701/synthetic"
+  quality_dir: "results/exp_701/data_quality"
+  statistical_dir: "results/exp_701/statistical_eval"
+
+tsrtr:
+  synth_ratio: 1.0
+  cvae_weights_dir: "results/exp_701/models/cvae"
+
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]
+
+preprocessing:
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+  airpls_lambda: 10000
+  airpls_porder: 1
+  normalization: "minmax"
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: false
+  ignore_samples: []
+
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+training:
+  random_seed: 42
+  verbose: 1
+
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # GPU job -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 120
+    learning_rate: 0.001
+    latent_dim: 16   # <-- THE ABLATED SETTING (exp_608 has 32)
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 0.5   # matches exp_608 exactly
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+mil:
+  pi_floor: 0.02
+  svm_subsample_per_bag: 500
+  cbr_temperature: 0.001
+  bayes: {}   # defaults: pca_components=10, n_chains=3, n_iter=600, burn_in=200, thin=5
+
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+notes: |
+  - Article §8.III ablation: "Latent dimension: 16, 32, 64" -- exp_608 is the
+    32 point; this is 16, exp_702 is 64. Only `models.cvae.latent_dim`
+    differs from exp_608; everything else (beta=0.5, 120 epochs, dataset,
+    splits, all other hyperparameters) is byte-identical.
+  - TRTR reused from exp_501 (same as exp_607/608/609) -- latent_dim only
+    affects the CVAE's bottleneck, never touches TRTR's classifiers.
+  - GPU-only Modal policy: CVAE and CNN dispatch to Modal; Apollo/RF/XGBoost
+    stay local.
+  - MIL tiers not requested yet for this ablation -- base suite
+    (TRTR/CVAE/TSTR/TSRTR/stats_eval) first, to compare against exp_608
+    directly before deciding whether MIL coverage is needed here too.

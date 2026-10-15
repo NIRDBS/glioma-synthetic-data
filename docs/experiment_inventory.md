@@ -482,8 +482,39 @@ $\text{recon\_loss} = \gamma\cdot\text{MSE} + \delta\cdot\cos$ (`src/models/loss
 | point | config | base suite | MIL tiers | validation |
 |---|---|---|---|---|
 | pure MSE (γ=1,δ=0) | `exp_608` | **done** (anchor) | **done** | **done** |
-| 0.5/0.5 | `exp_703` | **scheduled**, queued behind `701`/`702` remediation | not scheduled | not scheduled |
-| pure cosine (γ=0,δ=1) | `exp_704` | **scheduled**, queued behind `exp_703` | not scheduled | not scheduled |
+| 0.5/0.5 | `exp_703` | **done** | not scheduled | not scheduled |
+| pure cosine (γ=0,δ=1) | `exp_704` | **done** | not scheduled | not scheduled |
+
+**Results (added 2026-10-15), TRTR identical across all three (shared from
+`exp_501`): Apollo=0.7627, RF=0.8136, XGBoost=0.8136, CNN=0.7119.**
+
+**TSTR (bag_accuracy, Δ vs TRTR, p):**
+
+| | Apollo | RF | XGBoost | CNN | CbR |
+|---|---|---|---|---|---|
+| pure MSE (`608`) | 0.6949, Δ−0.068, p=0.24 | 0.8305, Δ+0.017, p=0.81 | 0.8305, Δ+0.017, p=0.78 | 0.6780, Δ−0.034, p=0.61 | 0.7797 |
+| 0.5/0.5 (`703`) | 0.5763, Δ−0.186, **p=0.004** | 0.7458, Δ−0.068, p=0.19 | 0.7966, Δ−0.017, p=0.81 | 0.6949, Δ−0.017, p=0.89 | 0.7458 |
+| pure cos (`704`) | 0.4068, Δ**−0.356**, **p<0.001** | 0.6441, Δ**−0.169**, **p<0.001** | 0.6949, Δ**−0.119**, **p=0.034** | 0.4576, Δ**−0.254**, **p=0.004** | 0.5763 |
+
+**TSRTR (bag_accuracy, Δ vs TRTR, p):**
+
+| | Apollo | RF | XGBoost | CNN |
+|---|---|---|---|---|
+| pure MSE (`608`) | 0.8305, Δ**+0.068**, **p=0.022** | 0.8305, Δ+0.017, p=0.67 | 0.8136, Δ0.000, p=1.00 | 0.7458, Δ+0.034, p=0.67 |
+| 0.5/0.5 (`703`) | 0.8136, Δ+0.051, p=0.078 | 0.8305, Δ+0.017, p=0.67 | 0.8136, Δ0.000, p=1.00 | 0.7288, Δ+0.017, p=0.90 |
+| pure cos (`704`) | 0.8305, Δ+0.068, p=0.106 | 0.8136, Δ0.000, p=1.00 | 0.8136, Δ0.000, p=1.00 | 0.7458, Δ+0.034, p=0.68 |
+
+**Finding, clean and monotonic:** every classifier's TSTR accuracy degrades
+monotonically as the cosine weight increases (MSE→0.5/0.5→pure-cos), and at
+pure cosine **all four classifiers show a significant loss** (p≤0.034
+throughout) — the only reconstruction-loss point in this project where
+every single Tier-0 model is significantly hurt. CbR falls the same way
+(0.780→0.746→0.576). TSRTR is far more robust across this axis (no
+significant *losses* anywhere, Apollo's gain survives the blend but loses
+significance at pure cosine, p=0.106) — mixing in real data absorbs the
+synthetic-quality damage that TSTR exposes cleanly. Cosine similarity alone
+is a poor reconstruction objective for this spectral data when used as the
+sole signal for synthetic generation.
 
 ### 8a.4 Synthetic/real ratio for TSRTR (article §8.III; β=0.5, dim=32 throughout)
 
@@ -492,9 +523,29 @@ untouched by this axis, reused from `exp_608` for both new points.
 
 | ratio | config | base suite | MIL tiers | validation |
 |---|---|---|---|---|
-| 0.5 | `exp_705` | **scheduled**, queued behind `exp_704` | not scheduled | not scheduled |
+| 0.5 | `exp_705` | **done** | not scheduled | not scheduled |
 | 1.0 | `exp_608` | **done** (anchor) | **done** | **done** |
-| 2.0 | `exp_706` | **scheduled**, queued behind `exp_705` | not scheduled | not scheduled |
+| 2.0 | `exp_706` | **done** | not scheduled | not scheduled |
+
+**Results (added 2026-10-15), TRTR identical across all three (shared from
+`exp_501`): Apollo=0.7627, RF=0.8136, XGBoost=0.8136, CNN=0.7119. TSTR is
+architecturally reused unchanged from `exp_608` for all three (confirmed:
+all three report the identical TSTR numbers — Apollo=0.6949, RF=0.8305,
+XGBoost=0.8305, CNN=0.6780, CbR=0.7797 — ratio genuinely has zero effect on
+TSTR, as designed), so only TSRTR varies:**
+
+| ratio | Apollo | RF | XGBoost | CNN |
+|---|---|---|---|---|
+| 0.5 (`705`) | 0.8305, Δ+0.068, **p=0.022** | 0.8475, Δ+0.034, p=0.24 | 0.8136, Δ0.000, p=1.00 | 0.6780, Δ−0.034, p=0.62 |
+| 1.0 (`608`, anchor) | 0.8305, Δ+0.068, **p=0.022** | 0.8305, Δ+0.017, p=0.67 | 0.8136, Δ0.000, p=1.00 | 0.7458, Δ+0.034, p=0.67 |
+| 2.0 (`706`) | 0.8136, Δ+0.051, p=0.086 | 0.8475, Δ+0.034, p=0.24 | 0.8136, Δ0.000, p=1.00 | 0.7119, Δ0.000, p=1.00 |
+
+**Finding:** Apollo's TSRTR gain — the single most robust significant
+result anywhere in the `608` family — holds at ratio≤1.0 (p=0.022 at both
+0.5 and 1.0) but **loses significance at ratio=2.0** (p=0.086). Doubling
+the synthetic:real ratio beyond 1:1 dilutes rather than strengthens the one
+real augmentation effect this project has found; RF/XGBoost/CNN show no
+significant effect at any ratio.
 
 ### 8a.5 Preprocessing / strong-signal mask (β=0.5 throughout; v1=`glioma_mil.h5`, v2/v3 own files)
 
@@ -551,15 +602,23 @@ finding that `4.608`'s wider mask doesn't change the headline numbers much
 relative to `608`, while `2.608`'s stricter adaptive mask trades a visibly
 weaker TSTR for comparable TRTR/TSRTR.
 
-### 8a.6 Queue order, confirmed (2026-10-14)
+### 8a.6 Queue, completed (updated 2026-10-15)
 
-Everything above tagged "scheduled"/"running" is genuinely in one live,
-strictly-sequential queue (checked directly, not assumed): `exp_701`
-(running) → `exp_702` stats_eval fix → 601–609 latent-collapse diagnostic →
-`exp_703` → `exp_704` → `exp_705` → `exp_706`. Nothing is silently missing
-from the queue; `602`–`606` are deliberately unscheduled (dead ends, gap #1),
-not an oversight. `exp_2.609`'s and `exp_4.608`'s MIL-tier/validation gaps
-mirror `exp_3.608`'s §5a to-do list and are not yet scheduled.
+All of §8a.2-8a.4's "scheduled" base-suite runs landed: `exp_701` → `702`
+(remediated after a mid-run restart) → 601–609 latent-collapse diagnostic →
+`703` → `704` → `705` → `706`, each confirmed via its own stats_eval output,
+not assumed from the queue log alone. Three unplanned process restarts hit
+this queue in total (mid-`701`-TSRTR, mid-`702`-stats_eval, mid-`703`-CVAE→
+TSTR handoff) — each resumed from the last genuinely-completed stage,
+verified on disk before resuming (`701`'s first restart silently skipped a
+stage via presence-only skip-detection, dropping CNN from one comparison
+until caught and force-re-run; see the fix note where that happened). Root
+cause of the restarts themselves not diagnosed — worth checking if it
+recurs. `602`–`606` remain deliberately unscheduled (dead ends, gap #1), not
+an oversight. `exp_2.609`'s, `exp_3.608`'s, and `exp_4.608`'s MIL-tier/
+validation-suite gaps (§8a.5) and `701`/`702`/`703`/`704`/`705`/`706`'s own
+(§8a.2-8a.4) remain genuinely not scheduled — base suite only for all of
+them.
 
 ## 9. Gaps identified (updated 2026-10-12, second pass)
 

@@ -67,6 +67,36 @@ statistical properties (§8.1):
 - Tier 3: same lift as Tiers 1/4, from a genuine unconstrained $K$-way
   softmax (§6).
 
+### 1.1 How each tier represents the latent instance state
+
+The five tiers do not all model the same object. They differ along two
+independent axes: **(a)** whether the latent state is restricted to Model
+(C)'s $(M{+}K)$-state space $\{0_1,0_2,0_3,Y_b\}$ at all, or is an
+unconstrained $K$-way diagnostic-class label with no null substructure; and
+**(b)** whether the instance-level quantity produced is a hard label, a
+point-estimate probability vector, or a full posterior distribution over
+that vector. Table below; formal definitions in each tier's own section.
+
+| Tier | Method | Latent object & formal type | Model (C) state space? | How it is produced |
+|---|---|---|---|---|
+| 1 | mi-SVM | $K$ independent hard binary labels $\ell_i^{(k)}\in\{0,1\}$, one per one-vs-rest sub-problem — **not** a single $K$-way (or $(M{+}K)$-way) categorical | No — no null substructure; "non-diagnostic" is not a state the model ever assigns | Iterative relabelling: per positive bag, top-$\lceil\pi_{\min}n_b\rceil$ (or top-1) Platt-scored instances set to 1 each round, to convergence (§5) |
+| 2 | EM | Discrete categorical $z_{bi}\in\{0_1,0_2,0_3,Y_b\}$, represented as a **soft responsibility vector** $\gamma_i\in\Delta^3$ (point estimate — one vector per instance, not a distribution over vectors) | Yes, enforced every E-step via the support mask | Classification-EM point estimate: soft E-step responsibility, hard-relabelling M-step (top-$\mathrm{round}(\pi_b n_b)$ per bag) (§6) |
+| 3 | Attention MIL | Unconstrained discrete class $\hat y_i\in\{1..K\}$, represented as **instance logits $\to$ softmax** $\in\Delta^{K-1}$ (point estimate, $K$-way only, no null state) | No, deliberately — masking the instance head would make instance-level evaluation circular (§6.3) | Learned instance head over a frozen CVAE trunk, supervised only through attention-pooled bag loss, never per instance |
+| 4 | Generative (CbR / encoder-head / latent-RF) | Unconstrained discrete class $\hat y_i\in\{1..K\}$, as a **softmax** $\in\Delta^{K-1}$ (point estimate, $K$-way only, no null state) | No | Zero-training-cost scoring with already-fit CVAE weights ($-$MSE or the auxiliary head) or a fresh RF on frozen $z_{\text{mean}}$ (§7) |
+| 5 | Bayesian (Gibbs) | Discrete categorical $z_{bi}\in\{0_1,0_2,0_3,Y_b\}$ — identical state space to Tier 2 — but a genuine **random variable with a full posterior distribution** over $\Delta^3$, realised as a set of retained MCMC draws, not a single point estimate | Yes, enforced every Gibbs sweep via the same support mask | Gibbs sampling: $z\mid\mu,\Sigma,\pi \to \mu_k,\Sigma_k\mid z \to \pi_b\mid z \to a,b\mid\{\pi_b\}$ — $\pi_b$ itself hierarchical under a Beta$(a,b)$ prior whose own hyperparameters are Metropolis-updated (§8) |
+
+**Reading the table.** Tiers 2 and 5 are the only ones that instantiate
+Model (C)'s latent state literally — an instance *can* occupy a null
+component, as a first-class value the model reasons about. Tiers 1, 3 and 4
+never represent "non-diagnostic" as a state at all: their non-diagnostic
+store column (§1's $(K{+}1)$-way convention) is a post-hoc arithmetic
+artifact, $1-\max_k p_k$, not something the fitted model assigned mass to
+directly. Tier 5 is further distinguished from Tier 2 by *what kind of
+object* the estimate is: Tier 2 returns one $\gamma_i$ per instance (a point
+estimate, however it was arrived at); Tier 5 returns a distribution over
+that same space, so a bag's $\pi_b$ carries a credible interval no other
+tier can produce (§8).
+
 ---
 
 ## 2. The latent-label store and leakage discipline

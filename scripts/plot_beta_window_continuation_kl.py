@@ -1,13 +1,18 @@
 """
 KL loss, same 3-way parallel CVAE continuation as
 plot_beta_window_continuation.py (exp_601 constant-beta continuation vs
-exp_605/exp_606 windowed beta schedules), epochs 50-200.
+exp_605/exp_606 windowed beta schedules), epochs 10-200.
 
 A separate figure from the reconstruction-loss one (not a second pane under
 it): unlike reconstruction loss, KL loss is NOT beta-invariant -- it's
 expected to visibly track each schedule's beta value directly, so plotting
 it alongside recon loss on a shared y-scale would be misleading. Kept here
 as its own single-pane chart instead.
+
+Epoch 10 (not 1) as the left edge, matching every other figure in this
+appendix: the steep initial KL drop is confined to epochs 1-2 (confirmed
+directly against the history CSVs), so epoch 10 is already past the
+transient.
 
 Usage:
     python scripts/plot_beta_window_continuation_kl.py
@@ -29,13 +34,13 @@ N_FOLDS = 5
 
 EXPERIMENTS = [
     ("exp_601 (beta=1.0, constant)",
-     [("results/exp_601/models/cvae", 50, 100), ("results/exp_601/models/cvae", 101, 200)],
+     [("results/exp_601/models/cvae", 10, 100), ("results/exp_601/models/cvae", 101, 200)],
      "#2a78d6"),
     ("exp_605 (beta window: 1.25/1 alt.)",
-     [("results/exp_601/models/cvae", 50, 100), ("results/exp_605/models/cvae", 101, 200)],
+     [("results/exp_601/models/cvae", 10, 100), ("results/exp_605/models/cvae", 101, 200)],
      "#eb6834"),
     ("exp_606 (beta window: 0.75/1 alt.)",
-     [("results/exp_601/models/cvae", 50, 100), ("results/exp_606/models/cvae", 101, 200)],
+     [("results/exp_601/models/cvae", 10, 100), ("results/exp_606/models/cvae", 101, 200)],
      "#1baf7a"),
 ]
 
@@ -68,16 +73,16 @@ def main():
 
     ax.set_xlabel("Epoch")
     ax.set_ylabel("KL loss (mean over 5 folds)")
-    ax.set_title("exp_601 continuation: constant β vs windowed β-annealing — KL loss (epochs 50-200)")
-    ax.set_xlim(50, 200)
+    ax.set_title("exp_601 continuation: constant β vs windowed β-annealing — KL loss (epochs 10-200)")
+    ax.set_xlim(10, 200)
     ax.legend(frameon=False, fontsize=9, loc="upper right")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.grid(axis="y", linewidth=0.5, alpha=0.3)
 
-    out_dir = PROJECT_ROOT / "results" / "suite600_beta_sweep"
+    out_dir = PROJECT_ROOT / "paper" / "img"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "continuation_kl_loss.png"
+    out_path = out_dir / "beta_window_continuation_kl.png"
     fig.savefig(out_path, bbox_inches="tight", dpi=FIG_DPI)
     plt.close(fig)
     print(f"Saved: {out_path}")

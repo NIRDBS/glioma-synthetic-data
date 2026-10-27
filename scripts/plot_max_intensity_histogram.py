@@ -74,7 +74,7 @@ def main():
                     help="pooled per-pixel max-intensity array, cached here after computing")
     ap.add_argument("--recompute", action="store_true", help="ignore the cache, redo the raw-data pass")
     ap.add_argument("--bins", type=int, default=80)
-    ap.add_argument("--out", default="results/diagnostics/max_intensity_histogram.png")
+    ap.add_argument("--out", default="paper/img/max_intensity_histogram.png")
     args = ap.parse_args()
 
     cache_path = Path(args.cache)
@@ -97,7 +97,7 @@ def main():
     # ---- Plot -- tweak freely from here ----
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(12, 5.5))
+    fig, ax = plt.subplots(figsize=(12, 5))
     ax.hist(pooled, bins=args.bins, color="#3b6fa0", edgecolor="white", linewidth=0.3)
 
     # Reference lines for compute_strong_signal_mask's thresholds (src/data/preprocessing_v2.py):
@@ -107,8 +107,8 @@ def main():
     ax.axvline(0.6, color="#f39c12", linestyle="--", linewidth=1.2, label="0.6")
     ax.axvline(0.4, color="#f1c40f", linestyle="--", linewidth=1.2, label="0.4")
 
-    ax.set_xlabel("Per-spectrum max intensity (after cube_normalize, before thresholding)", fontsize=14)
-    ax.set_ylabel("Count (pixels, pooled across all slides)", fontsize=14)
+    ax.set_xlabel("Per-spectrum max intensity", fontsize=16)
+    ax.set_ylabel("Count (pixels, pooled across all slides)", fontsize=16)
     ax.set_title("Max intensity distribution, all 59 raw slides, pre-threshold (log scale)", fontsize=18)
     ax.legend()
     ax.set_yscale("log")  # log scale to see the long tail of low-intensity pixels

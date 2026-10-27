@@ -8,12 +8,15 @@ beta-invariant and therefore comparable across differently-scheduled runs --
 same principle as plot_beta_sweep_recon_loss.py), beta trace on the bottom
 (narrow -- it only ever takes 3 distinct values: 0.75/1.0/1.25).
 
-Epochs 50-200 only: epochs 1-49 are common to all three (same shared
-ancestor, before any divergence) and their early steep drop would otherwise
-dominate the y-scale and hide the epoch 50-200 region this plot is actually
-about. Epochs 50-100 are themselves identical across all three experiments
-(literally the same training run, read once from exp_601's history) --
-the three lines are drawn coincident up to epoch 100, then diverge at 101.
+Epochs 10-200: epoch 10 (not 1) as the left edge for the same reason as
+plot_beta_sweep_all_flat.py -- the steep initial drop is confined to
+epochs 1-2 (confirmed directly against the history CSVs, both for a low-β
+and a β=1.0 series; epoch-10 values are already the same order of magnitude
+as epoch-50 ones), so a uniform epoch-10 floor across every appendix figure
+costs nothing here either. Epochs 10-100 are themselves identical across
+all three experiments (literally the same training run, read once from
+exp_601's history) -- the three lines are drawn coincident up to epoch 100,
+then diverge at 101.
 
 Usage:
     python scripts/plot_beta_window_continuation.py
@@ -39,13 +42,13 @@ N_FOLDS = 5
 # right tool here.
 EXPERIMENTS = [
     ("exp_601 (β=1.0, constant)",
-     [("results/exp_601/models/cvae", 50, 100), ("results/exp_601/models/cvae", 101, 200)],
+     [("results/exp_601/models/cvae", 10, 100), ("results/exp_601/models/cvae", 101, 200)],
      "#2a78d6"),  # slot 1 blue
     ("exp_605 (β window: 1.25/1 alt.)",
-     [("results/exp_601/models/cvae", 50, 100), ("results/exp_605/models/cvae", 101, 200)],
+     [("results/exp_601/models/cvae", 10, 100), ("results/exp_605/models/cvae", 101, 200)],
      "#eb6834"),  # slot 2 orange
     ("exp_606 (β window: 0.75/1 alt.)",
-     [("results/exp_601/models/cvae", 50, 100), ("results/exp_606/models/cvae", 101, 200)],
+     [("results/exp_601/models/cvae", 10, 100), ("results/exp_606/models/cvae", 101, 200)],
      "#1baf7a"),  # slot 3 aqua
 ]
 
@@ -90,7 +93,7 @@ def main():
         ax.grid(axis="y", linewidth=0.5, alpha=0.3)
 
     ax_loss.set_ylabel("Reconstruction loss (MSE, mean over 5 folds)")
-    ax_loss.set_title("exp_601 continuation: constant β vs windowed β-annealing (epochs 50-200)")
+    ax_loss.set_title("exp_601 continuation: constant β vs windowed β-annealing (epochs 10-200)")
     ax_loss.legend(frameon=False, fontsize=9, loc="upper right")
     ax_loss.text(BRANCH_EPOCH + 1, ax_loss.get_ylim()[1], "branch point",
                 fontsize=7, color="#898781", ha="left", va="top")
@@ -99,11 +102,11 @@ def main():
     ax_beta.set_xlabel("Epoch")
     ax_beta.set_yticks([0.75, 1.0, 1.25])
     ax_beta.set_ylim(0.6, 1.4)
-    ax_beta.set_xlim(50, 200)
+    ax_beta.set_xlim(10, 200)
 
-    out_dir = PROJECT_ROOT / "results" / "suite600_beta_sweep"
+    out_dir = PROJECT_ROOT / "paper" / "img"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "continuation_recon_loss_and_beta.png"
+    out_path = out_dir / "beta_window_continuation_recon.png"
     fig.savefig(out_path, bbox_inches="tight", dpi=FIG_DPI)
     plt.close(fig)
     print(f"Saved: {out_path}")

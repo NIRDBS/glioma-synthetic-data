@@ -451,31 +451,32 @@ statistics (§9) use directly.
 
 ## 8. Tier 5 — Bayesian MIL (Gibbs sampling)
 
-A proper Bayesian treatment of the same Model (C) latent structure Tier 2
-fits by EM — same four states per instance
-($z_{bi}\in\{0_1,0_2,0_3,Y_b\}$), same per-bag diagnostic fraction $\pi_b$ —
-but with every unknown given a prior and a posterior **distribution**
-instead of a single point estimate. Motivation (your words, paraphrased):
-Tier 2 "has too many components and possible failing points"; a Bayesian
-fit is "simpler and much more informative" because its worst case is
-*informative failure* — reporting high uncertainty / non-convergence
-honestly — rather than Tier 2's worst case of confidently relabelling noise
-as diagnostic. Code: `src/mil/bayes.py`; fit via
-`pipeline/mil_fit_stage.py --methods bayes_mil` (dispatches to
-`_fit_one_fold_bayes_mil`); spatial validation via
-`scripts/stage5_spatial_validation.py --method bayes_mil` (default variant
+A Bayesian treatment of the same Model (C) latent structure Tier 2 fits by
+EM — same four states per instance, same per-bag diagnostic fraction
+$\pi_b$ — with every unknown given a prior and a posterior distribution
+instead of a point estimate. Code: `src/mil/bayes.py`; fit via
+`pipeline/mil_fit_stage.py --methods bayes_mil`; spatial validation via
+`scripts/stage5_spatial_validation.py --method bayes_mil` (variant
 `gibbs`). Results: docs/tier5_bayesian_mil.md.
 
-**Generative model, per fold.** Each instance $i$ in bag $b$ has a Gaussian
-emission conditioned on its latent state $z_{bi}$: the 3 null components
-and the bag's own diagnostic class are each a full-covariance Gaussian over
-a PCA-reduced spectrum ($d{=}10$ components — chosen empirically, §8.3),
-with a Normal-Inverse-Wishart (NIW) prior/posterior — the conjugate choice,
-so each component's mean/covariance has a closed-form posterior given the
-instances currently assigned to it. $\pi_b \sim \mathrm{Beta}(a,b)$ per
-bag, with $(a,b)$ themselves given a weak hyper-prior and fit from the
-population of bags (empirical-Bayes-by-MCMC, the Bayesian analogue of
-Tier 2's hierarchical shrinkage, §6).
+**Generative model, per fold.** For instance $i$ in bag $b$ with known
+label $Y_b\in\{1,\dots,K\}$, in a $d$-dimensional PCA-reduced feature space
+($d{=}10$, §8.3):
+$$\mu_k,\Sigma_k \sim \mathrm{NIW}(m_0,\kappa_0,\nu_0,\Psi_0), \quad k\in\{0_1,0_2,0_3,1,\dots,K\}$$
+$$\pi_b \sim \mathrm{Beta}(a,b) \quad \text{(one per bag)}$$
+$$z_{bi}\mid\pi_b \sim \mathrm{Cat}\big(\pi_b \text{ on state } Y_b,\ \ (1-\pi_b)/M \text{ on each null}\big), \quad M=3$$
+$$x_{bi}\mid z_{bi}=k \sim \mathcal N(\mu_k,\Sigma_k)$$
+$z_{bi}$ is restricted to $\{0_1,0_2,0_3,Y_b\}$ — never another bag's
+class (Model (C), identical restriction to Tier 2, §6). The 3 null
+components are shared across every bag regardless of class; each
+diagnostic component $k$ is shared across every bag with $Y_b=k$.
+
+**Priors.** NIW: $m_0=0$ (features are PCA-centred), $\kappa_0=0.01$ (data
+dominates the mean), $\nu_0=d+2$ (smallest value giving a finite
+InverseWishart mean), $\Psi_0 = \bar\sigma^2 I_d$ with $\bar\sigma^2$ the
+data's own mean per-feature variance. $(a,b)$: independent weakly
+informative $\mathrm{Gamma}(1,1)$ priors on each, not fixed constants —
+fit jointly with everything else (step 4 below).
 
 **Gibbs sweep**, one iteration:
 1. **$z$** — for every instance, an exact categorical draw (Gumbel-max)
@@ -491,10 +492,28 @@ Tier 2's hierarchical shrinkage, §6).
    distribution's own shape hyperparameters.
 
 Rao-Blackwellized posterior accumulation (averaging the exact per-step
-responsibilities, not just the hard $z$ draws) over retained
+responsibilities, not just the hard $z$ draws) over retained,
 post-burn-in, thinned draws.
 
-### 8.1 Multimodality, not non-identifiability — a diagnosis that was initially wrong
+**Multi-chain fitting (`fit_bayes_mil_chains`).** $n_\text{chains}$
+dispersed chains are run from independent structure-aware
+initializations (§8.1); the chain with the highest marginal
+log-likelihood (`marginal_log_likelihood`, $z$ integrated out) is kept.
+Gelman-Rubin $\hat R$ on the mean-$\pi_b$ trace across chains is reported
+as a convergence diagnostic. This is the entry point used on real data —
+a single chain is not (§8.1).
+
+**Scoring held-out instances (`score_bayes_mil`).** Posterior-predictive
+average over every retained draw. A held-out bag has no fitted $\pi_b$
+(it was never in the training set), so $\pi_b$ is redrawn fresh from the
+$\mathrm{Beta}(a,b)$ hyperparameter posterior at each retained draw,
+rather than reusing an in-sample value it has no right to.
+
+**Hyperparameters used in the real fit.** $d{=}10$,
+$n_\text{chains}{=}3$, $n_\text{iter}{=}600$, $\text{burn\_in}{=}200$,
+$\text{thin}{=}5$ (80 retained draws/chain).
+
+### 8.1 Posterior Multimodality, Not Non-Identifiability
 
 A naive single-chain fit from a $k$-means-on-pooled-data initialization
 recovers planted ground truth in a controlled synthetic test at only
@@ -540,7 +559,7 @@ and the recommended fix (a cross-fold consistency diagnostic, run
 alongside $\hat R$) are in docs/tier5_bayesian_mil.md §2/§2.1/§7, not
 duplicated here since this file is methodology only.
 
-### 8.2 The same bag-classification circularity as Tier 2
+### 8.2 Bag-Classification Circularity
 
 Model (C) is enforced throughout sampling and scoring, exactly as for
 Tier 2 (§6.2): an instance's posterior can only ever place diagnostic mass
@@ -551,10 +570,11 @@ therefore equally vacuous — the same trap as Tier 2, re-discovered here
 rather than assumed, and excluded from this tier's real evidence for the
 same reason (§9.1).
 
-### 8.3 PCA dimensionality — chosen empirically, not by a variance-explained target
+### 8.3 PCA Dimensionality
 
-The Gibbs sampler needs a low-dimensional emission space to keep per-
-iteration NIW updates cheap; $d{=}10$ principal components (of 571
+Chosen empirically, not by a variance-explained target. The Gibbs sampler
+needs a low-dimensional emission space to keep per-iteration NIW updates
+cheap; $d{=}10$ principal components (of 571
 fingerprint-region bands) were used, at which explained variance ratio is
 only $\approx$79%, well short of maybe the only decimal fraction an
 unfamiliar reader would expect for "enough" variance on a spiky signal like

@@ -11,6 +11,15 @@ label -- it evaluates each candidate class's posterior-predictive
 likelihood and predicts by argmax, exactly like an ordinary held-out
 classifier evaluation.
 
+Also computes the Tier 0 bootstrap comparison every other tier's bag-eval
+reports (`scripts/stage6_bag_eval.py`'s convention) -- this was missing
+entirely until 2026-10-12: duplicated bags (4 slides forced into two CV
+test folds each) are merged by averaging their log-likelihood vectors
+across folds before the final argmax, the same spirit as
+`merge_out_of_sample_posterior`'s duplicate-averaging convention
+(docs/mil_tiers_methodology.md §2), giving one decision per unique bag
+before the bootstrap runs.
+
 Usage:
     python scripts/tier5_blind_bag_classification.py --config exp_608
 """
@@ -28,10 +37,14 @@ from sklearn.decomposition import PCA
 
 from pipeline._common import make_loader, num_classes_of, prepare_fold
 from src.mil.bayes import fit_bayes_mil_chains, score_bayes_mil_blind
+from src.utils.statistical_evaluation import bag_level_bootstrap, summarize_bootstrap_diffs
 
 
 def run(config_name, n_folds=5, pca_components=10, n_chains=3, n_iter=600,
-       burn_in=200, thin=5, seed=42, out_path=None):
+       burn_in=200, thin=5, seed=42, out_path=None, reference_model='apollo',
+       n_boot=1000):
+    from collections import defaultdict
+
     from src.utils.config_manager import ConfigManager
 
     config = ConfigManager.load_config(config_name)
@@ -40,6 +53,8 @@ def run(config_name, n_folds=5, pca_components=10, n_chains=3, n_iter=600,
 
     per_fold = {}
     all_true, all_pred, all_bag_ids = [], [], []
+    log_lik_across_folds = defaultdict(list)  # bag -> [per-fold log-lik vectors]
+    true_label_by_bag = {}
 
     for fold_data in loader:
         fold_name = fold_data['fold_name']
@@ -69,6 +84,8 @@ def run(config_name, n_folds=5, pca_components=10, n_chains=3, n_iter=600,
             all_true.append(true_label[b])
             all_pred.append(pred)
             all_bag_ids.append(b)
+            log_lik_across_folds[b].append(np.asarray(ll))
+            true_label_by_bag[b] = true_label[b]
 
         fold_true, fold_pred = np.array(fold_true), np.array(fold_pred)
         acc = float((fold_true == fold_pred).mean())
@@ -87,8 +104,78 @@ def run(config_name, n_folds=5, pca_components=10, n_chains=3, n_iter=600,
     print(f"mean per-fold bag_acc: {np.mean([v['bag_acc'] for v in per_fold.values()]):.4f}")
     print(f"pooled (all {len(all_true)} fold-bag rows) bag_acc: {overall_acc:.4f}")
 
+    # Merge duplicated bags (4 slides forced into 2 CV test folds each) by
+    # averaging their log-likelihood vectors before the final argmax -- one
+    # decision per unique bag, same spirit as merge_out_of_sample_posterior's
+    # duplicate-averaging convention (docs/mil_tiers_methodology.md §2).
+    merged_bags = sorted(log_lik_across_folds)
+    merged_pred = np.array([int(np.argmax(np.mean(log_lik_across_folds[b], axis=0)))
+                            for b in merged_bags])
+    merged_true = np.array([true_label_by_bag[b] for b in merged_bags])
+    merged_acc = float((merged_true == merged_pred).mean())
+    print(f"merged (duplicate-averaged, n={len(merged_bags)} unique bags) bag_acc: {merged_acc:.4f}")
+
+    # Binary-only sensitivity/specificity (per-class recall) and AUC, same
+    # convention as scripts/stage6_bag_eval.py -- the continuous score is a
+    # softmax of the (duplicate-averaged) log-likelihood vector, since
+    # score_bayes_mil_blind returns log p(X_bag | Y_b=k), not a normalized
+    # probability.
+    from sklearn.metrics import (
+        average_precision_score, balanced_accuracy_score, recall_score, roc_auc_score,
+    )
+    extra_metrics = {}
+    if len(set(merged_true.tolist())) == 2:
+        merged_ll = np.array([np.mean(log_lik_across_folds[b], axis=0) for b in merged_bags])
+        merged_ll = merged_ll - merged_ll.max(axis=1, keepdims=True)
+        merged_proba = np.exp(merged_ll) / np.exp(merged_ll).sum(axis=1, keepdims=True)
+        recall_per_class = recall_score(merged_true, merged_pred, average=None, zero_division=0)
+        extra_metrics['bag_balanced_accuracy'] = float(balanced_accuracy_score(merged_true, merged_pred))
+        extra_metrics['bag_sensitivity'] = float(recall_per_class[1])
+        extra_metrics['bag_specificity'] = float(recall_per_class[0])
+        try:
+            extra_metrics['bag_auroc'] = float(roc_auc_score(merged_true, merged_proba[:, 1]))
+            extra_metrics['bag_auprc'] = float(average_precision_score(merged_true, merged_proba[:, 1]))
+        except ValueError:
+            pass
+        print(f"  sensitivity={extra_metrics.get('bag_sensitivity', float('nan')):.4f}  "
+             f"specificity={extra_metrics.get('bag_specificity', float('nan')):.4f}  "
+             f"AUC={extra_metrics.get('bag_auroc', float('nan')):.4f}")
+
+    print(f"\n{'='*70}\nTIER 0 COMPARISON (reference_model={reference_model})\n{'='*70}")
+    from scripts.stage6_bag_eval import _tier0_reference
+    tier0_bag_ids, tier0_pred, tier0_true, tier0_label = _tier0_reference(
+        config, n_boot=n_boot, seed=seed, regimen_label='TRTR', reference_model=reference_model)
+    tier0_bag_ids = np.asarray(tier0_bag_ids)
+    common = [b for b in merged_bags if b in set(tier0_bag_ids.tolist())]
+    idx_t5 = {b: i for i, b in enumerate(merged_bags)}
+    idx_t0 = {b: i for i, b in enumerate(tier0_bag_ids.tolist())}
+    aligned_t5_pred = np.array([merged_pred[idx_t5[b]] for b in common])
+    aligned_t5_true = np.array([merged_true[idx_t5[b]] for b in common])
+    aligned_t0_pred = np.array([tier0_pred[idx_t0[b]] for b in common])
+    aligned_t0_true = np.array([tier0_true[idx_t0[b]] for b in common])
+    assert np.array_equal(aligned_t5_true, aligned_t0_true), \
+        "bag true-label mismatch between Tier 5 (blind) and Tier 0 reference -- alignment bug"
+
+    tier0_acc = float((aligned_t0_true == aligned_t0_pred).mean())
+    _, _, diffs = bag_level_bootstrap(aligned_t0_pred, aligned_t5_pred, aligned_t0_true,
+                                      n_boot=n_boot, seed=seed)
+    boot = summarize_bootstrap_diffs(diffs)
+    print(f"  Tier 0 ({tier0_label}, TRTR, majority vote): bag_acc={tier0_acc:.4f}  (n={len(common)} bags)")
+    print(f"  Tier 5 (blind): bag_acc={merged_acc:.4f}")
+    print(f"  delta (Tier5_blind - Tier0) = {merged_acc - tier0_acc:+.4f}  "
+         f"95%CI[{boot['ci_diff_lo']:+.4f},{boot['ci_diff_hi']:+.4f}]  "
+         f"p={boot['p_bootstrap']:.4f}  significant={boot['p_bootstrap'] < 0.05}")
+
     report = {'config': config_name, 'per_fold': per_fold,
-             'pooled_bag_acc_no_dedup': overall_acc}
+             'pooled_bag_acc_no_dedup': overall_acc,
+             'merged_bag_acc': merged_acc, 'n_merged_bags': len(merged_bags),
+             **extra_metrics,
+             'tier0_reference': {'model': tier0_label, 'regimen': 'TRTR', 'rule': 'majority',
+                                 'n_bags': len(common), 'bag_accuracy': tier0_acc},
+             'vs_tier0': {'boot_mean_diff': boot['boot_mean_diff'],
+                         'ci_diff_lo': boot['ci_diff_lo'], 'ci_diff_hi': boot['ci_diff_hi'],
+                         'p_bootstrap': boot['p_bootstrap'],
+                         'significant_95': boot['significant_95']}}
     if out_path is None:
         out_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \
             / 'latent' / 'bayes_blind_bag_classification.json'
@@ -109,6 +196,9 @@ if __name__ == '__main__':
     parser.add_argument('--thin', type=int, default=5)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--out-path', default=None)
+    parser.add_argument('--reference-model', default='apollo', choices=['apollo', 'rf', 'xgb', 'cnn'])
+    parser.add_argument('--n-boot', type=int, default=1000)
     args = parser.parse_args()
     run(args.config, n_chains=args.n_chains, n_iter=args.n_iter, burn_in=args.burn_in,
-       thin=args.thin, seed=args.seed, out_path=args.out_path)
+       thin=args.thin, seed=args.seed, out_path=args.out_path,
+       reference_model=args.reference_model, n_boot=args.n_boot)

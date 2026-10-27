@@ -324,19 +324,27 @@ directly:
 A non-significant tie with Apollo, both preprocessing versions, invariant to β — consistent with
 §8.1's mi-SVM result and with no other tier's win in this project.
 
-### 8.3 Attention MIL (Tier 3): Degrades With β, Significantly Loses to Apollo at Every β
+### 8.3 Attention MIL (Tier 3): Significantly Loses to Apollo at Every β
+
+**Correction (2026-10-19).** This table previously reported incorrect `exp_608`/`609`/`2.607`/`2.608`
+accuracies and an incorrect `exp_607` delta, from a transcription error in an earlier manual
+extraction — not a code or data bug. Independently re-verified by hand directly against
+`results/{exp}/latent/attention_bag_level.json` (bypassing `stage6_attention_bag_eval.py`
+entirely) before replacing the numbers below.
 
 | β | preprocessing | acc (F1, κ) | vs CNN | vs Apollo |
 |---|---|---|---|---|
-| 0.25 | v1 (`exp_607`) | 0.5254 (0.508, 0.021) | −0.1857, CI[−0.373,0.000], p=0.070 | **−0.2219, CI[−0.373,−0.068], p=0.006** |
-| 0.5 | v1 (`exp_608`) | 0.4576 (0.450, −0.100) | not evaluated | **−0.3047, CI[−0.475,−0.153], p=0.000** |
-| 0.75 | v1 (`exp_609`) | 0.4068 (0.407, −0.170) | not evaluated | **−0.3529, CI[−0.508,−0.203], p=0.000** |
-| 0.25 | v2 (`exp_2.607`) | 0.4576 (0.445, −0.109) | not evaluated | **−0.2878, CI[−0.441,−0.136], p=0.000** |
-| 0.5 | v2 (`exp_2.608`) | 0.4915 (0.488, −0.023) | not evaluated | **−0.2544, CI[−0.407,−0.102], p=0.002** |
+| 0.25 | v1 (`exp_607`) | 0.5254 (0.508, 0.021) | −0.1857, CI[−0.373,0.000], p=0.070 | **−0.2373, CI[−0.407,−0.085], p=0.008** |
+| 0.5 | v1 (`exp_608`) | 0.5593 (0.508, 0.060) | not evaluated | **−0.2034, CI[−0.322,−0.068], p=0.002** |
+| 0.75 | v1 (`exp_609`) | 0.6102 (0.560, 0.165) | not evaluated | **−0.1525, CI[−0.254,−0.034], p=0.018** |
+| 0.25 | v2 (`exp_2.607`) | 0.5932 (0.556, 0.140) | not evaluated | **−0.1525, CI[−0.254,−0.034], p=0.008** |
+| 0.5 | v2 (`exp_2.608`) | 0.5932 (0.504, 0.109) | not evaluated | **−0.1525, CI[−0.254,−0.051], p=0.010** |
 
 **Remark.** `exp_501`'s significant loss to Apollo (§1.3) is not a one-off: it replicates at
-every β and both preprocessing versions tested, and $\kappa<0$ at β≥0.5 under v1 preprocessing
-— worse than chance-weighted agreement, not merely a weak tier.
+every β and both preprocessing versions tested. Under v1 preprocessing, accuracy and $\kappa$
+rise monotonically with β (0.525→0.559→0.610; $\kappa$ 0.021→0.060→0.165, always positive — not
+below chance-weighted agreement at any β), and the loss to Apollo *narrows* accordingly
+(−0.237→−0.203→−0.153) while remaining significant throughout.
 
 ### 8.4 Generative MIL (Tier 4): CbR Variants
 
@@ -432,8 +440,9 @@ positive external-agreement signal this check did not already rule out.
 - Two tiers are structurally invariant to β (§8.1–§8.2) because neither uses the CVAE latent
   space; this is a property of their formulation, not a finding that needed five reruns to
   discover, and is reported once rather than repeated per β.
-- Attention's significant loss to Apollo (`exp_501`, §1.3) replicates and worsens with β under
-  v1 preprocessing, and replicates independently under v2 preprocessing at both β values tested
+- Attention's significant loss to Apollo (`exp_501`, §1.3) replicates at every β and preprocessing
+  variant tested — though under v1 preprocessing the loss *narrows* as β increases (§8.3), the
+  opposite of "worsens" — and replicates independently under v2 preprocessing at both β values tested
   (§8.3) — the most consistently negative result in this project.
 - `encoder_head`'s single significant win (`exp_501` vs. CNN, §1.3) replicates once, at β=0.5
   under v2 preprocessing (§8.4) — not at every β, and not against Apollo at any β tested.

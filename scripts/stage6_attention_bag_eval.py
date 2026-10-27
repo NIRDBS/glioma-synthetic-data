@@ -70,8 +70,8 @@ def _load_bag_level_across_folds(bag_level_path):
 def run(config_name, n_boot=1000, seed=42, regimen_label='TRTR', reference_model='cnn',
        out_path=None):
     from sklearn.metrics import (
-        accuracy_score, balanced_accuracy_score, cohen_kappa_score, f1_score,
-        precision_score, recall_score,
+        accuracy_score, average_precision_score, balanced_accuracy_score,
+        cohen_kappa_score, f1_score, precision_score, recall_score, roc_auc_score,
     )
     from src.utils.config_manager import ConfigManager
 
@@ -98,6 +98,23 @@ def run(config_name, n_boot=1000, seed=42, regimen_label='TRTR', reference_model
         'bag_kappa': float(cohen_kappa_score(y_true, bag_pred))
                      if len(np.unique(y_true)) > 1 else float('nan'),
     }
+    # Same convention as scripts/stage6_bag_eval.py: binary-only sensitivity/
+    # specificity as per-class recall, AUC from the diagnostic-only columns
+    # RENORMALIZED to sum to 1 after dropping column 0 (non-diagnostic mass) --
+    # matching stage6_bag_eval.py's _store_fold_data exactly, so the two
+    # scripts' AUC numbers sit on the same scale and are comparable.
+    if len(classes) == 2:
+        recall_per_class = recall_score(y_true, bag_pred, average=None,
+                                        zero_division=0, labels=classes)
+        metrics['bag_sensitivity'] = float(recall_per_class[1])
+        metrics['bag_specificity'] = float(recall_per_class[0])
+        diag = posterior[:, 1:].astype(np.float64)
+        diag_renorm = diag / diag.sum(axis=1, keepdims=True)
+        try:
+            metrics['bag_auroc'] = float(roc_auc_score(y_true, diag_renorm[:, 1]))
+            metrics['bag_auprc'] = float(average_precision_score(y_true, diag_renorm[:, 1]))
+        except ValueError:
+            pass
     print(f"  attention: bag_acc={metrics['bag_accuracy']:.4f}  "
           f"bag_F1={metrics['bag_f1_macro']:.4f}  bag_kappa={metrics['bag_kappa']:.4f}  "
           f"(n={n_bags} bags)")

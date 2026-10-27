@@ -148,8 +148,8 @@ def _tier0_reference(config, n_boot, seed, regimen_label='TRTR', reference_model
 def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
        regimen_label='TRTR', reference_model='cnn', out_path=None):
     from sklearn.metrics import (
-        accuracy_score, balanced_accuracy_score, cohen_kappa_score, f1_score,
-        precision_score, recall_score,
+        accuracy_score, average_precision_score, balanced_accuracy_score,
+        cohen_kappa_score, f1_score, precision_score, recall_score, roc_auc_score,
     )
     from src.utils.config_manager import ConfigManager
 
@@ -196,6 +196,23 @@ def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
         'bag_kappa': float(cohen_kappa_score(bag_true, bag_pred))
                      if len(np.unique(bag_true)) > 1 else float('nan'),
     }
+    # Binary-only (K=2 throughout this project): sensitivity/specificity as
+    # per-class recall (class 1 / class 0), same convention as
+    # src/utils/statistical_evaluation.py's _slide_level_metrics, so these
+    # are directly comparable to the Tier 0 classifiers' own numbers.
+    # bag_auroc/bag_auprc from the CONTINUOUS pooled score (`scores`, already
+    # computed above for the argmax) against class 1 -- never available from
+    # bag_accuracy/kappa alone, hence computed here rather than derived.
+    if len(classes) == 2:
+        recall_per_class = recall_score(bag_true, bag_pred, average=None,
+                                        zero_division=0, labels=classes)
+        metrics['bag_sensitivity'] = float(recall_per_class[1])
+        metrics['bag_specificity'] = float(recall_per_class[0])
+        try:
+            metrics['bag_auroc'] = float(roc_auc_score(bag_true, scores[:, 1]))
+            metrics['bag_auprc'] = float(average_precision_score(bag_true, scores[:, 1]))
+        except ValueError:
+            pass
     print(f"  {method}/{variant}: bag_acc={metrics['bag_accuracy']:.4f}  "
           f"bag_F1={metrics['bag_f1_macro']:.4f}  bag_kappa={metrics['bag_kappa']:.4f}  "
           f"(n={n_bags} bags)")

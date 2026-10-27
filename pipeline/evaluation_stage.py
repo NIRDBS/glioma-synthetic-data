@@ -99,7 +99,7 @@ def _gather_probas(folds, model_dir, prefix, ext, model_type):
     return np.concatenate(probas)
 
 
-def _cbr_predictions(folds, config, n_features, cvae_weights_dir):
+def _cbr_predictions(folds, config, n_features, cvae_weights_dir, return_scores=False):
     """
     Classification by Reconstruction (CbR) predictions, pooled across folds.
 
@@ -112,6 +112,12 @@ def _cbr_predictions(folds, config, n_features, cvae_weights_dir):
     fold's CVAE weights are missing. This is the single source of truth for CbR
     predictions, shared by the bootstrap evaluation (``_compute_cbr``) and the
     offline metric-patching script (``patch_cbr_metrics.py``).
+
+    ``return_scores=True`` (binary tasks only) appends a fourth array: the per-
+    spectrum normalised MSE margin ``(mse_0 - mse_1) / (mse_0 + mse_1)``. It is
+    positive exactly when class 1 reconstructs better, i.e. when the argmin
+    rule predicts class 1, so it is the continuous score underlying the hard
+    decision (see ``_cbr_bag_auroc``).
     """
     import tensorflow as tf
     from pipeline._cvae_gen import build_cvae_config, load_encoder_decoder
@@ -119,7 +125,9 @@ def _cbr_predictions(folds, config, n_features, cvae_weights_dir):
     cvae_config = build_cvae_config(config, n_features)
     num_classes = cvae_config['num_classes']
 
-    preds_all, y_all, slide_all = [], [], []
+    if return_scores and num_classes != 2:
+        raise ValueError("return_scores is defined for binary CbR only")
+    preds_all, y_all, slide_all, score_all = [], [], [], []
     for fd in folds:
         try:
             encoder, decoder = load_encoder_decoder(cvae_config, cvae_weights_dir, fd['fold_name'])
@@ -142,9 +150,38 @@ def _cbr_predictions(folds, config, n_features, cvae_weights_dir):
         preds_all.append(np.argmin(mse, axis=1))
         y_all.append(fd['y'])
         slide_all.append(fd['slide_ids'])
+        if return_scores:
+            score_all.append((mse[:, 0] - mse[:, 1]) / (mse[:, 0] + mse[:, 1] + 1e-12))
         tf.keras.backend.clear_session()
 
-    return (np.concatenate(preds_all), np.concatenate(y_all), np.concatenate(slide_all))
+    out = (np.concatenate(preds_all), np.concatenate(y_all), np.concatenate(slide_all))
+    return out + (np.concatenate(score_all),) if return_scores else out
+
+
+def _cbr_bag_auroc(scores, y_true, slide_ids):
+    """
+    Bag-level AUROC for CbR. The per-spectrum score (normalised MSE margin, positive
+    = class 1 reconstructs better) is mean-pooled within each bag -- the analogue
+    of the other classifiers' mean-pooled class-1 probability -- and ranked against
+    the bag labels. Duplicated bags (a slide in two test folds) pool all of their
+    spectra, exactly as ``bag_decisions`` does.
+
+    Also returns the AUROC of the vote share (fraction of a bag's spectra predicted
+    class 1) as a sensitivity check: a majority vote is a threshold of 0.5 on it.
+    Returns (auroc_margin, auroc_vote_share).
+    """
+    from sklearn.metrics import roc_auc_score
+
+    scores, y_true, slide_ids = np.asarray(scores), np.asarray(y_true), np.asarray(slide_ids)
+    bag_ids = np.unique(slide_ids)
+    bag_margin, bag_vote, bag_y = [], [], []
+    for b in bag_ids:
+        m = slide_ids == b
+        assert np.all(y_true[m] == y_true[m][0]), f'bag {b!r} has mixed labels'
+        bag_margin.append(scores[m].mean())
+        bag_vote.append((scores[m] > 0).mean())
+        bag_y.append(int(y_true[m][0]))
+    return (float(roc_auc_score(bag_y, bag_margin)), float(roc_auc_score(bag_y, bag_vote)))
 
 
 def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
@@ -154,10 +191,11 @@ def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
     within-bag instance diagnostic under its own name, or None if weights are
     missing.
     """
-    out = _cbr_predictions(folds, config, n_features, cvae_weights_dir)
+    binary = int(config['models']['cvae']['num_classes']) == 2
+    out = _cbr_predictions(folds, config, n_features, cvae_weights_dir, return_scores=binary)
     if out is None:
         return None
-    preds, y_true, slide_ids = out
+    preds, y_true, slide_ids = out[:3]
     full = compute_full_metrics(y_true, preds, slide_ids=slide_ids)
 
     bag_ids, bag_pred, bag_true = bag_decisions(preds, slide_ids, y_true)
@@ -192,6 +230,8 @@ def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
              'f1_weighted'):
         if k in full:
             result[k] = full[k]
+    if binary:
+        result['bag_auroc'], result['bag_auroc_vote_share'] = _cbr_bag_auroc(out[3], y_true, slide_ids)
     return result
 
 

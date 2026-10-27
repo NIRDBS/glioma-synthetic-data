@@ -17,21 +17,28 @@ class GliomaDataLoader:
     - Supports config-driven split loading via load_from_config()
     - Logs which splits are being used for reproducibility
     """
-    def __init__(self, data_path, split_file=None, memory_mapped=False, tumor_only=False, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, data_path, split_file=None, memory_mapped=False, tumor_only=False,
+                config: Optional[Dict[str, Any]] = None, viable_legacy_only=False):
         """
         Initialize the data loader.
-        
+
         Args:
             data_path: Path to .h5 dataset file
             split_file: Optional path to JSON file with CV splits
             memory_mapped: If True, load data lazily via HDF5; if False, load into RAM
             tumor_only: If True, filter out healthy tissue (requires y_tumor in H5)
             config: Optional configuration dict with 'cv_strategy' section
+            viable_legacy_only: If True, filter to the old manually-curated
+                "tumour cluster" subset (requires viable_legacy in H5 -- v1
+                preprocessing only, see src/data/preprocessing.py). Independent
+                of tumor_only/y_tumor, which is unrelated and unused on this
+                dataset (y_tumor was dropped at Stage 1).
         """
         self.data_path = Path(data_path)
         self.split_file = Path(split_file) if split_file else None
         self.memory_mapped = memory_mapped
         self.tumor_only = tumor_only
+        self.viable_legacy_only = viable_legacy_only
         self.config = config
         
         # If config provided, extract split_source
@@ -49,6 +56,7 @@ class GliomaDataLoader:
         self.groups = None
         self.coords = None
         self.tissue_cluster = None
+        self.viable_legacy = None
 
         self._load_data()
     
@@ -124,14 +132,16 @@ class GliomaDataLoader:
         
         # Extract tumor_only flag from preprocessing config (defaults to True for backward compatibility)
         use_tumor_only = config.get('preprocessing', {}).get('y_tumor', True)
-        
+        use_viable_legacy_only = config.get('preprocessing', {}).get('viable_legacy_only', False)
+
         # Create loader with config
         loader = cls(
             data_path=h5_data_path,
             split_file=None,  # Will be set by _resolve_split_path
             memory_mapped=memory_mapped,
             tumor_only=use_tumor_only,
-            config=config
+            config=config,
+            viable_legacy_only=use_viable_legacy_only,
         )
         
         # Apply exp_103+ features if specified in config
@@ -172,6 +182,8 @@ class GliomaDataLoader:
                 self.coords = self.h5_file['coords'][:]
             if 'tissue_cluster' in self.h5_file:
                 self.tissue_cluster = self.h5_file['tissue_cluster'][:]
+            if 'viable_legacy' in self.h5_file:
+                self.viable_legacy = self.h5_file['viable_legacy'][:]
             raw_groups = self.h5_file['sample_ids'][:]
         else:
             # Load everything into RAM (fastest for training)
@@ -186,6 +198,8 @@ class GliomaDataLoader:
                     self.coords = f['coords'][:]
                 if 'tissue_cluster' in f:
                     self.tissue_cluster = f['tissue_cluster'][:]
+                if 'viable_legacy' in f:
+                    self.viable_legacy = f['viable_legacy'][:]
                 raw_groups = f['sample_ids'][:]
 
         # Robust String Decoding
@@ -216,6 +230,34 @@ class GliomaDataLoader:
                 print("   ! WARNING: 'y_tumor' not found in HDF5! Using all data.")
         else:
             print(f" Loaded {self.X.shape[0]} Total Spectra (Tumor + Healthy).")
+
+        # --- VIABLE_LEGACY FILTERING LOGIC (independent of tumor_only above) ---
+        # Restricts to the old, narrower, manually-curated "tumour cluster" subset
+        # (NMF(100)->GMM(3) per slide, human-picked cluster -- src/data/preprocessing.py
+        # docstring) instead of v1's default wider strong-signal mask. v2 preprocessing
+        # has no viable_legacy column at all (self.viable_legacy stays None), so this
+        # is a no-op there even if the flag is set.
+        if self.viable_legacy_only:
+            if self.viable_legacy is not None:
+                print("[*] 'viable_legacy_only=True': Filtering to the legacy "
+                     "manually-curated tumour-cluster subset...")
+                vl = self.viable_legacy[:]
+                mask = (vl == True)  # noqa: E712 -- explicit bool compare, mirrors y_t==1 above
+
+                self.X = self.X[mask]
+                self.y_class = self.y_class[mask]
+                self.groups = self.groups[mask]
+                if self.y_tumor is not None:
+                    self.y_tumor = self.y_tumor[mask]
+                if self.coords is not None:
+                    self.coords = self.coords[mask]
+                if self.tissue_cluster is not None:
+                    self.tissue_cluster = self.tissue_cluster[mask]
+                self.viable_legacy = self.viable_legacy[mask]
+                print(f"    Filtered to {self.X.shape[0]} viable_legacy Spectra "
+                     f"({mask.sum()}/{len(mask)}, {mask.mean():.1%}).")
+            else:
+                print("   ! WARNING: 'viable_legacy' not found in HDF5! Using all data.")
 
     def get_wavenumber_indices(self, crop_region: Optional[Tuple[float, float]] = None,
                               calib_file: Optional[str] = None) -> Tuple[int, int]:

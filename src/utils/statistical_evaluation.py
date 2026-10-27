@@ -19,6 +19,7 @@ import numpy as np
 import joblib
 import xgboost as xgb
 import tensorflow as tf
+import keras
 from sklearn.metrics import (
     accuracy_score, balanced_accuracy_score, f1_score,
     precision_score, recall_score, cohen_kappa_score,
@@ -26,6 +27,20 @@ from sklearn.metrics import (
 )
 
 from src.models.cvae import CVAE
+
+# Modal's CNN training image (pipeline/modal_classifiers.py) pins tensorflow but
+# not keras, so a CNN trained there can be saved by a newer Keras than this
+# local environment's -- newer Keras serializes GlorotUniform with extra
+# input_axes/output_axes kwargs this version's __init__ doesn't accept, which
+# otherwise breaks loading ANY such .keras file here (confirmed on
+# exp_671's Modal-trained CNNs; a per-call custom_objects override does NOT
+# intercept this, since GlorotUniform is a built-in, not a custom, name --
+# only patching the class itself works). Harmless for files saved without
+# those kwargs (old-format files keep working identically).
+_orig_glorot_init = keras.initializers.GlorotUniform.__init__
+def _tolerant_glorot_init(self, seed=None, **kwargs):
+    _orig_glorot_init(self, seed=seed)
+keras.initializers.GlorotUniform.__init__ = _tolerant_glorot_init
 
 
 # ============================================================================

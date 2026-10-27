@@ -77,7 +77,11 @@ def _load_raw_side_tables(h5_path):
         sample_ids = (np.char.decode(sample_ids.astype('S'), 'utf-8')
                      if sample_ids.dtype.kind != 'U' else sample_ids.astype(str))
         coords = f['coords'][:]
-        viable_legacy = f['viable_legacy'][:]
+        # v2 preprocessing (src/data/preprocessing_v2.py) has no clustering
+        # stage at all, so this column does not exist there -- external
+        # agreement is skipped for that dataset (configs/exp_2.*.yaml's own
+        # notes), not a bug.
+        viable_legacy = f['viable_legacy'][:] if 'viable_legacy' in f else None
         slide_names = f['slide_names'][:]
         slide_names = (np.char.decode(slide_names.astype('S'), 'utf-8')
                       if slide_names.dtype.kind != 'U' else slide_names.astype(str))
@@ -175,12 +179,18 @@ def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42
     threshold = hard_diagnostic_threshold(method, K)
     covered = n_folds_covering > 0
     hard_diagnostic = (non_diag_mass[covered] < threshold).astype(int)
-    agreement = external_agreement(hard_diagnostic, viable_legacy[covered].astype(int))
-    print(f"\n{'='*70}\nEXTERNAL AGREEMENT vs viable_legacy (n={agreement['n']}, "
-          f"hard_diagnostic_threshold={threshold:.4f})\n{'='*70}")
-    print(f"  ARI={agreement['ari']:.4f}  AMI={agreement['ami']:.4f}")
-    print(f"  (model says 'diagnostic': {hard_diagnostic.sum()}/{len(hard_diagnostic)}; "
-          f"viable_legacy true: {viable_legacy[covered].sum()}/{covered.sum()})")
+    if viable_legacy is None:
+        agreement = None
+        print(f"\n{'='*70}\nEXTERNAL AGREEMENT: skipped -- this dataset has no "
+              f"'viable_legacy' column (v2 preprocessing has no clustering "
+              f"stage)\n{'='*70}")
+    else:
+        agreement = external_agreement(hard_diagnostic, viable_legacy[covered].astype(int))
+        print(f"\n{'='*70}\nEXTERNAL AGREEMENT vs viable_legacy (n={agreement['n']}, "
+              f"hard_diagnostic_threshold={threshold:.4f})\n{'='*70}")
+        print(f"  ARI={agreement['ari']:.4f}  AMI={agreement['ami']:.4f}")
+        print(f"  (model says 'diagnostic': {hard_diagnostic.sum()}/{len(hard_diagnostic)}; "
+              f"viable_legacy true: {viable_legacy[covered].sum()}/{covered.sum()})")
 
     report = {
         'config': config_name, 'method': method, 'variant': variant,

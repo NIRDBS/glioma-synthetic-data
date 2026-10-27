@@ -1,55 +1,64 @@
 \appendix
-\section{Baseline Correction: Method Selection}
+
+\section{\textcolor{green}{Baseline Correction: Method Selection}}
 \label{app:baseline_correction}
 \setcounter{table}{0}
 \renewcommand{\thetable}{\Alph{section}.\arabic{table}}
 
-We compared four baseline correctors — airPLS \cite{Zhang2010} at the inherited $\lambda=100$, airPLS with $\lambda$ selected per spectrum by generalized cross-validation (GCV) \cite{CravenWahba1979}, airPLS with $\lambda$ selected per spectrum at the L-curve corner \cite{Hansen1992}, and IARPLS \cite{Ye2020} — using a synthetic generator approximating brain-biopsy Raman spectra, plus a ground-truth-free invariance test on real spectra. Four experiments were run in sequence: (1) fitting $\lambda$ for IARPLS, (2) comparing all four correctors against known ground truth, (3) an invariance test on real spectra, (4) IARPLS against an oracle airPLS $\lambda$.
+In RS, baseline correction is required because the acquired signal combines different phenomena, such as the molecular fingerprint we want to capture, background fluorescence, and noise. The most common algorithm for baseline correction is Adaptive Iteratively Reweighted Penalized Least Squares (airPLS), with parameters $\lambda$ and $p$-order which are used to control the shape of the baseline~\cite{Zhang2010}. Generalized Cross Validation (GCV)~\cite{craven1978smoothing} and L-curve~\cite{hansen1992analysis} are two methods that can be used to select the best $\lambda$. An alternative algorithm for baseline correction is Improved Asymmetrically Reweighted Penalized Least Squares (IARPLS)~\cite{ye2020baseline}. We designed a suite of experiments to compare airPLS (with $\lambda$ fitted by GCV and L-curve) and IARPLS. Three experiments were run in sequence: (1) fitting $\lambda$ for IARPLS, (2) comparing the three correctors against known ground truth, (3) an invariance test on real spectra.
+
+% We compared three baseline correctors — airPLS  $\lambda$ selected per spectrum by generalized cross-validation (GCV) , airPLS with $\lambda$ selected per spectrum at the L-curve corner , and IARPLS \cite{ye2020baseline} — using a synthetic generator approximating brain-biopsy Raman spectra, plus a ground-truth-free invariance test on real spectra. 
 
 \subsection*{Synthetic Data Generator}
-Each generated spectrum is $s(\tilde\nu) = p(\tilde\nu) + b(\tilde\nu) + \varepsilon(\tilde\nu)$ on the real wavenumber axis $\tilde\nu$ (1738 points, $50$--$3400\text{ cm}^{-1}$).
+We defined a synthetic spectra generator to fit the parameters of the baseline correction to data that looks approximately like our dataset, without fitting to our dataset specifically. We chose this approach to avoid fitting parameters to the full dataset, parameters that would be specific to this dataset and probably not representative for the data population.
 
-\[
-p(\tilde\nu) = \sum_{k=1}^{14} A_k \exp\!\left(-\frac{(\tilde\nu-\mu_k)^2}{2\sigma_k^2}\right), \qquad \sigma_k=\frac{w_k}{2\sqrt{2\ln 2}}
-\]
-\[
-A_k = a\,r_k\,u_k,\quad u_k\sim\mathcal U(0.75,1.25), \qquad w_k = f_k\,v_k,\quad v_k\sim\mathcal U(0.85,1.15), \qquad a=400
-\]
+The generator defines the signal as a sum of peaks, baseline, and noise:
+\begin{equation*}
+   s(\nu) = p(\nu) + b(\nu) + \varepsilon(\nu), 
+\end{equation*} where $\nu$ is the wavenumber (1738 points in the interval $50$--$3400\text{ cm}^{-1}$). The peaks $p(\cdot)$ signal is a sum of 14 Gaussians chosen at biologically relevant positions (Table \ref{tab:baseline_generator_bands}). 
+
+Relative amplitudes and width sizes are drawn randomly from uniform distributions around each band's center values to simulate a wide range of spectra.
+
+% \[
+% p(\nu) = \sum_{k=1}^{14} A_k \mathcal{N}(\mu_k,\sigma_k)
+% \]
+% \[
+% A_k = a\,r_k\,u_k,\quad u_k\sim\mathcal U(0.75,1.25), \qquad w_k = f_k\,v_k,\quad v_k\sim\mathcal U(0.85,1.15), \qquad a=400
+% \]
 
 \begin{table}[H]
 \centering
 \small
-\caption{Synthetic band positions $\mu_k$, relative amplitudes $r_k$, and FWHM $f_k$.}
-\label{tab:baseline_generator_bands}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
 \toprule
-Region & Bands ($\text{cm}^{-1}$) & $r_k$ & $f_k$ ($\text{cm}^{-1}$) \\
+Region & Bands ($\text{cm}^{-1}$) & Relative amplitude & Width ($\text{cm}^{-1}$) \\
 \midrule
-Protein / nucleic acid & 1004, 1032, 1128, 1230, 1260, 1300, 1340 & $0.30$--$1.00$ & $8$--$18$ \\
+Protein / nucleic acid & \makecell{1004, 1032, 1128,\\ 1230, 1260, 1300, 1340} & $0.30$--$1.00$ & $8$--$18$ \\
+\midrule
 Lipid / protein & 1440, 1550, 1660 & $0.35$--$1.20$ & $14$--$20$ \\
+\midrule
 Lipid CH stretch & 2850, 2885, 2930 & $1.45$--$1.80$ & $18$--$22$ \\
+\midrule
 Aromatic & 3060 & $0.30$ & $20$ \\
 \bottomrule
 \end{tabular*}
+\caption{\small Synthetic band positions, relative amplitudes, and width.}
+\label{tab:baseline_generator_bands}
 \end{table}
 
-With $t=(\tilde\nu-\tilde\nu_{\min})/\mathrm{ptp}(\tilde\nu)\in[0,1]$,
-\[
-g(t) = \exp\!\left(-\frac{(t-c)^2}{2w^2}\right) + 0.6\,e^{-t/\tau} + c_1t+c_2t^2+c_3t^3, \qquad b = \alpha\,\frac{g-\min g}{\max(g-\min g)}
-\]
-with $c\sim\mathcal U(-0.1,0.45)$, $w\sim\mathcal U(0.15,0.45)$, $\tau\sim\mathcal U(0.01,0.04)$, $c_1\sim\mathcal U(-0.3,0.3)$, $c_2\sim\mathcal U(-0.25,0.25)$, $c_3\sim\mathcal U(-0.15,0.15)$, and $\alpha \in \{2,8,25\}\times\mathrm{ptp}(p)$ (low/medium/high fluorescence).
-\[
-\varepsilon(\tilde\nu)\sim\mathcal N(0,\sigma_n^2), \qquad \sigma_n=\frac{\mathrm{ptp}(p)}{\mathrm{SNR}}, \qquad \mathrm{SNR}=235
-\]
+% With $t=(\nu-\nu_{\min})/\mathrm{ptp}(\nu)\in[0,1]$,
+% \[
+% g(t) = \exp\!\left(-\frac{(t-c)^2}{2w^2}\right) + 0.6\,e^{-t/\tau} + c_1t+c_2t^2+c_3t^3, \qquad b = \alpha\,\frac{g-\min g}{\max(g-\min g)}
+% \]
+% with $c\sim\mathcal U(-0.1,0.45)$, $w\sim\mathcal U(0.15,0.45)$, $\tau\sim\mathcal U(0.01,0.04)$, $c_1\sim\mathcal U(-0.3,0.3)$, $c_2\sim\mathcal U(-0.25,0.25)$, $c_3\sim\mathcal U(-0.15,0.15)$, and $\alpha \in \{2,8,25\}\times\mathrm{ptp}(p)$ (low/medium/high fluorescence).
+% \[
+% \varepsilon(\nu)\sim\mathcal N(0,\sigma_n^2), \qquad \sigma_n=\frac{\mathrm{ptp}(p)}{\mathrm{SNR}}, \qquad \mathrm{SNR}=235
+% \]
 
-\subsection*{Experiment 1: IARPLS $\lambda$ Selection}
-Fingerprint-region ($700$--$1800\text{ cm}^{-1}$) NRMSE against $\lambda$, nominal generator, median of 6 spectra per level.
-
+\subsection*{IARPLS $\lambda$ Selection}
 \begin{table}[H]
 \centering
 \small
-\caption{IARPLS NRMSE vs.\ $\lambda$, nominal generator.}
-\label{tab:baseline_lambda_fit}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
 \toprule
 $\lambda$ & Low & Medium & High \\
@@ -62,15 +71,13 @@ $10^6$ & $0.0050$ & $0.1791$ & $2.7035$ \\
 $10^7$ & $0.0495$ & $2.7456$ & $3.0016$ \\
 \bottomrule
 \end{tabular*}
+\caption{\small Fingerprint-region ($700$--$1800\text{ cm}^{-1}$) Normalized Root MSE (NRMSE) against $\lambda$, nominal generator, median of 6 spectra per level.}
+\label{tab:baseline_lambda_fit}
 \end{table}
-
-Fingerprint NRMSE vs.\ $\lambda$ across three synthetic baseline curvature families (smooth, structured, sharp), median over lineshape and noise conditions, $n=12$ per cell.
 
 \begin{table}[H]
 \centering
 \small
-\caption{IARPLS NRMSE vs.\ $\lambda$, by baseline curvature family.}
-\label{tab:baseline_curvature_family}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
 \toprule
 $\lambda$ & Smooth & Structured & Sharp \\
@@ -84,13 +91,14 @@ $10^5$ & $0.0119$ & $0.2313$ & $1.2984$ \\
 $10^6$ & $0.8861$ & $1.7073$ & $2.4629$ \\
 \bottomrule
 \end{tabular*}
+\caption{\small Fingerprint-region NRMSE vs.\ $\lambda$ across three synthetic baseline curvature families (smooth, structured, sharp), median over lineshape and noise conditions, $n=12$ per cell.}
+\label{tab:baseline_curvature_family}
 \end{table}
 
 \begin{table}[H]
 \centering
 \small
-\caption{Width of the near-optimal $\lambda$ window (within 25\% of the family's minimum NRMSE).}
-\label{tab:baseline_curvature_window}
+
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
 \toprule
 Family & Best $\lambda$ & Best NRMSE & Window & Decades \\
@@ -100,183 +108,344 @@ Structured & $3.2\times10^2$ & $0.0108$ & $10^2$--$3.2\times10^4$ & $2.5$ \\
 Sharp & $3.2\times10^2$ & $0.0290$ & $10^2$--$3.2\times10^2$ & $0.5$ \\
 \bottomrule
 \end{tabular*}
+\caption{\small Width of the near-optimal $\lambda$ window (within 25\% of the family's minimum NRMSE).}
+\label{tab:baseline_curvature_window}
 \end{table}
 
-\subsection*{Experiment 2: Comparison Against Ground Truth}
-Synthetic spectra, $n=40$ per fluorescence level, $\lambda=10^4$ for IARPLS.
+\subsection*{Comparison Against Ground Truth}
+The baseline correctors were tested on synthetic generated data with known ground truth signal: $n=40$ per fluorescence level, $\lambda=10^4$ for IARPLS.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Recovered/true peak height (median over fluorescence levels).}
-\label{tab:baseline_peak_fidelity}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
 \toprule
 Method & 1004 & 1440 & 1660 & 2930 \\
 \midrule
-airPLS $\lambda=100$ & $0.900$ & $0.691$ & $0.574$ & $0.584$ \\
 airPLS+GCV & $0.126$ & $0.025$ & $0.017$ & $0.011$ \\
 airPLS+L-curve & $1.002$ & $0.997$ & $0.987$ & $0.927$ \\
 IARPLS & $1.003$ & $1.003$ & $1.004$ & $1.003$ \\
 \bottomrule
 \end{tabular*}
+\caption{\small Recovered/true peak height (median over fluorescence levels).}
+\label{tab:baseline_peak_fidelity}
 \end{table}
 
 \begin{table}[H]
 \centering
 \small
-\caption{Fingerprint-region NRMSE by fluorescence level.}
-\label{tab:baseline_nrmse_level}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
 \toprule
 Method & Low & Medium & High \\
 \midrule
-airPLS $\lambda=100$ & $0.0267$ & $0.0512$ & $0.0967$ \\
 airPLS+GCV & $0.0476$ & $0.1178$ & $0.1134$ \\
 airPLS+L-curve & $0.0110$ & $0.0264$ & $0.0245$ \\
 IARPLS & $0.0048$ & $0.0047$ & $0.0047$ \\
 \bottomrule
 \end{tabular*}
-\note{GCV pinned $\lambda$ at the grid floor in $83.3\%$ of spectra; L-curve pinned in $0\%$.}
+\caption{\small Fingerprint-region NRMSE by fluorescence level. GCV pinned $\lambda$ at the grid floor in $83.3\%$ of spectra; L-curve pinned in $0\%$.}
+\label{tab:baseline_nrmse_level}
 \end{table}
 
-\subsection*{Experiment 3: Invariance on Real Spectra}
-Peak-height drift on real spectra when synthetic fluorescence is added ($0$ = invariant); no ground truth required.
+\subsection*{Invariance on Real Spectra}
+Synthetic fluorescence is added to a real spectrum. Each corrector is applied to both versions and the peak-height drift is measured. The peak-height drift is 0 if the corrector is invariant.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Peak-height drift under added fluorescence, real spectra.}
-\label{tab:baseline_invariance}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
 \toprule
 Method & Low & Medium & High \\
 \midrule
 airPLS+GCV & $0.473$ & $0.546$ & $0.848$ \\
 airPLS+L-curve & $0.467$ & $0.545$ & $0.632$ \\
-airPLS $\lambda=100$ & $0.161$ & $0.274$ & $0.553$ \\
 IARPLS & $0.0004$ & $0.0014$ & $0.0030$ \\
 \bottomrule
 \end{tabular*}
+\caption{\small Peak-height drift under added fluorescence, real spectra.}
+\label{tab:baseline_invariance}
 \end{table}
 
-\subsection*{Experiment 4: IARPLS vs.\ Oracle airPLS $\lambda$}
-Per-level airPLS $\lambda$ chosen against known ground truth (oracle); fingerprint NRMSE, median of 5 spectra per level.
+We chose IARPLS ($\lambda=10^4$) as the baseline corrector. We note that IARPLS is robust for $\lambda$ between $10^2$ to $10^4$ for our particular experiments. Although this parameter is not fitted on the entire dataset, given those results we consider it to be a close to optimal solution. Kizilov et al.~\cite{Kizilov2026} report a similar $\lambda$-sensitivity for IARPLS on non-biological samples.
+
+\newpage
+\section{\textcolor{green}{Beta Sensitivity Analysis}}
+\label{app:beta_sensitivity}
+\setcounter{table}{0}
+\renewcommand{\thetable}{\Alph{section}.\arabic{table}}
+\setcounter{figure}{0}
+\renewcommand{\thefigure}{\Alph{section}.\arabic{figure}}
+
+We characterize how $\beta$, the regularization coefficient of the CVAE and the weight of $D_{KL}$, affects training dynamics and latent-space usage with a flat-$\beta$ sweep over $\beta\in\{0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0\}$ (\texttt{exp\_607}, \texttt{exp\_608}, \texttt{exp\_609}, \texttt{exp\_601}, \texttt{exp\_602}, \texttt{exp\_603}, \texttt{exp\_604}, \texttt{exp\_501} respectively; the dimension of the latent space is $d=32$ throughout). We also tried a windowed approach, alternating $\beta$ $1.25/1.0$ every 10 epochs in \texttt{exp\_605}, respectively $0.75/1.0$ in \texttt{exp\_606}; both are alternative continuations of \texttt{exp\_601} from epoch 100 until epoch 200. The experiment \texttt{exp\_601} also continues until epoch 200 with constant $\beta=1.0$.
+
+% \subsection*{Fixed-$\beta$ loss curves}
+
+% Reconstruction loss (MSE only) and $D_{KL}$, mean over 5 cross-validation folds, log-scale $y$-axis, for epochs 10--120 (\texttt{608/609/607/601}) or 10--100 (\texttt{602/603/604/501}); each series ends at its own experiment's trained epoch count. Epoch 10 is used as the left edge throughout this appendix due to the high value of the initial-epoch loss drop. 
+
+% \subsection*{Windowed $\beta$-alternative continuation}
+
+% Experiments \texttt{exp\_601}, \texttt{exp\_605}, and \texttt{exp\_606} are identical until epoch 100 and diverge at epoch 101, when \texttt{exp\_605}/\texttt{exp\_606} switch to their respective windowed $\beta$ alternatives while \texttt{exp\_601} continues at constant $\beta=1.0$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\linewidth]{img/beta_sensitivity_combined.png}
+\caption{\small Top row: reconstruction loss (left) and $D_{KL}$ (right) across the flat-$\beta$ sweep, mean over 5 cross-validations folds, log scale, epochs 10--120 or 10--100 (each series ends at its own experiment's trained epoch count). Higher $\beta$ consistently trades reconstruction fidelity for KL compression, and KL loss decreases monotonically with $\beta$, as expected from the loss weighting itself. Bottom row: the windowed $\beta$-alternative continuation, epochs 10--200: reconstruction loss and the realized $\beta$ trace (left) and $D_{KL}$ (right) for the constant-$\beta$ control arm (\texttt{exp\_601}) vs.\ both windowed schedules (\texttt{exp\_605}, \texttt{exp\_606}), diverging at the epoch-100/101 branch point.}
+\label{fig:beta_sensitivity_combined}
+\end{figure}
+
+% \subsection*{Per-dimension latent collapse}
+
+For each configuration, on \texttt{Fold 0} we compute $\mathrm{KL}_d$ defined as 
+\[
+\mathrm{KL}_d = \frac{1}{2}\left(\mathbb{E}[\mu_d^2] + \mathbb{E}[\sigma_d^2] - \mathbb{E}[\log\sigma_d^2] - 1\right),
+\] where $\mu_d$ and $\sigma_d^2$ are the $d$-th dimensional component of the initial vectors $\mu,\sigma^2$. 
+
+% from the frozen encoder's $\mu_,\log\sigma^2$ output on the validation data of \texttt{Fold 0}:
+
+A dimension is counted \emph{active} if $\mathrm{KL}_d > 0.01$; all inactive dimensions carry negligible information (the encoder's posterior for that dimension has collapsed onto the prior).
 
 \begin{table}[H]
 \centering
 \small
-\caption{IARPLS vs.\ oracle airPLS $\lambda$.}
-\label{tab:baseline_oracle}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccc}
 \toprule
-Fluorescence & airPLS $\lambda=100$ & Oracle $\lambda$ & Oracle NRMSE & IARPLS & Ratio \\
+$\beta$ & Config & Active / 32 & Total KL & Top-3 KL$_d$ \\
 \midrule
-Low & $0.0219$ & $2.15\times10^4$ & $0.0069$ & $0.0048$ & $1.5\times$ \\
-Medium & $0.0430$ & $4.64\times10^4$ & $0.0120$ & $0.0048$ & $2.5\times$ \\
-High & $0.0883$ & $2.15\times10^4$ & $0.0141$ & $0.0049$ & $2.9\times$ \\
+0.25 & \texttt{exp\_607} & 5 & 2.347 & 0.964, 0.927, 0.402 \\
+0.5 & \texttt{exp\_608} & 3 & 1.165 & 0.779, 0.298, 0.072 \\
+0.75 & \texttt{exp\_609} & 3 & 0.759 & 0.599, 0.117, 0.030 \\
+1.0 & \texttt{exp\_601} & 3 & 0.508 & 0.427, 0.046, 0.026 \\
+1.25 & \texttt{exp\_602} & 2 & 0.253 & 0.223, 0.024, 0.001 \\
+1.5 & \texttt{exp\_603} & 1 & 0.152 & 0.149, $\sim$0, $\sim$0 \\
+1.75 & \texttt{exp\_604} & 1 & 0.091 & 0.089, $\sim$0, $\sim$0 \\
+Windowed A & \texttt{exp\_605} & 3 & 0.311 & 0.273, 0.023, 0.011 \\
+Windowed B & \texttt{exp\_606} & 3 & 0.811 & 0.633, 0.136, 0.029 \\
 \bottomrule
 \end{tabular*}
+\caption{\small Active latent dimensions (out of 32) and total KL, by $\beta$. Windowed A/B (\texttt{exp\_605}/\texttt{exp\_606}) are confounded for comparison, their KL reflects a different training history.}\label{tab:beta_kl_dims}
 \end{table}
 
-IARPLS ($\lambda=10^4$) was adopted as the production baseline corrector. The near-optimal $\lambda$ window narrows from $2.5$ to $0.5$ decades as baseline curvature increases (Table \ref{tab:baseline_curvature_window}); curvature estimated from real spectra exceeds all three synthetic families tested, so $\lambda=10^4$ is retained as a documented default rather than a validated constant. Kizilov et al.\ \cite{Kizilov2026} report a similar $\lambda$-sensitivity for IARPLS on non-biological samples.
+The pattern is monotonic in $\beta$, as expected: a stronger KL penalty produces more aggressive posterior collapse. An important finding is that even at $\beta=0.25$ (the least-collapsed point in the entire sweep) only 5 of 32 latent dimensions carry any information. Severe posterior collapse is present at every $\beta$ tested. In light of the results of the TS/TR and TSR/TR experiments, we conclude that the number of required latent dimensions of the spectra is indeed very low. For fixed $\beta = 0.5$, the effective latent capacity converges to the same $\sim$3--4 active dimensions regardless of $d$ (16, 32, or 64).
+
+% \subsection*{Latent dimension cross-check ($\beta=0.5$)}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccc}
+\toprule
+Latent dimension $d$ & Config & Active dims & Total KL & Top-3 KL$_d$ \\
+\midrule
+16 & \texttt{exp\_701} & 3 / 16 & 1.364 & 0.947, 0.310, 0.085 \\
+32 & \texttt{exp\_608} & 3 / 32 & 1.165 & 0.779, 0.298, 0.072 \\
+64 & \texttt{exp\_702} & 4 / 64 & 1.354 & 0.926, 0.322, 0.073 \\
+\bottomrule
+\end{tabular*}
+\caption{\small Active latent dimensions and total KL vs.\ nominal $d$, at fixed $\beta=0.5$.}
+\label{tab:beta_dim_crosscheck}
+\end{table}
 
 \newpage
-\input{appendix_extended_results}
 
-\section{Stratified Evaluation Protocol}
+\input{appendix_controlled_experiments}
+
+% \section{Controlled Experiments: Downstream Classifier Results}
+% \label{app:controlled_experiments}
+% \setcounter{table}{0}
+% \renewcommand{\thetable}{\Alph{section}.\arabic{table}}
+% \setcounter{figure}{0}
+% \renewcommand{\thefigure}{\Alph{section}.\arabic{figure}}
+
+% We report full downstream-classifier results for the controlled-experiment family referenced in Appendix~\ref{app:beta_sensitivity}: five axes, each varying one factor against the shared anchor \texttt{exp\_608} ($\beta=0.5$, \texttt{latent\_dim}=32, v1 preprocessing) -- the CVAE $\beta$ value, the nominal latent dimension, the reconstruction-loss weighting, the synthetic/real ratio used by TSRTR, and the preprocessing variant.
+
+% Each table lists the bag-level accuracy under each training regimen (TR/TR: real only; TS/TR: synthetic only; TSR/TR: synthetic+real) -- one majority-vote decision per bag (biopsy slide), standard metrics over the resulting bag decisions -- the bootstrap difference $\Delta$ relative to the TR/TR baseline with its 95\% confidence interval (class-stratified resampling of bag decisions, 1000 iterations; (*) marks a 95\% CI excluding zero), and four additional bag-level metrics: balanced accuracy, sensitivity, specificity, and AUC.
+
+% \textbf{On balanced accuracy.} The bootstrap $\Delta$/CI/significance columns test raw accuracy -- that is the statistic this project's evaluation pipeline was built to test, and no equivalent bootstrap was run for balanced accuracy. Balanced accuracy is reported alongside it as a separate point estimate, not a substitute: at this task's roughly even bag-level class split (Table~\ref{tab:ctrl_fold_balance} below), the two are close, but they are not the same statistic, and only the accuracy column carries a significance claim. The CbR row reports its own bag-level accuracy and 95\% CI (not a difference vs.\ TR/TR), so its $\Delta$ column is left blank, and AUC is not defined for it (a single reconstruction-error-derived label, not a probability).
+
+% \input{appendix_controlled_experiments_tables}
+
+% \subsection*{MIL tier results, where available}
+
+% Full MIL tier results (methodology, spatial validation, shuffled-label controls) are reported in full in the project's own MIL findings reference; the bag-level accuracy and balanced accuracy below are reproduced here for the experiments in this family that have them. Sensitivity, specificity, and AUC are not computed for the MIL tiers in the current pipeline (marked NA) -- these tiers report a $(K{+}1)$-way posterior, not a calibrated binary score, so the same binary-AUC machinery used for the four downstream classifiers above does not apply unchanged.
+
+% \begin{table}[H]
+% \centering
+% \scriptsize
+% \caption{MIL tier bag-level accuracy and balanced accuracy, by experiment.}
+% \label{tab:ctrl_mil_summary}
+% \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc}
+% \toprule
+% Tier & \texttt{exp\_607} & \texttt{exp\_608} & \texttt{exp\_609} & \texttt{exp\_2.607} & \texttt{exp\_2.608} & \texttt{exp\_4.608} \\
+% \midrule
+% mi-SVM (acc / bal.\ acc) & $0.763/0.772$ & $0.763/0.772$ & $0.763/0.772$ & $0.627/0.626$ & $0.627/0.626$ & $0.627/0.618$ \\
+% Attention (acc / bal.\ acc) & $0.525/0.511$ & $0.458/0.450$ & $0.407/0.413$ & $0.458/0.446$ & $0.492/0.488$ & $0.610/0.599$ \\
+% CbR recon.\ (acc / bal.\ acc) & $0.729/0.717$ & $0.729/0.709$ & $0.678/0.667$ & $0.746/0.732$ & $0.729/0.721$ & $0.712/0.698$ \\
+% CbR enc.\ head (acc / bal.\ acc) & $0.763/0.751$ & $0.797/0.786$ & $0.780/0.766$ & $0.780/0.770$ & $0.797/0.786$ & $0.814/0.801$ \\
+% Bayesian MIL, blind (acc) & $0.729$ & $0.729$ & $0.729$ & $0.712$ & $0.712$ & $0.848$ \\
+% \bottomrule
+% \end{tabular*}
+% \note{Bayesian MIL's blind bag classification (\texttt{score\_bayes\_mil\_blind}) does not report balanced accuracy in the current pipeline, only accuracy -- this is the only bag-level number from this tier that is not circular (see the MIL findings reference's discussion of the naive bag-classification metric being provably vacuous for every Model-(C)-constrained tier); the Gibbs-sampled posterior itself is PCA-based and does not depend on $\beta$, which is why mi-SVM and Bayesian MIL are identical across \texttt{exp\_607}/\texttt{608}/\texttt{609} and again across \texttt{exp\_2.607}/\texttt{2.608}.}
+% \end{table}
+
+% \subsection*{Per-fold class composition: \texttt{exp\_608}}
+
+% Computed directly from the CV split assignment (Appendix~\ref{app:cv_schema}) and each bag's binary label, at both the bag level (one count per biopsy slide) and the instance level (one count per retained spectrum) -- the two can diverge sharply when bag sizes are uneven, since a handful of large bags of one class can dominate a fold's instance count while leaving its bag count roughly balanced.
+
+% \begin{table}[H]
+% \centering
+% \scriptsize
+% \caption{Per-fold bag-level and instance-level class balance, \texttt{exp\_608}.}
+% \label{tab:ctrl_fold_balance}
+% \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc|cccc}
+% \toprule
+% & \multicolumn{4}{c}{Train (bag-level)} & \multicolumn{1}{c|}{} & \multicolumn{4}{c}{Test (bag-level)} \\
+% Fold & Class 0 & Class 1 & Total & \% minority & & Class 0 & Class 1 & Total & \% minority \\
+% \midrule
+% 0 & 20 & 25 & 45 & $44.4\%$ & & 6 & 8 & 14 & $42.9\%$ \\
+% 1 & 22 & 25 & 47 & $46.8\%$ & & 4 & 8 & 12 & $33.3\%$ \\
+% 2 & 18 & 27 & 45 & $40.0\%$ & & 8 & 6 & 14 & $42.9\%$ \\
+% 3 & 21 & 27 & 48 & $43.8\%$ & & 5 & 6 & 11 & $45.5\%$ \\
+% 4 & 20 & 27 & 47 & $42.6\%$ & & 6 & 6 & 12 & $50.0\%$ \\
+% \bottomrule
+% \end{tabular*}
+% \end{table}
+
+% \begin{table}[H]
+% \centering
+% \scriptsize
+% \caption{Per-fold instance-level class balance, \texttt{exp\_608}.}
+% \label{tab:ctrl_fold_balance_instance}
+% \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc|cccc}
+% \toprule
+% & \multicolumn{4}{c}{Train (instance-level)} & \multicolumn{1}{c|}{} & \multicolumn{4}{c}{Test (instance-level)} \\
+% Fold & Class 0 & Class 1 & Total & \% minority & & Class 0 & Class 1 & Total & \% minority \\
+% \midrule
+% 0 & 138625 & 97460 & 236085 & $41.3\%$ & & 24117 & 28476 & 52593 & $45.9\%$ \\
+% 1 & 136548 & 91934 & 228482 & $40.2\%$ & & 26194 & 34002 & 60196 & $43.5\%$ \\
+% 2 & 107721 & 104397 & 212118 & $49.2\%$ & & 55021 & 21539 & 76560 & $28.1\%$ \\
+% 3 & 125752 & 103062 & 228814 & $45.0\%$ & & 36990 & 22874 & 59864 & $38.2\%$ \\
+% 4 & 131263 & 103447 & 234710 & $44.1\%$ & & 31479 & 22489 & 53968 & $41.7\%$ \\
+% \bottomrule
+% \end{tabular*}
+% \note{Class 0 = IDH-mutant, Class 1 = IDH-wildtype (binary mapping: raw grade $<3 \to 0$, else $1$; \texttt{pipeline/\_common.py::prepare\_fold}). Fold~2's test set is the most visibly skewed at the instance level (28.1\% minority, a $\sim$2.6:1 ratio) despite a near-balanced bag count (8 vs.\ 6) -- consistent with this dataset's roughly 8$\times$ spread in bag size (1,878--14,674 instances per slide).}
+% \end{table}
+
+
+\newpage
+\section{\textcolor{green}{Stratified Evaluation Protocol}}
 \label{app:cv_schema}
 \setcounter{table}{0}
 \renewcommand{\thetable}{\Alph{section}.\arabic{table}}
 
-We describe here in detail the five-fold evaluation protocol that we replicated from Lita et al. \cite{apollonov2024raman}. Due to the imbalanced nature of the dataset (See Table \ref{tab:dataset}), a strict CV partition stratified at the patient level would result in folds where classes LGm1 or LGm6 would be absent from the test set of one fold. Therefore, assignments were determined manually to ensure that each class contributes at least 15\% of its samples to each fold's test partition; details are listed below. As a consequence, slides from patients in underrepresented classes appear in the test partitions of two folds and in the training partitions of the remaining three; all other slides appear in exactly one test partition. The complete assignment is stored in \texttt{data/splits/manual\_splits.json}; training sets are not the complement of the listed test sets and cannot be reconstructed from the test listings alone. Refer to the \texttt{manual\_splits.json} file for details.
-  All tissue sections acquired from the same patient are kept together and assigned exclusively to either the training or the test partition within a given fold, preventing patient-level data leakage.
+This appendix details the five-fold evaluation protocol adopted from Lita et al.~\cite{apollonov2024raman}, which we applied to all 59 slides of the dataset. Due to the class imbalance (Table \ref{tab:dataset}), a strictly patient-stratified partition would leave classes \texttt{LGm3} or \texttt{LGm6} absent from the test set of at least one fold. Therefore, the fold assignments were specified manually, such that every class is represented in the test partition of every fold. As a consequence, the slides from two patients (color coded with \textcolor{cyan}{cyan} and \textcolor{blue}{blue}, respectively) in the underrepresented classes \texttt{LGm3} and \texttt{LGm6} (\textcolor{cyan}{\texttt{HF-2104\_\#5\_1.h5\_0}}, \textcolor{cyan}{\texttt{HF-2104\_\#9\_1.h5\_1}}, \textcolor{cyan}{\texttt{HF-2104\_V1T\_1.h5\_2}}, \textcolor{blue}{\texttt{HF-592\_V3T\_1.h5\_4}}) appear in the test partitions of two folds (folds \texttt{0} and \texttt{4}) and in the training partitions of the remaining three folds; all other slides appear in exactly one test partition. Accordingly, the sum of test-set sizes across all five folds (63) exceeds the number of unique slides in the dataset (59).
 
-\paragraph{File structure.} Each key \texttt{"fold\_\textit{k}"} ($k = 0, \ldots, 4$) maps to an object containing two string arrays:
+Within each fold, the training partition is the exact complement of the test partition, thus the training sets can be recovered from Listing \ref{lst:test-list}. To prevent patient-level data leakage, all slides acquired from the same patient are kept together and assigned exclusively to either the training or the test partition of each fold.
 
-\begin{verbatim}
-{
-  "fold_0": {
-    "train": ["HF-<patient>_<label>.h5_<cluster>", ...],
-    "test":  ["HF-<patient>_<label>.h5_<cluster>", ...]
-  },
-  ...
-  "fold_4": {
-    "train": [...],
-    "test":  [...]
-  }
-}
-\end{verbatim}
-
-Each slide identifier takes the form \texttt{HF-\textit{N}\_\textit{label}.h5}, where \texttt{N} is the patient case number and \texttt{label} identifies the tissue block and acquisition section.
+\vspace*{1cm}
 
 \begin{table}[H]
 \centering
-\small
-\caption{Stratified fold sizes. Training sets are not the complement of the test sets; see text.}
-\label{tab:cv_folds_summary}
+% \small
 \begin{tabular}{lrr}
 \toprule
 Fold & Train slides & Test slides \\
 \midrule
-0 & 44 & 14 \\
-1 & 46 & 12 \\
-2 & 44 & 14 \\
-3 & 48 & 10 \\
-4 & 46 & 12 \\
+0 & 45 & 14 \\
+1 & 47 & 12 \\
+2 & 45 & 14 \\
+3 & 48 & 11 \\
+4 & 47 & 12 \\
 \bottomrule
 \end{tabular}
-\note{Counts refer to individual slide acquisitions, not patients. Four slides appear in the test partitions of both fold~0 and fold~4 (patients \texttt{HF-2104} and \texttt{HF-592}), so the sum of test-set sizes across all five folds (62) exceeds the number of unique slides in the dataset (58).}
+\caption{Stratified fold sizes.}
+\label{tab:cv_folds_summary}
 \end{table}
 
-\paragraph{Slides appearing in two test folds.}
-Four slides appear in the test partitions of both fold~0 and fold~4 and are therefore included in the training partitions of folds~1, 2, and~3 only: \texttt{HF-2104\_\#5\_1.h5\_0}, \texttt{HF-2104\_\#9\_1.h5\_1}, and \texttt{HF-2104\_V1T\_1.h5\_2} (patient~\texttt{HF-2104}), and \texttt{HF-592\_V3T\_1.h5\_4} (patient~\texttt{HF-592}). Their repeated appearance can be verified in the listings below.
+% Four slides appear in the test partitions of both fold~0 and fold~4 and are therefore included in the training partitions of folds~1, 2, and~3 only: \texttt{HF-2104\_\#5\_1.h5\_0}, \texttt{HF-2104\_\#9\_1.h5\_1}, and \texttt{HF-2104\_V1T\_1.h5\_2} (patient~\texttt{HF-2104}), and \texttt{HF-592\_V3T\_1.h5\_4} (patient~\texttt{HF-592}). Their repeated appearance can be verified in the listings below.
 
-\paragraph{Test-set assignments.} The slide identifiers held out in each fold are listed verbatim below. Full training-set listings are in the referenced JSON file.
+% \paragraph{Test-set assignments.} The slide identifiers held out in each fold are listed verbatim below. 
+% Full training-set listings are in the referenced JSON file.
 
-\medskip
-\noindent\textbf{Fold 0} (14 slides):
-\begin{verbatim}
+\newpage
+
+\begin{lstlisting}[label=lst:test-list, caption=Test assignments.]
+~Fold 0 (14 slides):~
 HF-448_V5B_1.h5_3        HF-305_v4b_1_1.h5_6      HF-615_V5BB_1.h5_9
-HF-2104_#5_1.h5_0        HF-2104_#9_1.h5_1         HF-2104_V1T_1.h5_2
-HF-442_V4BB_1.h5_12      HF-1002_V1AT_1.h5_0       HF-1002_V2AT_1.h5_1
-HF-682_V3AT_1.h5_9       HF-682_V3BB_1.h5_10       HF-894_9_1.h5_11
-HF-894_V1BB_1.h5_12      HF-592_V3T_1.h5_4
-\end{verbatim}
+@HF-2104_#5_1.h5_0@        @HF-2104_#9_1.h5_1@        @HF-2104_V1T_1.h5_2@
+HF-442_V4BB_1.h5_12      HF-1002_V1AT_1.h5_0      HF-1002_V2AT_1.h5_1
+HF-682_V3AT_1.h5_9       HF-682_V3BB_1.h5_10      HF-894_9_1.h5_11
+HF-894_V1BB_1.h5_12      !HF-592_V3T_1.h5_4!
 
-\medskip
-\noindent\textbf{Fold 1} (12 slides):
-\begin{verbatim}
+~Fold 1 (12 slides):~
 HF-868_1_2.h5_4          HF-901_V2T_2.h5_10        HF-960_VIAT_2.h5_11
 HF-2614_V1B_1.h5_3       HF-1825_V2B_1.h5_2        HF-2102_V2BB_1.h5_3
 HF-2102_V3AM_1.h5_4      HF-2102_V3AM_2.h5_5       HF-988_V1-T_1.h5_13
 HF-988_V1B_1.h5_14       HF-1043_V1AM_1.h5_0       HF-2106_V3AM_1.h5_0
-\end{verbatim}
 
-\medskip
-\noindent\textbf{Fold 2} (14 slides):
-\begin{verbatim}
-HF-1293_13_1.h5_0        HF-1010_V1T_1.h5_0        HF-1016_IAT_2.h5_1
-HF-1334_V58-B_2_1.h5_2   HF-2849_VIT2_1.h5_4       HF-2849_VIT2_1.h5_5
+~Fold 2 (14 slides):~
+HF-1293_13_1.h5_0        HF-1010_V1T_1.h5_0         HF-1016_IAT_2.h5_1
+HF-1334_V58-B_2_1.h5_2   HF-2849_VIT2_1.h5_4        HF-2849_VIT2_1.h5_5
 HF-2849_VIT2_2.h5_6      HF-2849_VIT_2_new2021.h5_7 HF-2454_V1AT_1.h5_6
-HF-2548_V1T_1.h5_7       HF-1086_#1_1.h5_1         HF-2355_V2AM_1.h5_2
+HF-2548_V1T_1.h5_7       HF-1086_#1_1.h5_1          HF-2355_V2AM_1.h5_2
 HF-2493_V1T_1.h5_1       HF-2493_V1T_2.h5_2
-\end{verbatim}
 
-\medskip
-\noindent\textbf{Fold 3} (10 slides):
-\begin{verbatim}
+~Fold 3 (11 slides):~
 HF-1295_V3AM_2.h5_1      HF-2070_V1T_1.h5_4        HF-2776_V2B_2.h5_5
 HF-2852_VIT_2_2.h5_8     HF-2715_VIL_1.h5_8        HF-2802_V3T_1.h5_9
 HF-2485_V1B_1.h5_3       HF-2600_V1B_1.h5_4        HF-2608_V1T_1.h5_5
-HF-2544_V1B_1.h5_3
-\end{verbatim}
+HF-2544_V1B_1.h5_3       HF-1887_via-t_2_1.h5_3
 
-\medskip
-\noindent\textbf{Fold 4} (12 slides):
-\begin{verbatim}
+~Fold 4 (12 slides):~
 HF-2534_V2B_1.h5_2       HF-3271_VIB_2.h5_7        HF-3337_V3T_1.h5_8
-HF-2104_#5_1.h5_0        HF-2104_#9_1.h5_1         HF-2104_V1T_1.h5_2
+@HF-2104_#5_1.h5_0@        @HF-2104_#9_1.h5_1@         @HF-2104_V1T_1.h5_2@
 HF-2876_V1T_1.h5_10      HF-2898_V1T_1.h5_11       HF-2619_V1T_1.h5_6
-HF-2619_V4T_1.h5_7       HF-2666_V2B_1.h5_8        HF-592_V3T_1.h5_4
-\end{verbatim}
+HF-2619_V4T_1.h5_7       HF-2666_V2B_1.h5_8        !HF-592_V3T_1.h5_4!
+
+\end{lstlisting}
+
+% \medskip
+% \noindent\textbf{Fold \texttt{0}} (14 slides):
+% \begin{verbatim}
+% HF-448_V5B_1.h5_3        HF-305_v4b_1_1.h5_6      HF-615_V5BB_1.h5_9
+% @HF-2104_#5_1.h5_0@        @HF-2104_#9_1.h5_1@         @HF-2104_V1T_1.h5_2@
+% HF-442_V4BB_1.h5_12      HF-1002_V1AT_1.h5_0       HF-1002_V2AT_1.h5_1
+% HF-682_V3AT_1.h5_9       HF-682_V3BB_1.h5_10       HF-894_9_1.h5_11
+% HF-894_V1BB_1.h5_12      !HF-592_V3T_1.h5_4!
+% \end{verbatim}
+
+% \medskip
+% \noindent\textbf{Fold \texttt{1}} (12 slides):
+% \begin{verbatim}
+% HF-868_1_2.h5_4          HF-901_V2T_2.h5_10        HF-960_VIAT_2.h5_11
+% HF-2614_V1B_1.h5_3       HF-1825_V2B_1.h5_2        HF-2102_V2BB_1.h5_3
+% HF-2102_V3AM_1.h5_4      HF-2102_V3AM_2.h5_5       HF-988_V1-T_1.h5_13
+% HF-988_V1B_1.h5_14       HF-1043_V1AM_1.h5_0       HF-2106_V3AM_1.h5_0
+% \end{verbatim}
+
+% \medskip
+% \noindent\textbf{Fold \texttt{2}} (14 slides):
+% \begin{verbatim}
+% HF-1293_13_1.h5_0        HF-1010_V1T_1.h5_0        HF-1016_IAT_2.h5_1
+% HF-1334_V58-B_2_1.h5_2   HF-2849_VIT2_1.h5_4       HF-2849_VIT2_1.h5_5
+% HF-2849_VIT2_2.h5_6      HF-2849_VIT_2_new2021.h5_7 HF-2454_V1AT_1.h5_6
+% HF-2548_V1T_1.h5_7       HF-1086_#1_1.h5_1         HF-2355_V2AM_1.h5_2
+% HF-2493_V1T_1.h5_1       HF-2493_V1T_2.h5_2
+% \end{verbatim}
+
+% \medskip
+% \noindent\textbf{Fold \texttt{3}} (11 slides):
+% \begin{verbatim}
+% HF-1295_V3AM_2.h5_1      HF-2070_V1T_1.h5_4        HF-2776_V2B_2.h5_5
+% HF-2852_VIT_2_2.h5_8     HF-2715_VIL_1.h5_8        HF-2802_V3T_1.h5_9
+% HF-2485_V1B_1.h5_3       HF-2600_V1B_1.h5_4        HF-2608_V1T_1.h5_5
+% HF-2544_V1B_1.h5_3       HF-1887_via-t_2_1.h5_3
+% \end{verbatim}
+
+% \medskip
+% \noindent\textbf{Fold \texttt{4}} (12 slides):
+% \begin{verbatim}
+% HF-2534_V2B_1.h5_2       HF-3271_VIB_2.h5_7        HF-3337_V3T_1.h5_8
+% @HF-2104_#5_1.h5_0@        @HF-2104_#9_1.h5_1@         @HF-2104_V1T_1.h5_2@
+% HF-2876_V1T_1.h5_10      HF-2898_V1T_1.h5_11       HF-2619_V1T_1.h5_6
+% HF-2619_V4T_1.h5_7       HF-2666_V2B_1.h5_8        !HF-592_V3T_1.h5_4!
+% \end{verbatim}

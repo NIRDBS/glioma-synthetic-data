@@ -39,11 +39,11 @@
 \usepackage[hyphens]{url}
 
 % ---- Select math fonts ----
-%\usepackage{MnSymbol}
-%\usepackage[cal=euler,bb=fourier]{mathalpha}
-%\newcommand{\hmmax}{0}
-%\newcommand{\bmmax}{0}
-%\usepackage{bm}
+% \usepackage{MnSymbol}
+% \usepackage[cal=euler,bb=fourier]{mathalpha}
+% \newcommand{\hmmax}{0}
+% \newcommand{\bmmax}{0}
+% \usepackage{bm}
 %\usepackage[italic,eulergreek,nolessnomore,noparenthesis,noplusnominus,noequal,nohbar]{mathastext}
 %\MTsetmathskips{f}{3mu}{0mu}
 %\MTsetmathskips{y}{2mu}{0mu}
@@ -223,14 +223,28 @@
 \definecolor{highlight}{RGB}{0, 100, 180}      % Deep Blue
 
 \usepackage{float}
+\usepackage{rotating}
+\usepackage{rotfloat}
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{todonotes}
 
 \usepackage{xcolor}
+\usepackage{bclogo}%  \bcpanchant
+\newcommand{\underconstruction}{\marginpar{\bcpanchant}}
+
 \newif\ifdraft\drafttrue
 \newcommand{\TODO}[1]{\ifdraft{\color{red}[TODO: #1]}\fi}
 
+\usepackage[T1]{fontenc}
+\usepackage{sourceserifpro}
+\usepackage{sourcecodepro}
+
+\usepackage{MnSymbol}
+% \usepackage[cal=euler,bb=fourier]{mathalpha}
+% \newcommand{\hmmax}{0}
+% \newcommand{\bmmax}{0}
+% \usepackage{bm}
 
 \usepackage[toc, page]{appendix}
 % ---- Appendix formatting ----
@@ -263,6 +277,7 @@
 \IfValueT{#1}{\textit{#1}:\quad}%
 #2}}
 
+
 \usepackage{booktabs}
 
 \usepackage[
@@ -272,18 +287,46 @@
   minnames=1
 ]{biblatex}
 \addbibresource{references.bib}
+\AtBeginBibliography{\footnotesize}
 
 \usepackage{authblk}
+\renewcommand\Authfont{\normalsize}
+\renewcommand\Affilfont{\footnotesize\raggedright}
+\setlength{\affilsep}{2em}
 
+\usepackage{makecell}
+\usepackage{listings}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+
+
+\algrenewcommand\algorithmicrequire{\textbf{Input:}}
+\algrenewcommand\algorithmicensure{\textbf{Output:}}
+\algblockdefx[DoWhile]{Do}{While}{\textbf{do}}{\textbf{while}}
+
+\usepackage{enumitem}
+\usepackage{bbm}
 
 \begin{document}
 
+\lstset{
+  basicstyle=\ttfamily\small,
+  columns=fullflexible,
+  keepspaces=true,
+  moredelim=**[is][\color{cyan}]{@}{@},
+  moredelim=**[is][\color{blue}]{!}{!},
+  moredelim=**[is][\bfseries]{~}{~}
+}
+
 \title{
 %Synthetic Data Generation and Classification by Reconstruction in Spectral Diagnostics\\
-Generative Augmentation of Raman Spectra for Glioma Classification
+%CVAE, small cohort, 
+\textcolor{red}{Generative Augmentation of Raman Spectra for Glioma Classification}
 }
-\author[1]{Andrei Iușan\thanks{These authors contributed equally to this work.}}
-\author[1]{Iulian Vasile\protect\footnotemark[1]}
+\author[1]{Andrei Iușan}
+\author[1]{Iulian Vasile}
 \author[1]{Daria Voiculescu}
 \author[1,2]{Ion Petre}
 \author[3,4]{Andrei P\u{a}un}
@@ -304,80 +347,92 @@ Generative Augmentation of Raman Spectra for Glioma Classification
 
 
 \begin{abstract}
+Access to sufficiently large biomedical datasets remains a major obstacle for machine learning in Raman spectroscopy-based diagnostics. In particular, for glioma analysis, datasets are typically small and affected by acquisition-specific variability. We study whether deep generative augmentation can help in this setting, using 59 glioma biopsy samples for binary IDH-status classification. Only slide-level labels are available, and a slide may contain non-diagnostic tissue, thus we formulate the problem using Multiple-Instance Learning (MIL). To address the limited size and imbalance of the dataset, we develop a $\beta$-regularized conditional variational autoencoder ($\beta$-CVAE) capable of generating class-conditioned synthetic Raman spectra. 
+\begin{center}\TODO{Add results!}\end{center}
+
+\begin{comment}
 Access to sufficiently large biomedical datasets remains a major obstacle for machine learning in Raman spectroscopy-based diagnostics. In particular, for glioma analysis, datasets are typically small and heterogeneous, affected by acquisition-specific variability. This work investigates the utility of deep generative augmentation in such a small-cohort setting.
 %
-We analyze glioma biopsy spectra acquired from 58 tumor samples and consider both binary IDH-status classification and 6-class methylation subtype classification problems. To address the limited size and imbalance of the dataset, we develop a conditional variational autoencoder ($\beta$-CVAE) capable of generating class-conditioned synthetic Raman spectra. The generated data are evaluated in Train-on-Synthetic, Test-on-Real (TS/TR) and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) settings under a strict patient-isolated cross-validation protocol.
+We analyze glioma biopsy spectra acquired from 58 tumor samples and consider both binary IDH-status classification and 6-class methylation subtype classification problems. To address the limited size and imbalance of the dataset, we develop a $\beta$-regularized conditional variational autoencoder ($\beta$-CVAE) capable of generating class-conditioned synthetic Raman spectra. The generated data are evaluated in Train-on-Synthetic, Test-on-Real (TS/TR) and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) settings under a strict patient-isolated cross-validation protocol.
 %
 Models trained exclusively on synthetic spectra underperform models trained on real spectra, indicating a substantial domain gap between synthetic and real distributions. However, augmenting the real training data with synthetic data consistently improves classification performance across multiple models. These findings indicate that, even with a limited number of independent patient samples, generative models can capture sufficient structure to provide useful regularization for downstream classifiers.
 %
 We also investigate a reconstruction-based inference strategy, termed Classification by Reconstruction (CbR), in which class prediction is based on reconstruction error under different class conditions. Overall, the results support the use of deep generative augmentation as a practical strategy for improving machine learning robustness in Raman spectroscopy applications characterized by limited biomedical datasets.
+\end{comment}
 \end{abstract}
 
 
+\section{\textcolor{green}{Introduction}}
+Gliomas are among the most common primary tumors of the central nervous system, and their diagnosis relies on both histology and molecular markers~\cite{louis2021who}. The most important one is the mutation status of isocitrate dehydrogenase (IDH) genes (IDH1 and IDH2), which separates IDH-Mutant and IDH-Wildtype tumors~\cite{Ceccarelli2016,louis2021who}. IDH-Mutant gliomas generally have a better prognosis~\cite{cancer2015comprehensive,eckel2015glioma}, thus accurate molecular classification is important for diagnosis and treatment planning~\cite{gbm_review_2025}. 
 
-\section{Introduction}
-Raman spectroscopy (RS) has emerged as a promising tool for biomedical diagnostics due to its ability to provide rapid, label-free, and non-destructive biochemical characterization of tissue \cite{krafft2009raman}. In oncology, RS has attracted particular interest as a potential support tool for tumor grading and molecular characterization, where subtle biochemical differences between tissue types may be reflected in spectral signatures \cite{bocklitz2016raman}.
-In the context of gliomas, accurate molecular characterization is essential for treatment planning and prognosis, motivating the development of automated RS-based classification pipelines \cite{gbm_review_2025,stupak2025raman}.
+Raman spectroscopy (RS) has emerged as a potential tool for this purpose, due to its ability to provide rapid, label-free, and non-destructive biochemical analysis of tissue~\cite{krafft2009raman}. In oncology, RS has attracted particular interest for tumor grading and molecular characterization, because subtle biochemical differences between tissue types can be reflected in spectral signatures~\cite{bocklitz2016raman}. Regarding gliomas, this has motivated the development of automated RS-based classification pipelines~\cite{stupak2025raman}, including the discrimination of IDH-Mutant from IDH-Wildtype tumors~\cite{apollonov2024raman}.
 
-Despite this potential, the development of reliable machine learning models for biomedical diagnostics remains limited by the availability of sufficiently large and representative datasets \cite{berisha2021overfitting}. In biomedical Raman spectroscopy, this limitation is notably severe because studies often involve only tens of patients, substantial acquisition variability, and strong correlations between spectra originating from the same biopsy sample \cite{stupak2025raman}.
-A typical Raman spectrum may contain more than one thousand spectral bands, while the number of independent patient samples remains relatively small \cite{stupak2025raman}. This high-dimensional, low-sample system substantially increases the risk of overfitting and reduces the robustness and generalizability of discriminative models \cite{berisha2021overfitting,subramanian2013overfitting}.
+Nonetheless, the development of reliable machine learning models for biomedical diagnostics remains limited by the availability of sufficiently large and representative datasets~\cite{berisha2021overfitting}. Raman studies often involve only tens of patients and the spectra originating from the same biopsy are strongly correlated~\cite{stupak2025raman,guo2021chemometric}, thus the number of independent samples is far smaller than the number of spectra. At the same time, a single spectrum can have more than 1,000 spectral bands~\cite{stupak2025raman}. This high-dimensional, low-sample setting increases the risk of overfitting and reduces the robustness and generalizability of discriminative models~\cite{berisha2021overfitting,subramanian2013overfitting}, such as classifiers used for tumor diagnosis. 
 
-The problem is further complicated by acquisition-specific variability, including fluorescence background, noise, and instrument-dependent artifacts. As a result, differences between acquisition sessions may become comparable to (or larger than) the underlying biological variation, particularly in challenging multi-class glioma grading problems. Consequently, many published results in Raman-based classification remain difficult to compare due to differences in acquisition protocols, preprocessing pipelines, and evaluation methodologies \cite{stupak2025raman}.
+Moreover, acquisition-specific variability, including fluorescence background and instrument drift, represents an additional source of variation between Raman measurement sessions. The spectral differences between tumor types are often subtle, and these artifacts can mask them~\cite{guo2021chemometric}. Classifiers may therefore learn session-specific artifacts instead of tumor-related signal.
 
-One possible strategy for mitigating these limitations is the use of deep generative models for synthetic data augmentation \cite{jordon2022synthetic}. 
-Recent studies have reported encouraging results for generative augmentation in Raman spectroscopy applications \cite{zhao2024raman}. However, the practical utility of generative augmentation in low-data settings characteristic of biomedical Raman spectroscopy remains insufficiently understood. In particular, it is unclear to what extent generative models trained on relatively small cohorts can learn sufficiently meaningful spectral structure to improve downstream classification performance.
+One possible strategy for addressing these limitations is the use of deep generative models for synthetic data augmentation~\cite{jordon2022synthetic}. These models can produce additional training samples by learning the distribution of available spectra~\cite{waseem2025review}. Recent studies have reported encouraging results for generative augmentation in RS applications~\cite{zhao2024raman}.
 
-In this work, we investigated the use of a conditional variational autoencoder ($\beta$-CVAE) \cite{higgins2017betavae} for synthetic Raman spectrum generation in glioma classification. We analyzed a dataset of 58 glioma biopsy samples and considered both binary IDH-status classification and a more challenging 6-class methylation subtype classification task. The generated spectra were evaluated under Train-on-Synthetic, Test-on-Real (TS/TR) and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) protocols using strict, slide-isolated cross-validation to prevent data leakage. In addition, we examined a reconstruction-based inference strategy, termed Classification by Reconstruction (CbR), based on class-conditioned reconstruction error.
+However, the practical utility of generative augmentation in low-data settings characteristic of biomedical RS remains insufficiently understood. In particular, it is unclear to what extent generative models trained on relatively small cohorts can learn sufficiently meaningful spectral structure to improve classification performance.
 
-\section{Background}
+\textcolor{blue}{In this work, we investigate two questions on a small real Raman dataset of 59 glioma biopsy slides, for binary IDH-status classification. First, we ask whether formulating the task as Multiple-Instance Learning (MIL), with each slide as a bag of spectra, improves classification over the usual assumption that every spectrum inherits the label of its slide. Second, we ask how classifiers perform on synthetic and augmented data, generated by a conditional variational autoencoder ($\beta$-CVAE), under the \textit{Train on Synthetic, Test on Real} (TS/TR) and\textit{ Train on Synthetic+Real, Test on Real} (TSR/TR) frameworks. We test four standard classifiers (a Random Forest feature selector followed by an SVM, a Random Forest, XGBoost and a 1D-CNN). In addition, we formulate a Classification by Reconstruction (CbR) method, in which the $\beta$-CVAE itself is the generative classifier. All evaluations are done at the slide level, with patient-grouped cross-validation that prevents data leakage between training and test patients.}
+
+\section{\textcolor{green}{Background}}
 \label{sec:background}
 
-A promising strategy for mitigating data scarcity in biomedical machine learning is synthetic data generation \cite{jordon2022synthetic}. In contrast to classical augmentation approaches such as additive noise injection or SMOTE, deep generative models attempt to learn the statistical structure of the underlying data distribution and generate novel samples consistent with the observed data manifold. Synthetic augmentation is especially attractive in biomedical spectroscopy because acquiring large numbers of independent patient samples is often expensive, time-consuming, and clinically constrained.
+Although RS yields multiple spectra for a biopsy slide, one spectrum per pixel, the diagnostic labels (IDH status, methylation profile) are assigned to the slide, not the pixel~\cite{stupak2025raman}. To work around this, classification pipelines can assign each spectrum the label of its slide and train at spectrum level~\cite{apollonov2024raman}, after discarding spectra judged non-tumoral. However, the retained spectra may still originate from non-diagnostic tissue regions of the biopsy.
 
-A commonly used framework for evaluating the utility of synthetic data is the \emph{Train-on-Synthetic, Test-on-Real (TS/TR)} paradigm \cite{esteban2017real}. In TS/TR, a downstream classifier is trained exclusively on generated data and evaluated on held-out real data. If the resulting performance approaches the corresponding \emph{Train-on-Real, Test-on-Real (TR/TR)} baseline, this indicates that the generator has captured discriminative structure relevant to the downstream classification task. In practice, however, synthetic biomedical data often exhibit substantial domain gaps relative to real measurements, particularly in small-cohort settings.
+This problem can be formalized with the Multiple-Instance Learning (MIL) paradigm~\cite{dietterich1997solving}, in which labels are given for \emph{bags} (collections) of data \emph{instances} and not for instances themselves. In its original form, the label of a bag is determined only by a subset of its instances, also called \emph{key instances}~\cite{liu2012key}. Popular deep MIL models first encode each instance into a feature vector and then combine the vectors of a bag into a single bag-level prediction. The combination can use attention weights~\cite{ilse2018attention,lu2021data} or transformers~\cite{shao2021transmil}, and it does not depend on the order of the instances. MIL has become a standard in computational pathology~\cite{waqas2024exploring,gadermayr2024multiple}, where annotating individual regions on a slide is costly, leaving only slide-level labels. MIL has also been applied to spectral imaging, for example to classify individual pixels in mass spectrometry images from tissue-level labels~\cite{guo2020deep}.
 
-Recent work has reported encouraging results for generative augmentation in Raman spectroscopy. Zhao et al.~\cite{zhao2024raman} investigated synthetic augmentation for \emph{in vivo} skin cancer detection using a one-dimensional conditional GAN trained on Raman spectra. The generated spectra improved classification performance across several downstream models and increased robustness to spectral degradation. This suggests that synthetic spectra may act as a regularization mechanism against acquisition variability rather than simply increasing the volume of training data.
+A promising strategy for small-cohort settings is augmentation with deep generative models. In contrast to classical augmentation approaches such as additive noise injection~\cite{zhou2022deeply} or SMOTE~\cite{chawla2002smote, song2022rapid}, deep generative models attempt to learn the statistical structure of the underlying data distribution and generate novel samples consistent with the observed data manifold~\cite{jordon2022synthetic}. Recent work has reported encouraging results in regards to generative augmentation of Raman datasets. For instance, generative adversarial networks (GANs)~\cite{goodfellow2020generative} have been used successfully for Raman data in the context of tissue classification, e.g. for skin cancer~\cite{wu2021raman, zhao2024raman}.
 
-The practical utility of generative augmentation in biomedical Raman spectroscopy remains insufficiently understood. Existing studies have largely focused on binary classification tasks and single-site datasets, while the behavior of generative models under severe data scarcity and subtle multi-class grading settings remains unclear. Moreover, relatively little attention has been given to the possibility of using the generative model itself as part of the inference process. In this work, we investigate these questions in the context of glioma classification using a $\beta$-regularized conditional variational autoencoder ($\beta$-CVAE) evaluated under strict slide-isolated protocols.
+Variational autoencoders (VAEs)~\cite{kingma2013auto} represent another class of generative models, encoding each spectrum into a latent variable used in signal reconstruction~\cite{flanagan2025exploring}. The latent space is regularized to follow a simple distribution, such that new spectra can be generated by sampling from it and decoding. A conditional VAE (CVAE)~\cite{sohn2015learning} further includes a class label in the decoder, for choosing the class of the generated spectrum. Moreover, a $\beta$-VAE architecture is characterized by a parameter $\beta$ that quantifies how closely the latent space should follow the distribution, at the cost of reconstruction quality~\cite{higgins2017betavae}.
+
+The utility of deep generative models is commonly evaluated using the \emph{Train on Synthetic, Test on Real} (TS/TR) framework~\cite{esteban2017real}. In TS/TR, a classifier is trained exclusively on generated data and evaluated on real data. A performance close to the corresponding \emph{Train on Real, Test on Real} (TR/TR) baseline provides strong evidence that the generator has captured discriminative structure relevant to the classification task~\cite{esteban2017real}. A complementary protocol, \emph{Train on Synthetic+Real, Test on Real} (TSR/TR), in which the classifier is trained on real data augmented with synthetic data and subsequently compared to TR/TR, has also been proposed for measuring whether the generator adds information beyond the one already provided by the real training set~\cite{kiyasseh2020pleth}. 
+
+\textcolor{blue}{To the best of our knowledge, prior studies of generative augmentation of Raman spectra assign the label of the sample to every spectrum, either to train class-specific generators~\cite{wu2021raman} or as a conditioning input~\cite{zhao2024raman}. This is equivalent to a simple Multiple-Instance Learning (MIL) formulation, which we call \emph{naïve MIL}: each spectrum inherits the label of its slide, and the slide is classified by majority vote over its spectra. We are not aware of Raman studies that go beyond this formulation. In our study, we compare it with other MIL formulations. Moreover, we are not aware of other studies that evaluate a single generative model both as a source of synthetic training Raman data and as a classifier under slide-isolated protocols. We implement a $\beta$-regularized conditional variational autoencoder ($\beta$-CVAE) that generates class-conditioned synthetic spectra, for two roles: as a data source, under the TS/TR and TSR/TR frameworks, and as a generative classifier, which we evaluate in the naïve MIL setting, all under patient-grouped cross-validation.}
 
 \section{Methodology}
 \label{sec:methodology}
 
-Our methodology combines preprocessing, spectrum selection, deep generative modeling, and reconstruction-based inference within a unified framework for glioma classification from Raman spectra. The overall pipeline consists of four main stages: (i) preprocessing and slide-isolated data partitioning, (ii) spatio-spectral selection of tumor spectra, (iii) synthetic spectrum generation using a conditional variational autoencoder ($\beta$-CVAE), and (iv) evaluation under TS/TR, TSR/TR, and reconstruction-based inference settings.
+% \textcolor{red}{Our methodology combines preprocessing, spectrum selection, deep generative modeling, and reconstruction-based inference within a unified framework for glioma classification from Raman spectra. The overall pipeline consists of four main stages: (i) preprocessing and slide-isolated data partitioning, (ii) spatio-spectral selection of spectra of high intensity signal, (iii) synthetic spectrum generation using a conditional variational autoencoder ($\beta$-CVAE), and (iv) evaluation under TS/TR, TSR/TR, and reconstruction-based inference settings.}
 
-\subsection{Data Collection}
+\subsection{\textcolor{green}{Data Collection}}
 \label{sec:data_col}
-We analyzed the dataset from Lita et al. \cite{apollonov2024raman}. It contains $\sim$270,000 Raman spectra acquired from 59 glioma tissue biopsies. The data of a single sample is a $(H,W,N_\lambda)$ tensor: each biopsy consists of a tissue slice scanned with a Raman microscope, forming a spatial grid of size $(H,W)$ with spectral dimension $N_\lambda = 1738$. 
 
-There are six associated labels, denoted LGm1 to LGm6, corresponding to different methylation profiles. The first three labels (LGm1, LGm2, LGm3) correspond to IDH-mutant, while the last three labels (LGm4, LGm5, LGm6) correspond to IDH-wildtype. It is important to mention that the dataset is imbalanced for the 6 subtypes classification, but relatively balanced for the binary task (see Table \ref{tab:dataset}). We used only 58 biopsies, as one slide was damaged.
+We analyzed the dataset from Lita et al.~\cite{apollonov2024raman}. It consists of Raman spectroscopic recordings from 59 brain tissue biopsies across 46 patients. Each biopsy sample is structured as an $(H,W,N_\lambda)$ tensor, describing the spatial grid of size $(H,W)$ (the slice dimensions) and the size of the Raman spectrum vector ($N_\lambda = 1738$), stored at each point on the grid (also called \textit{pixel}). In total, the dataset contains 300,506 Raman spectra. The grid size $(H,W)$ is not fixed, ranging from $(46,46)$ to $(245,61)$. 
 
-\begin{table}[h]
+Using the methodology of Cecarelli et al.~\cite{Ceccarelli2016}, the biopsies were labeled based on their methylation profiles, denoted \texttt{LGm1} to \texttt{LGm6}. According to the WHO classification framework for central nervous system tumors~\cite{louis2021who}, the mutation status of isocitrate dehydrogenase (IDH) represents an essential biomarker for glioma diagnosis, categorizing gliomas as either IDH-Mutant or IDH-Wildtype. Binary classification of IDH status (IDH-Mutant or IDH-Wildtype) can be performed by grouping the methylation profiles \texttt{LGm1}--\texttt{LGm3} as IDH-Mutant, respectively \texttt{LGm4}--\texttt{LGm6} as IDH-Wildtype (Table \ref{tab:dataset}).
+
+While the binary classification setting presents a roughly symmetric label distribution, the dataset is imbalanced for the six-profile classification task. 
+
+\begin{table}[H]
+\small
 \centering
-\caption{Dataset composition by tumor grade class.}
-\label{tab:dataset}
-\begin{tabular}{llcc}
+\begin{tabular}{llccccc}
 \toprule
-\textbf{Class} & \textbf{IDH Group} & \textbf{Slides} & \textbf{Group Total} \\
+\textbf{Class} & \textbf{IDH Group} & \textbf{Slides} & \textbf{Patients} & \textbf{Spectra} & \makecell{\textbf{Slides} \\ \textbf{Total}} & \makecell{\textbf{Spectra} \\ \textbf{Total}} \\
 \midrule
-LGm-1 & IDH-Mutant   & 5   \\
-LGm-2 & IDH-Mutant   & 12 & 26 \\
-LGm-3 & IDH-Mutant   & 9   \\
+\texttt{LGm1} &   & 5 & 5 & 37,319 \\
+\texttt{LGm2} & IDH-Mutant   & 12 & 12 & 77,642 & 26 & 167,414\\
+\texttt{LGm3} &  & 9 & 4 & 52,453 \\
 \midrule
-LGm-4 & IDH-Wildtype & 13  \\
-LGm-5 & IDH-Wildtype & 15 & 33\\
-LGm-6 & IDH-Wildtype & 5   \\
+\texttt{LGm4} &  & 13 & 10 & 50,660  \\
+\texttt{LGm5} & IDH-Wildtype & 15 & 11 & 62,256 &  33 & 133,092\\
+\texttt{LGm6} &  & 5 & 4 & 20,176  \\
 \bottomrule
 \end{tabular}
+\caption{Dataset composition.}
+\label{tab:dataset}
 \end{table}
 
+To prevent spectra from the same biopsy from appearing in both the training and test sets, data partitioning was performed at \textit{slide level}, with slides grouped by patient, following the stratified, subject-disjoint five-fold evaluation protocol of Lita et al.~\cite{apollonov2024raman}. All slides from a given patient were assigned exclusively to either the training or the test partition in each fold, preventing patient-level data leakage (Appendix \ref{app:cv_schema}). Five models were trained independently on the respective training partitions and evaluated on the corresponding test partitions, and performance metrics were aggregated across the five folds.
 
-To ensure that spectra from the same tissue sample do not appear in both training and testing sets, data splitting was performed at \textit{patient level} using the stratified subject-disjoint five-fold evaluation protocol by Lita et al \cite{apollonov2024raman}. All recordings from a given subject were assigned exclusively to either the training or the test partition within each fold, preventing subject-level data leakage. A strictly non-overlapping partition, where each class was represented across all five folds, was not achievable due to dataset imbalance. Fold assignments were therefore determined manually to ensure that each class contributed no less than 15\% of its samples to each fold's test partition (see Appendix~\ref{app:cv_schema}). Five models were trained independently, each evaluated on its corresponding test partition, and performance metrics were aggregated across all five partitions.
 
 \subsection{Data Preprocessing}
 \label{sec:annotation}
-\textcolor{red}{An important preprocessing step is separating tumor tissue spectra from both healthy tissue spectra and low signal spectra, such as those corresponding to non-biological background regions of the slide. In the absence of histopathological labeling of tumor regions, we formulate the problem in a Multiple Instance Learning (MIL) [\textbf{Citare posibila:} \cite{waqas2024exploring}] paradigm and attempt to infer the tumor vs. healthy spectra as a latent variable, modeled at training time. In the preprocessing stage, we employ an unsupervised clustering method for selecting the highest quality signal spectra that we will use later as a MIL problem.}
 
-For lack of a sufficiently robust automated method of separating viable spectra from low-quality spectra, we preferred an empirical approach, observing that the slides could be approximately separated into low-signal regions and one or two spectral clusters. Therefore, we developed a spatio-spectral annotation pipeline that operates on a per-slide basis, followed by visual inspection and selection of clustered spectra that we label as tumor. The pipeline consists of the following steps:
+An important preprocessing step is removing low-signal spectra, such as those corresponding to non-biological background regions of the slide. Therefore, we developed a preprocessing pipeline that operates on each slide separately, consisting of the following steps:
 
 \begin{figure}[H]
     \centering
@@ -387,314 +442,838 @@ For lack of a sufficiently robust automated method of separating viable spectra 
 \end{figure}
 
 \begin{enumerate}
-    \item \emph{Median filtering.} A $3 \times 3$ median kernel was applied on the spatial dimensions $(H,W)$ of each slide for denoising purposes, filtering out cosmic radiation and Gaussian noise (See Fig. \ref{fig:preprocessing_median_filter_illustration}).
+    \item \emph{Median filtering.} We applied a $3 \times 3$ median kernel on the spatial dimensions $(H,W)$ of each slide for denoising purposes, filtering out cosmic radiation and Gaussian noise (Figure \ref{fig:preprocessing_median_filter_illustration}).
 
     \item \emph{Slide-wise normalization.} Each data tensor was normalized independently to the $[0,1]$ range to ensure numerical stability.
 
-    \item \emph{Signal filtering.} We applied a simple signal quality filter by removing spectra with low intensity, setting a threshold of 0.6 on the maximum intensity of the spectrum. This step eliminates spectra that are likely dominated by noise or background, as they typically have low overall intensity. We plotted a histogram of the maximum intensity values across all spectra per slide and observed that most of the spectra have a maximum intensity close to 1, while a small subset of spectra was below the fixed threshold, hence considered low quality and removed from the dataset. Our threshold choice is rather conservative; from the maximum intensity histograms, it can be observed that a higher threshold can be selected (see Fig. \ref{fig:preprocessing_cluster_spectra} e, f).
-
-    \item \emph{Spectral dimensionality reduction.} Non-negative Matrix Factorization (NMF) \cite{NMF1999} was applied independently to each slide to obtain a lower-dimensional, non-negative representation of the spectra. NMF has previously been used in Raman spectroscopy for spectral unmixing and feature extraction \cite{NMF1999,nmf_oncology_2022, Alix2022}. We used an NMF with 100 components, as it offered sufficient reconstruction for the purpose of signal separation. 
+    \item \emph{Signal filtering.} We removed spectra with low intensity (likely dominated by noise or coming from slide regions without tissue), by discarding those with maximum intensity below 0.6; this threshold chosen after testing among 0.4, 0.6 and 0.8 (\nameref{subsec:max_int} in Appendix \ref{app:controlled_experiments}). 
     
-    \item \emph{Gaussian Mixture Model (GMM).} A 3-component GMM \cite{Dempster1977} was fitted to the coefficients obtained in the previous step. We then visually inspected the clustering and selected the spectra corresponding to the components with the strongest signal (see Fig. \ref{fig:preprocessing_cluster_spectra} a, b). In cases where more than one cluster had similar quality spectra, and the clusters were not spatially separated in distinct regions (see Fig. \ref{fig:preprocessing_cluster_spectra} c, d), we selected all of them as valid spectra.
+    % The per-slide histograms of maximum intensity show that most spectra have a maximum close to 1, and only a small subset of spectra falls below the fixed threshold, hence considered low quality and removed from the dataset. 
+
+    \item \emph{Baseline correction.} For the spectra selected as relevant, we performed two steps on each spectrum: (i) normalization to $[0, 1]$; (ii) baseline correction with the Improved Asymmetrically Reweighted Penalized Least Squares method (IARPLS)~\cite{Kizilov2025}, with $\lambda=10^4$ and difference order $p=2$. We selected this method by comparing it to the Adaptive Iteratively Reweighted Penalized Least Squares (airPLS)~\cite{zhang2010baseline} method and tuning their parameters to our data. The experiment suite for this selection can be found in Appendix \ref{app:baseline_correction}.
+\end{enumerate}
+
+The pipeline for threshold 0.6 yields 288,678 retained spectra out of the original 300,506. We draw attention to the fact that, due to the varying quality of the acquired biopsies, the percentage of retained spectra from each slide varied between 75\% to 100\%. 
 
 \begin{figure}[H]
-    \begin{minipage}[b]{\linewidth}
+
     \centering
-    \includegraphics[width=\linewidth]{img/preprocessing_cluster_spectra.png} 
-  \end{minipage}\\
-  \begin{minipage}[b]{\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{img/preprocessing_cluster_spectra_2.png} 
-  \end{minipage}\\
-  \begin{minipage}[b]{0.5\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{img/max_vals_distribution_img_0.png}
-    \vspace{1ex}
-  \end{minipage}%% 
-  \begin{minipage}[b]{0.5\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{img/max_vals_distribution_img_5.png} 
-    \vspace{1ex}
-  \end{minipage}    
-    \caption{\footnotesize Spectral clustering of two slides (top, middle). (a) Slide 1 cluster assignment; (b) Slide 1 Mean spectra per cluster: blue = weak signal cluster, discarded, red = medium intensity signal, discarded, green = strong signal, selected as tumor; (c) Slide 2 cluster assignment; (d) Slide 2 Mean spectra per cluster: red, green = strong tissue signal, selected as tumor, blue = weak signal, discarded; (e, f) Histograms of maximum intensity of spectra for the first and second slides, respectively.}
+    \includegraphics[width=\linewidth]{img/max_intensity_histogram.png} 
+   
+    \caption{\footnotesize Histogram of maximum intensity of spectra for the entire dataset. Vertical lines indicate threshold values tested.}
     \label{fig:preprocessing_cluster_spectra}
 \end{figure}
 
-    \item \emph{Per spectrum preprocessing.} For the spectra selected as relevant, we performed the following per spectrum processing steps: (i) [0, 1] normalization; (ii) IARPLS \cite{Kizilov2025} with $\lambda=10^4$ and difference order $p=2$. We selected this method based on a test of a suite of models: GCV, L-curve, airPLS and IARPLS. The experiment suite for this selection can be found in Appendix \ref{app:baseline_correction}.
-    
-    \item \emph{Saving spectra.} We saved the processed spectra to an HDF5 file for further ML tasks. Note that we used NMF only for clustering, but the processing for saved spectra was $3 \times 3$ median filtering followed by baseline correction.
-\end{enumerate}
+% We note that the selection procedure does not represent a histopathological diagnosis, as the retained spectra of a slide may include non-diagnostic tissue~\cite{apollonov2024raman}. One method to handle this is to consider that each spectrum inherits the label of its slide regardless of whether it originates from diagnostic tumor tissue. An alternative method is to use the \nameref{subsec:MIL}. \textcolor{red}{Punem ambele intr-un appendix de referentiat, right?}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\linewidth]{img/tumor_retention_histogram.png}
-    \caption{Histogram of retention rates.}
-    \label{fig:tumor_retention_rates}
-\end{figure}
+We note that the initial dataset does not have histopathological annotations for slide regions, and as such, the retained spectra of a slide may include non-diagnostic tissue~\cite{apollonov2024raman}. To handle this, we formulate the problem with the Multiple Instance Learning (MIL) paradigm~\cite{dietterich1997solving, waqas2024exploring}. 
 
-This approach ensured that each slide was processed independently and visually inspected to verify cluster consistency. The resulting binary tumor labeling yields approximately 200,000 spectra retained for downstream analysis from the original $\sim$270,000. We draw attention to the fact that the percentage of retained spectra from each slide varied significantly (see Fig. \ref{fig:tumor_retention_rates}). We note that the two step filtering of viable pixels, via a maximum intensity threshold followed by clustering has some degree of robustness; low signal quality spectra not filtered by the threshold will be filtered by the clustering and manual selection.
+\subsection{\textcolor{green}{MIL Problem Formulation}}\label{subsec:MIL}
 
-We flag a limitation of this labeling directly (see also Section~\ref{sec:discussion}): the "tumor" selection above is a per-slide, unsupervised signal-quality judgment -- which of that slide's independently-fitted GMM clusters looks strongest -- not a histopathological diagnosis, and the numeric cluster identity is not comparable across slides (an independent 3-component fit per slide has no reason to order its clusters the same way twice). Every spectrum in a labeled slide therefore inherits that slide's tumor grade by construction, whether or not the individual spectrum is diagnostic tissue.
+Let $\mathcal{S}$ be the set of \textit{slides}. Every biopsy $b \in \mathcal{S}$ contains a number $n_b$ of preprocessed Raman spectral vectors $x \in \mathbb{R}^{N_\lambda}$ and a label $y$: 
 
-\subsection{Deep Generative Augmentation}% ($\beta$-CVAE)}
-\label{sec:cvae_architecture}
-To learn the underlying distribution of tumor spectra, we implemented a 1D-Convolutional Conditional Variational Autoencoder ($\beta$-CVAE). 1D convolutions were chosen to exploit the strong local dependencies between adjacent Raman shift frequencies (e.g., the broad lipid/protein bands between $1400$ and $1500 \text{ cm}^{-1}$). 
-
-As illustrated in Figure \ref{fig:cvae_architecture}, the architecture is composed of an encoder, a $d$-dimensional latent bottleneck, and a decoder. The encoder $q_\phi(z|x)$ compresses the input Raman spectrum $x$ into a latent representation $z$. To encourage class separation in the reconstructed spectra, $\hat{x}$, we conditioned the decoder $p_\theta(\hat{x}|z,y)$ on the class label $y$ provided as a one-hot encoded vector. 
-
-To ensure that the encoder learns class discriminative features, we framed the encoding process as a Multi-Task Learning (MTL) problem by appending an auxiliary classification head to the encoder.
-The model is optimized using a composite loss function:
 \begin{equation}
-\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{recon}} + \beta \cdot D_{KL}(q_\phi(z|x) \| p(z)) + \alpha \cdot \mathcal{L}_{\text{class}}. 
+    b = \left( 
+\left( 
+x_{j} \right)_{j=\overline{1,n_{b}}},y 
+\right).
+\end{equation} We treat the slide as a \textit{bag} of spectra (\textit{instances}) with a single label $y$ and no instance-level labels. For the binary problem, $y \in \{\text{IDH-Mutant}, \text{IDH-Wildtype} \}$ and for the 6-class problem $y \in \{\texttt{LGm1}, \ldots,  \texttt{LGm6}\}$, with the labels encoded as one-hot vectors in the implementation. 
+
+We assume each spectrum in the slide has an unknown label $z_{j}$ which encodes the diagnostic tissue as 1 and the non-diagnostic tissue as 0: 
+\begin{equation}
+    z_{j} \in \{0,1\}.
 \end{equation}
 
-$\mathcal{L}_{\text{recon}}$ represents the reconstruction loss, and is defined as
+For \nameref{subsec:markov-mil}, the non-diagnostic tissue is considered of three types, i.e. necrotic, healthy, or stromal tissue:
+\begin{equation}
+    z_{j} \in \{0_1, 0_2, 0_3,1\}.
+\end{equation} An instance $j$ of a slide $b$ is called \textit{key instance} if $z_j = 1$.
+
+We define the \textit{fraction of key instances} on slide $b$ as 
+\begin{equation}
+    \pi_b = \frac{1}{n_{b}} \sum_{j=1}^{n_{b}} \mathbbm{1}_{\left[ z_j = 1 \right]}
+\end{equation} and we fix a $\pi_{\text{min}} = 0.02$ as the minimum fraction of key instances to prevent degenerate ($\pi_b=0$) solutions.
+
+ % The key instances as defined above are the unknown true key instances.
+
+ We implemented 5 different MIL formulations: Naïve MIL, mi-SVM, attention-MIL, CVAE-MIL and Bayesian MIL.
+
+\subsubsection{Naïve MIL}
+This is the most straightforward MIL model: at training, we broadcast the bag label $c$ to all instances and train a classifier $\text{cls}(\cdot)$ at instance level; at inference, for each slide, we treat it as a bag of instances $(x_j)_{j=\overline{1,n_b}}$, we make a prediction $\text{cls}(x_j)$ for each one, and label the bag by majority voting.
+
+This corresponds to setting $\pi_b = 1$, and the model decision:
+\begin{equation}
+    \text{naïveMIL}(b) = \arg\max_{c } \sum_{j=1}^{n_b} \mathbbm{1}_{\left[ \text{cls}(x_j) = c \right]}.
+\end{equation}
+
+
+ \subsubsection{mi-SVM}
+We implemented a mi-SVM-inspired algorithm \cite{andrews2002misvm}, with specific modifications  of the optimization heuristics (Algorithm \ref{alg:misvm}):
+\begin{enumerate}[label=(\roman*)]
+    \item We use the RF+SVM model instead of the plain SVM classifier; 
+    \item We set $\pi = \pi_{\text{min}} = 0.2$, with the fail-safe rule that we select at least one key instance;
+    \item At training time, we select a random sample of 500 instances from each bag, due to the scaling complexity of the SVM at the fitting step.
+\end{enumerate}
+
+ % , which is bounded by $\Omega(n^2)$ and $\mathcal{O}(n^3)$.
+We trained this algorithm with a maximum number of iterations $\texttt{max\_iter} = 10$.
+
+ \begin{algorithm}[H]
+\caption{mi-SVM}
+\label{alg:misvm}
+\begin{algorithmic}[1]
+\Require 
+    $\{x_i\}_{i=\overline{1,n}}$ set of all instances; 
+    $\mathcal{S}$ set of all bags;
+    $B(i)$ bag membership; 
+    $\{y_b\}_{b \in \mathcal{S}}$ set of all bag labels;
+    $\pi$ fraction of diagnostic instances; 
+    \texttt{max\_iter} max. number of iterations;
+    base learner $\text{cls}(\cdot)$;
+% \Ensure fitted classifier $f$; instance posterior $P$
+\Ensure instance posterior $P$
+\For{$k \in \{1, \ldots, C\}$}
+\State $\hat y_i \gets \mathbbm{1}_{[\,y_{_{B(i)}} = k\,]}$, for all $i$ \Comment{init: inherit the bag label}
+\Do
+  \State $f_k \gets \text{fit cls($\cdot$) on } (x_i,\hat y_i)_{i=\overline{1,n}}$
+  \State $p_{i,k} \gets f_k(x_i)$ \Comment{must be in $[0,1]$}
+  
+  \For{each bag $b$ with $y_b = k$}
+    \State $\mathrm{Top}_b \gets$ the $\pi$ fraction of indices $i$ of the largest $p_{i,k}$ values
+    % indices of $b$ with largest $p_{i,k}$
+    \State $\hat y_i \gets \mathbbm{1}_{[\,i \in \mathrm{Top}_b\,]}$ for $i \in B$ \Comment{relabel}
+  \EndFor
+  
+\While{ labels have changed and iteration<\texttt{max\_iter}}
+\EndFor
+\State \label{mi-svm:non-diagnostic} $p_{i,0} \gets 1 - \max_{k} p_{i,k}$ for all $i$ \Comment{non-diagnostic}
+\State \label{mi-svm:norm} $P_{i,:} \gets \big(p_{i,0}, p_{i,1}, \ldots, p_{i,C}\big) \,/\, \textstyle\sum_{k=0}^{C} p_{i,k}$ \Comment{normalize}
+\State \Return $P_{i,:}$ for all $i$
+\end{algorithmic}
+\end{algorithm}
+
+We use the lines \ref{mi-svm:non-diagnostic}--\ref{mi-svm:norm} from the Algorithm \nameref{mi-svm:non-diagnostic} as a convention for converting the $C$-sized probability vector to one of dimension $C+1$. 
+
+\subsubsection{Attention-MIL}
+Our CVAE architecture is trained on individual spectra, but it can be extended with an attention mechanism to solve the MIL problem (Ilse et al.~\cite{ilse2018attention}). We use the trained CVAE to compute instance posterior probabilities, and we attach a gated attention head in the formulation proposed by Ilse et al. to the flattened feature vector of the CVAE's encoder to obtain the bag posterior. 
+
+% As per Ilse et al. we define the gated attention mechanism as follows: Let $H = \{h_1, ..., h_K\}$ be a bag of $K$ embeddings. We define the gated attention head as:
+
+% \begin{equation}
+%     a_k = \frac{\exp\big(\mathbf{w}^T(\tanh(\mathbf{Vh}_k^T\odot\text{sigm}(\mathbf{Uh}_k^T))\big)}
+%     {\sum_{j=1}^K \exp{\big( \mathbf{w}^T(\tanh(\mathbf{Vh}_j^T\odot\text{sigm}(\mathbf{Uh}_j^T)) \big)}}
+% \end{equation}
+
+% where $\mathbf{w}$, $\mathbf{U}$ and $\mathbf{V}$ are parameters.
+
+We trained it on subsets of instances (sub-bags), as the bags are too large to fit entirely in memory, and we implemented the attention mechanism with per sub-bag entering, and  layer normalization. The instance head is a fully-connected layer trained with L2-regularization and 0.3 dropout ~\cite{ilse2018attention}.
+
+\subsubsection{CVAE-MIL}
+We can repurpose the CVAE as a MIL classifier in two ways:
+\begin{enumerate}
+    \item We can use the CNN encoder's classification head that outputs a softmax over the classes as a diagnostic/non-diagnostic decision (Subsection \ref{sec:cvae_architecture}).We extend the $C$ class softmax to a $C+1$ decision by using the same $1 - \max_k p_k$ convention as in Algorithm \nameref{alg:misvm}.
+    \item The Classification by Reconstruction method (Subsection \ref{sec:cbr}) can also be used to compute instance decisions by turning the MSE of the $C$ classes into a posterior with a $\text{softmax}(-\text{MSE})$. 
+\end{enumerate}
+
+\subsubsection{Bayesian MIL}\label{subsec:markov-mil}
+Another approach is to apply a Bayesian framework and formulate the latent variable as a hidden Markov state. We therefore model every unknown with a distribution, assign a prior and fit the model via Gibbs sampling. We first reduce the input space by PCA with 10 components. We now define the model by: 
+\begin{gather}
+    \mu_k,\Sigma_k \sim \mathrm{NIW}(m_0,\kappa_0,\nu_0,\Psi_0), \quad k\in\{0_1,0_2,0_3,1,\dots,C\} \label{eq:bayes_mil_niw} \\
+    \pi_b \sim \mathrm{Beta}(a_{\text{beta}},b_{\text{beta}}) \quad \text{(one per bag)} \label{eq:bayes_mil_pib} \\
+    z_{b,i}\mid\pi_b \sim \mathrm{Cat}\big(\pi_b \text{ on state } y_b,\ \ (1-\pi_b)/3 \text{ on each null}\big) \label{eq:bayes_mil_z} \\
+    x_{b,i}\mid z_{b,i}=k \sim \mathcal N(\mu_k,\Sigma_k) \label{eq:bayes_mil_emission}
+\end{gather} where $z_{b,i}$ is the $i$-th instance label of slide $b$ and $z_{b,i} \in \{0_1,0_2,0_3,y_b\}$, i.e. we assume the distribution of the null is more complex, and assign 3 possible null states. We assign the priors: $m_0 = 0$, $\kappa_0 = 0.01$, $\nu_0 = d+2$, $a_{\text{beta}} = 1$, $b_{\text{beta}} = 1$. 
+
+We fit the model using the following Gibbs sampling procedure~\cite{geman1984gibbs}: (1) for every instance, select a category at random; (2) compute $(\mu_k, \Sigma_k)$ as a Normal-Inverse-Wishart (NIW) posterior conditioned on that instance; (3) draw $\pi_b$ conditioned on current diagnostic count; (4) Metropolis-Hastings on ($\log a_{\text{beta}}$, $\log b_{\text{beta}}$). 
+
+At inference, we sample from the $\text{Beta}(a_{\text{beta}},b_{\text{beta}})$ posterior and then we average.
+We used the following hyperparameters for fitting: 
+$d=10$, 
+$n_{\text{chains}}=3$, 
+$n_{\text{iter}}=600$, 
+$\text{burn\_in}=200$,
+$\text{thin}=5$.
+
+
+
+% \begin{algorithm}[H]
+% \caption{mi-SVM — one-vs-rest driver}
+% \label{alg:misvm-outer}
+% \begin{algorithmic}[1]
+% \Require instances $\{x_i\}_{i=1}^n$; bags $\{B\}$ with labels $Y_B \in \{1,\ldots,K\}$
+% \Ensure instance posterior $P \in \mathbb{R}^{n \times (K+1)}$
+% \For{$k = 1, \ldots, K$}
+%   \State $(f_k, \cdot) \gets \textsc{Algorithm \ref{alg:misvm-inner}}(\{x_i\}, \{B\}, \{Y_B\}, k)$
+%   \State $p_{i,k} \gets f_k.\mathrm{predict\_proba}(x_i)_{\text{class }1}$ for all $i$
+% \EndFor
+% \State $p_{i,0} \gets \max\big(0,\; 1 - \max_{k} p_{i,k}\big)$ for all $i$ \Comment{non-diagnostic mass}
+% \State $P_{i,:} \gets \big(p_{i,0}, p_{i,1}, \ldots, p_{i,K}\big) \,/\, \textstyle\sum_{k=0}^{K} p_{i,k}$
+% \State \Return $P$
+% \end{algorithmic}
+% \end{algorithm}
+
+
+
+
+\subsection{\textcolor{green}{The $\beta$-CVAE Architecture}}% ($\beta$-CVAE)}
+\label{sec:cvae_architecture}
+
+ % \ref{app:beta_sensitivity}
+
+To learn the underlying distribution of tumor spectra, we implemented a 1D-Convolutional $\beta$-regularized Conditional Variational Autoencoder ($\beta$-CVAE). One-dimensional convolutions were chosen to capture the local spectral patterns between adjacent Raman shift frequencies~\cite{mozaffari2020review}, e.g. the broad lipid and protein bands spanning 1400--1500 $\text{cm}^{-1}$. 
+
+As illustrated in Figure \ref{fig:cvae_architecture}, the overall architecture is composed of an encoder, a $d$-dimensional latent bottleneck, and a decoder. For a given Raman spectrum $x \in \mathbb{R}^{N_\lambda}$, the encoder outputs $\mu_\phi(x) \in \mathbb{R}^d$ and $\log \sigma_\phi^2(x) \in \mathbb{R}^d$, the parameters that define an Gaussian approximate posterior
+\begin{equation}
+    q_\phi(z|x) = \mathcal{N}\left(z; \mu_\phi(x), \mathrm{diag}\left(\sigma_\phi^2(x)\right)\right),
+\end{equation} where $\phi$ denotes the trainable parameters of the encoder network, i.e. its weights and biases . 
+
+Using the reparameterization trick~\cite{kingma2013auto}, the latent representation $z \in \mathbb{R}^d$ is obtained by sampling from this distribution:
+\begin{equation}
+    z = \mu_\phi(x) + \sigma_\phi(x) \odot \varepsilon, \quad \varepsilon \sim \mathcal{N}(0, I_d),
+\end{equation} where $\odot$ is the element-wise product, and $d \ll N_\lambda$. In our experiments, we tested $d \in \{ 16, 32, 64 \}$, but most of the experiments used $d=32$. To guide the encoder toward capturing class-discriminative features, we framed the encoding process as a Multitask Learning problem~\cite{caruana1997multitask} by appending an auxiliary classification head to the encoder. This classifier is a small network $g_\omega$ (with $\omega$ representing its trainable parameters) that maps the latent mean $\mu_\phi(x)$ to class probabilities: 
+\begin{equation}
+    \hat{y} = \mathrm{softmax}\left(g_\omega(\mu_\phi(x))\right) \in [0,1]^C, \quad \sum_{c=1}^C \hat{y}_c = 1,
+\end{equation} where $C \in \{2, 6\}$ denotes the number of label classes ($C=2$ for binary classification or $C = 6$ for classifying all profiles).
+
+We conditioned the decoder on class label such that the generated spectra would be class-dependent. The label is provided as a one-hot encoded vector $y \in \{0,1\}^C$. The input of the decoder is thus the concatenated vector $z \oplus y \in \mathbb{R}^{d + C}$. The decoder network $f_\theta$ outputs the reconstructed spectrum 
+\begin{equation}
+\hat{x} = f_\theta(z \oplus y) \in \mathbb{R}^{N_\lambda},
+\end{equation} where $\theta$ denotes the trainable parameters.
+
+Once trained, the decoder can be used as a spectra generator. Since no input spectrum is available at generation time, we therefore drew the latent variable $z \in \mathbb{R}^d$ from the prior $p(z) = \mathcal{N}(0, I_d)$. We formed the class label $y_c \in \{0,1\}^C$ and used the decoder on the vector $z \oplus y_c$. 
+
+% by sampling $z \sim \mathcal{N}(0, I_d)$ conditioning on a requested class label.
+
+The model is optimized using a composite loss function:
+\begin{equation}
+\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{recon}} + \beta \cdot D_{KL}\left(q_\phi(z|x) \| p(z)\right) + \alpha \cdot \mathcal{L}_{\text{class}}. 
+\end{equation} The reconstruction loss $\mathcal{L}_{\text{recon}}$ is defined as
 \begin{align}
 \mathcal{L}_{\text{recon}} &= \gamma \cdot \text{MSE}(x, \hat{x}) + (1 - \gamma) \cdot \text{CosineLoss}(x, \hat{x}) \\
-\nonumber &= \gamma \cdot \frac{1}{N_{\lambda}} \| x - \hat{x} \|_2^2 + (1 - \gamma) \cdot \left(1 - \frac{x \cdot \hat{x}}{\|x\|_2 \|\hat{x}\|_2}\right). 
-\end{align} Depending on the scenario (i.e. when using either MSE, CosineLoss, or a combination of both), we chose $\gamma \in \{0, 0.5, 1\}$.
+\nonumber &= \gamma \cdot \| x - \hat{x} \|_2^2 + (1 - \gamma) \cdot \left(1 - \frac{x \cdot \hat{x}}{\|x\|_2 \|\hat{x}\|_2}\right). 
+% \nonumber &= \gamma \cdot \frac{1}{N_{\lambda}} \| x - \hat{x} \|_2^2 + (1 - \gamma) \cdot \left(1 - \frac{x \cdot \hat{x}}{\|x\|_2 \|\hat{x}\|_2}\right).
+\end{align} We set $\gamma = 1$ (i.e. $\mathcal{L}_{\text{recon}}$ is only MSE), with the exception of the experiments in \nameref{app:recon-loss} in Appendix \ref{app:controlled_experiments}.
 
-$\mathcal{L}_{\text{class}}$ represents the categorical cross-entropy loss of the auxiliary classifier: 
+% Depending on the scenario (i.e. when using either MSE, CosineLoss, or a combination of both), we chose $\gamma \in \{0, 0.5, 1\}$. \TODO{In majoritar, MSE only} 
+
+The Kullback-Leibler divergence ($D_{KL}$) between the encoder distribution $q_\phi(z|x)$ and the prior $p(z)$ has a closed form, since both distributions are Gaussian with diagonal covariance~\cite{higgins2017betavae, Asperti2020}:
 \begin{equation}
-\mathcal{L}_{\text{class}} = - \sum_{c=1}^{C} y_c \log(p_c),
-\end{equation} where $y_c$ is the true label and $p_c$ the predicted probability associated with class $c$. The categorical cross-entropy loss is scaled by $\alpha$; in our experiments, we set $\alpha \le 0.5$ empirically, as the classification task is auxiliary and included only for training the encoder. We observed that scaling by a factor $\alpha = 0.5$ led to overfitting the encoder on the classification, therefore we chose $\alpha = 0.2$ which led to a similar rate of convergence across the classification and the reconstruction tasks.
+D_{KL}(q_\phi(z|x) \| p(z)) = \frac{1}{2} \sum_{i=1}^{d} \Big( \mu_{\phi, i}(x)^2 + \sigma_{\phi, i}^2(x) - \log\sigma_{\phi, i}^2(x) - 1 \Big),
+\end{equation} where $\mu_{\phi, i}(x)$ and $\sigma_{\phi, i}^2(x)$ are the $i$-th components of the mean and variance vectors. Each term is minimized when $\mu_{\phi, i}(x) = 0$ and $\sigma_{\phi, i}^2(x) = 1$. Thus, the divergence term $D_{KL}$ draws the approximate posterior of each spectrum toward the standard Gaussian prior. The reconstruction term $\mathcal{L}_{\text{recon}}$ counteracts this by requiring $z$ to retain enough information about $x$. The coefficient $\beta$ controls the degree of regularization~\cite{higgins2017betavae}, with smaller values prioritizing spectrum reconstruction fidelity. We evaluated $\beta \in \{0.25, 0.5, 0.75\}$ and report the results in Appendix \ref{app:beta_sensitivity}. The best compromise was obtained with $\beta = 0.5$.
 
-The parameter $C \in \{2, 6\}$ denotes the number of label classes, $C=2$ for binary classification (IDH-mutant, IDH-wildtype), or $C = 6$ for classifying all six glioma sub-types.
+% Following the $\beta$-VAE framework introduced by Higgins et al.~\cite{higgins2017betavae}, the Kullback-Leibler divergence ($D_{KL}$) acts as a structural regularizer when scaled by $\beta>1$. 
 
-Once trained, the decoder can generate class-balanced synthetic datasets
-by sampling $z \sim \mathcal{N}(0, I)$ conditioning on a requested class label.
+% For a Gaussian distribution regularizer, the divergence has the following expression~\cite{higgins2017betavae, Asperti2020}:
+% \begin{equation}
+% D_{KL}(q_\phi(z|x) \| p(z)) = \frac{1}{2} \sum_{i=1}^{d} \left( \mu_i^2 + \sigma_i^2 - \log(\sigma_i^2) - 1 \right).
+% \end{equation}
+
+% According to Higgins et al., a higher weight for the divergence term ensures that the latent space is sufficiently regularized, which constitutes a requirement for the generator to be used by sampling from a normal distribution~\cite{higgins2017betavae}, hence we set $\beta=2$. 
+
+The loss of the auxiliary classifier $\mathcal{L}_{\text{class}}$ is the categorical cross-entropy loss, defined as 
+\begin{equation}
+\mathcal{L}_{\text{class}} = - \sum_{c=1}^{C} y_c \log \hat{y}_c,
+\end{equation} where $y_c$ is the true label and $\hat{y}_c$ the predicted probability associated with class $c$. The coefficient $\alpha$ controls how strongly the encoder is driven to separate classes in latent space. As the classification task is complementary and included only for training the encoder, we empirically set $\alpha \le 0.5$ in our experiments. Since $\alpha = 0.5$ led to overfitting the encoder on the classification, we chose a smaller value, $\alpha = 0.2$, resulting in a similar rate of convergence across the classification and the reconstruction tasks.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/cvae_architecture.png}
-    \caption{\footnotesize Architecture of the 1D-Convolutional Conditional Variational Autoencoder ($\beta$-CVAE). The encoder is composed of 1-d convolutional layers with 3 blocks: filters $[32, 64, 128]$, kernels $[11, 5, 3]$, and strides $[2, 2, 2]$, compressing the input spectrum to the $d$-dimensional latent space. The decoder reconstructs the spectrum conditioned on both the latent representation and the class label, using transpose convolutions with initial filters of 128, followed by 3 blocks with filters $[128, 64, 32]$, kernels $[3, 5, 11]$, and strides $[2, 2, 2]$. 
+    \caption{\footnotesize Architecture of the $\beta$-CVAE. The encoder is composed of one-dimensional convolutional layers with 3 blocks: filters $[32, 64, 128]$, kernels $[11, 5, 3]$, and strides $[2, 2, 2]$, compressing the input spectrum to the $d$-dimensional latent space. The decoder reconstructs the spectrum conditioned on both the latent representation and the class label, using transpose convolutions with initial filters of 128, followed by 3 blocks with filters $[128, 64, 32]$, kernels $[3, 5, 11]$, and strides $[2, 2, 2]$. 
     %The model is trained with batch size 256 for 70 epochs at learning rate $0.001$ with reconstruction loss mode MSE, generating 20,000 samples per class.  
-    An auxiliary classifier head is attached to the encoder to encourage the convolutional layers to capture class discriminative features.}
+    An auxiliary classifier head is attached to the encoder to promote the extraction of class-discriminative features across convolutional layers.}
     \label{fig:cvae_architecture}
 \end{figure}
 
-Following the $\beta$-VAE framework introduced by Higgins et al. \cite{higgins2017betavae}, the Kullback-Leibler divergence ($D_{KL}$) acts as a structural regularizer when scaled by $\beta>1$. 
-
-For a Gaussian distribution regularizer, the divergence has the following expression \cite{higgins2017betavae, Asperti2020}:
-\begin{equation}
-D_{KL}(q_\phi(z|x) \| p(z)) = \frac{1}{2} \sum_{i=1}^{d} \left( \mu_i^2 + \sigma_i^2 - \log(\sigma_i^2) - 1 \right).
-\end{equation}
-
-According to Higgins et al., a higher weight for the divergence term ensures that the latent space is sufficiently regularized, which constitutes a requirement for the generator to be used by sampling from a normal distribution \cite{higgins2017betavae}, hence we set $\beta=2$. The latent vector $z \in \mathbb{R}^d$ has two $d$-dimensional parameters associated: $\mu$ and $\log(\sigma^2)$. In our experiments, we tested $d \in \{ 16, 32, 64 \}$, but most of the experiments used $d=32$.
-
-
-\subsection{Classification by Reconstruction}
+\subsection{\textcolor{green}{Classification by Reconstruction}}
 \label{sec:cbr}
 
+Standard discriminative models such as Random Forest and XGBoost learn class-separating decision boundaries directly from labeled training data. In Raman studies with few patients, spectra from the same patient are strongly correlated and cannot be treated as independent observations~\cite{guo2021chemometric}, therefore the effective sample size for generalizing to new patients is closer to the number of patients than to the number of spectra. Instrument drift and fluorescence background introduce additional variability between measurement sessions, and boundaries learned under these conditions can fit cohort-specific features and generalize poorly to unseen patients. 
 
-Standard discriminative models such as Random Forests and XGBoost optimize class-separating decision boundaries from labeled training data. However, in small-cohort Raman spectroscopy settings, these models may generalize poorly to unseen samples affected by acquisition variability and changing spectrometer baselines. Motivated by this limitation, we investigate an alternative generative inference strategy, termed Classification by Reconstruction (CbR).
+Generative classifiers, however, model the distribution of the whole spectrum for each class and assign a new spectrum to the class that explains it best. These classifiers can be more sample-efficient when labeled data is scarce~\cite{ng2001discriminative, zheng2023revisiting}. We therefore investigate Classification by Reconstruction (CbR), an inference rule that turns a trained conditional generative model into a classifier~\cite{li2023your}: the model reconstructs each spectrum under every candidate class label, and the class with the smallest reconstruction error is selected. 
 
-CbR leverages the CVAE's learned latent representations to classify a tumor without relying on discriminative boundaries. 
-During inference on a preprocessed unseen test spectrum $x_{\text{test}}$, we defined the following approach:
+We implement CbR with our $\beta$-CVAE. At inference, for a preprocessed, unseen test spectrum $x_{\text{test}}$, we proceed as follows:
+
 \begin{enumerate}
-    \item \emph{Latent extraction.} The test spectrum is passed through the encoder to extract its latent vector: $\mu_{z} = \text{Encoder}(x_{\text{test}})$.
-    \item \emph{Conditional reconstruction.} The latent vector $\mu_{z}$ is passed to the decoder $C$ times. Each forward pass pairs $\mu_{z}$ with a different one-hot class condition $y_c$, generating a set of reconstructed spectra: \\ $\hat{x}_c = \text{Decoder}(\mu_{z}, y_c)$.
-    \item \emph{Error minimization.} We compute the MSE between the raw test spectrum and each of the reconstructions. The final predicted class $\hat{y}$ is the one that yields the lowest reconstruction error:
+    \item \emph{Encoding.} The encoder maps $x_{\text{test}}$ to the mean of its latent posterior, $\mu_\phi(x_{\text{test}})$. The posterior mean is used as the latent variable, without sampling Gaussian noise, such that differences in the reconstruction error between classes are only due to the class label.
+    
+    % The test spectrum is passed through the encoder to extract its latent vector: $\mu_{z} = \text{Encoder}(x_{\text{test}})$.
+    \item \emph{Conditional decoding.} The decoder reconstructs the spectrum from $\mu_\phi(x_{\text{test}})$ and the label $y_c$ for each candidate class $c \in \{1, \dots, C\}$: 
     \begin{equation}
-    \hat{y} = \underset{c \in \{1, \dots, C\}}{\arg \min} \left( \| x_{\text{test}} - \hat{x}_c \|_2^2 \right).
+        \hat{x}_c = f_\theta(\mu_\phi(x_{\text{test}}) \oplus y_c).
+    \end{equation}
+    
+    % The latent vector $\mu_{z}$ is passed to the decoder $C$ times. Each forward pass pairs $\mu_{z}$ with a different one-hot class condition $y_c$, generating a set of reconstructed spectra: \\ $\hat{x}_c = \text{Decoder}(\mu_{z}, y_c)$.
+    \item \emph{Reconstruction error.} We compute the MSE between the raw test spectrum and each of the reconstructions. The final predicted class $y_{_\text{CbR}}$ is the one that yields the lowest reconstruction error:
+    \begin{equation}
+    y_{_\text{CbR}} = \underset{c \in \{1, \dots, C\}}{\arg \min} \left( \| x_{\text{test}} - \hat{x}_c \|_2^2 \right).
     \end{equation}
 \end{enumerate}
 
-This approach assumes that spectra reconstructed under the correct class condition will exhibit lower reconstruction error than spectra reconstructed under incorrect class conditions.
+This approach rests on the assumption that the decoder reconstructs a spectrum with lower error under its true label than under the other labels.
 
 \section{Experimental Design}
 \label{sec:experimental_design}
 
-\subsection{Baseline Correction}
+% \subsection{Baseline Correction}
 
-\textcolor{red}{All experiments were conducted using strict slide-isolated 5-fold design (see Appendix \ref{app:cv_schema}), ensuring that spectra originating from the same biopsy sample never appeared simultaneously in training and evaluation sets, while keeping class balance into account. We evaluated the proposed framework under three complementary settings: Train-on-Real, Test-on-Real (TR/TR), Train-on-Synthetic, Test-on-Real (TS/TR), and Train-on-Synthetic+Real, Test-on-Real (TSR/TR) \cite{esteban2017real}. We also evaluated the proposed Classification by Reconstruction (CbR) strategy as a reconstruction-based generative inference approach.}
+All experiments were conducted using a strict slide-isolated five-fold design (Appendix \ref{app:cv_schema}), such that spectra originating from the same biopsy sample never appeared simultaneously in the training and test partitions of a fold, while keeping class balance into account. 
 
-\subsection{Classification Tasks}
-
-To evaluate the impact of biological signal strength on classification performance, all models were evaluated on two distinct tasks:
-\begin{enumerate}
-    \item \emph{Binary classification (IDH-Status).} Differentiating the IDH-Mutant from the IDH-Wildtype entails a large metabolic shift that is theoretically easier to detect above spectrometer noise.
-    \item \emph{6-class grading.} Differentiating all six distinct glioma sub-grades is a more challenging task, as the biochemical differences between sub-grades are more subtle and the signal may not capture them.
-\end{enumerate}
-
+We tested four classifiers (RF+SVM, RF, XGBoost, and a 1D-CNN) on real data, under three training settings: trained on real data (TR/TR), trained on synthetic data (TS/TR), and trained on real data augmented with synthetic data (TSR/TR). The synthetic data was generated with the $\beta$-CVAE. In addition, we evaluated the proposed Classification by Reconstruction (CbR) strategy using the $\beta$-CVAE as the generative classifier. All models were evaluated on the binary classification task (IDH-Mutant versus IDH-Wildtype).
 
 \subsection{Evaluation Protocols}
 
-\paragraph{TR/TR Evaluation.} 
-We established the real-data baseline using the Train-on-Real, Test-on-Real (TR/TR) paradigm. The training splits consisted exclusively of real spectra from the training folds. We evaluated four downstream classifiers:
+\subsubsection{Classifier Evaluation on Synthetic and Augmented Data}
+We employed the \emph{Train on Synthetic, Test on Real} (TS/TR) framework to evaluate whether the $\beta$-CVAE captured discriminative structure from the training data~\cite{esteban2017real}. For each fold, the $\beta$-CVAE was trained exclusively on the corresponding real training split. We then sampled from the latent prior, $z \sim \mathcal{N}(0, I)$, and used the decoder with a class label to generate synthetic spectra per class in each fold. We established the real-data baseline using the \emph{Train on Real, Test on Real} (TR/TR) paradigm. We analyzed four classifiers:
 \begin{enumerate}
-    \item \emph{RF + SVM:} A Random Forest feature selector (top 20 bands) followed by a Support Vector Machine with RBF kernel and balanced class weights \cite{apollonov2024raman}.
+    \item \emph{RF + SVM:} a Random Forest first selects the 20 most important spectral bands, followed by a Support Vector Machine with RBF kernel and balanced class weights trained on them~\cite{apollonov2024raman}.
     
-    \item \emph{Random Forest:} A standard ensemble of 100 trees with balanced class weights.
+    \item \emph{Random Forest:} a standard ensemble of 100 trees with balanced class weights.
     
-    \item \emph{XGBoost:} A gradient-boosted tree ensemble utilizing histogram-based tree methods optimized for high-dimensional data.
+    \item \emph{XGBoost:} a gradient-boosted tree ensemble utilizing histogram-based tree methods optimized for high-dimensional data.
     
-    \item \emph{1D-CNN:} A deep convolutional classifier trained with early stopping.
+    \item \emph{1D-CNN:} a deep convolutional classifier trained with early stopping.
 \end{enumerate}
 
-\paragraph{TS/TR Evaluation.}
-To evaluate whether the CVAE captured discriminative structure from the training data, we employed the Train-on-Synthetic, Test-on-Real (TS/TR) framework. For each fold, the CVAE was trained exclusively on the corresponding real training split. By sampling from the latent prior $z \sim \mathcal{N}(0, I)$, the decoder was then used to generate synthetic spectra conditioned by class (40,000 for binary tasks and 120,000 for 6-class tasks) in almost all experiments, except in the TSR/TR ratio ablation study (see Table \ref{tab:appendix_exp_401} in Appendix). The downstream classifiers were trained exclusively on synthetic spectra and evaluated on the corresponding held-out real validation fold.
+We also evaluated a \emph{Train on Synthetic+Real, Test on Real} (TSR/TR) framework to evaluate whether synthetic augmentation improves classification performance relative to the TR/TR baseline. The TSR/TR experiments mix real and synthetic spectra at a synthetic-to-real ratio; this ratio $r_{\text{S/R}}$ is set to 1 by default, except for a suite of experiments testing the sensitivity of the results for $r_{\text{S/R}} \in \{0.5, 1, 2\}$ (\nameref{app:synth-ratio} in Appendix \ref{app:controlled_experiments}). Moreover, we evaluated the Classification by Reconstruction (CbR) strategy on the test partition of each fold, and compared its predictions directly against the TR/TR and TS/TR classifiers. In these experiments, we used de Naïve MIL formulation for classifier training. 
 
-\paragraph{TSR/TR Evaluation.}
-We also evaluated a Train-on-Synthetic+Real, Test-on-Real (TSR/TR) framework in which synthetic spectra were combined with the real training data. This setting evaluates whether synthetic augmentation improves classification performance relative to the TR/TR baseline.
+\subsubsection{MIL Evaluation}
+% - accuracy, compare against trtr
+% - spatial validation:
+%  - spatial structure (correlation)
+%  - shuffled bag -> spatial structure
+% - key instance utility test
+We evaluate the MIL models for classifying diagnostic spectra by the following three criteria: performance metrics (bag-level accuracy, sensitivity, specificity, AUC), spatial coherence and key instance utility tests.
 
-\paragraph{CbR Evaluation.}
-Finally, the proposed Classification by Reconstruction (CbR) inference strategy was evaluated on the held-out real validation folds. Reconstruction-based predictions were compared directly against the TR/TR and TS/TR baselines.
+We measure spatial coherence in two respects: 
+\begin{enumerate}[label=(\roman*)]
+    \item \textit{Spatial autocorrelation.} Diagnostic spectra are expected to have a positive spatial autocorrelation. Each slide pixel $p_j$ has spatial coordinates $(h_j, w_j)$ for $j \in \{1, \ldots, n_b\}$. We compute the Chebyshev distance for the slide pixels and group them in sets if they reside at fixed Chebyshev distance $\delta$:  
+    \begin{equation}
+         P_{\delta}=\left\{(i, j): |p_i - p_j|_\infty = \delta\right\}.
+    \end{equation} 
+    
+    We use the Moran's $I$~\cite{moran1950, rittel2026cohort} at level $\delta$:
+    \begin{equation}
+        I_{\delta}=\frac{n_b}{|P_{\delta}|}\cdot\frac{\sum_{(i,j)\in P_{\delta}}(\hat z_i-\bar z)(\hat z_j-\bar z)}{\sum_{i=1}^{n_b}(\hat z_i-\bar z)^2},
+    \end{equation} where $\hat z_i$ is the key-instance decision given by the MIL model to the spectrum $x_i$ (and, implicitly, to the pixel $p_i$), and $\bar z$ is the empirical mean of all pixel labels.
+
+    We also use the variogram range \cite{veronesi2025machine} to estimate the average autocorrelation per slide at Chebyshev distance $\delta$:
+    \begin{equation}
+        \hat\gamma(\delta)=\frac{1}{2|P_\delta|}\sum_{(i,j)\in P_\delta}(\hat z_i-\hat z_j)^2. 
+    \end{equation} 
+
+    We computed both metrics for $\delta=3$, due to the median kernel filter.
+    
+    \item \textit{Shuffled bag-label control.} We train the MIL models with shuffled labels, and we test the spatial autocorrelation again. If the initial MIL's key instance selection is informative for the classification, the real labeling models should exhibit higher spatial correlation than the shuffled-label ones, as key instances should be selected to discriminate between molecular markers.
+
+\end{enumerate}
+\textcolor{red}{We also perform a key-instance utility test by training a RF model only on the key instances according to the MIL model. If the key-instances are relevant for the decision, restricting a classifier to the key instances should result in a similar or more accurate model than the naïve MIL RF.}
+
+We also perform a key-instance utility test by training a RF model on the instances selected as relevant by the MIL model and comparing its accuracy with an RF model trained on a random subset of instances, of equal size. If the key-instances are relevant for the decision, the accuracy of the first should be greater.
+
+In the absence of histopathological annotations of tumor regions, the above suite of tests is considered weak evidence of MIL performance: a passed test is not sufficient for assessing the reliability of a model.
 
 \subsection{Training Details}
-We present here the specific details of our training setup. We note that the ML models were not tuned, as the focus of this study is the effect of data augmentation, not tuning the best classifiers. Most of our experiments are ablation designs where we test the effect on the accuracy.
-\begin{enumerate}
-    \item \textit{Spectrum region crop.} In all our experiments, we cropped the spectra to the fingerprint region ($700 - 1800 \text{ cm}^{-1}$) \cite{Harris2023}, thus we selected 571 spectral bands out of the $N_\lambda = 1738$. 
-    \item \textit{Maximum number of spectra cap per slide.} We randomly drew a sample of a maximum of 500 spectra from each slide, ensuring that the slides are equally represented. We performed this operation to mitigate the high variability in the number of spectra per slide due to varying slide sizes and varying retention rates due to quality (see Fig. \ref{fig:tumor_retention_rates}). We drew a fixed sample for the classifiers and opted for a dynamic resampling for the CVAE training.
-    \item \textit{CVAE training data augmentation:} We performed dynamic data augmentation at train time using the following operations: 
-    (a) \textit{within-class mixup:} we used linear combinations of spectra within the same class to expand the input space; $x = \lambda x_1 + (1-\lambda) x_2$, with $\lambda \sim U(0,\alpha)$, and we set $\alpha = 0.5$; 
-    (b) \textit{spectral shift:} we shifted the spectra by a random integer in $[-\text{max\_shift},+\text{max\_shift}]$ to simulate Raman calibration drift; we set $\text{max\_shift}=3$ in our experiments.
+To test the feasibility of training classifiers on synthetic data, we measure the performance difference between identical model configurations in TR/TR and TS/TR settings.
+
+We note that the classifiers' hyperparameters were not tuned. Most experiments vary one factor at a time (ablations and sensitivity analyses) and measure the effect on classification performance. All models received spectra cropped to the fingerprint region (700--1800 $\text{ cm}^{-1}$)~\cite{Harris2023}, obtaining 571 selected spectral points out of the $N_\lambda = 1738$.
+
+To reduce the variability in the number of spectra per slide, we randomly drew a maximum of 500 spectra from each slide, such that every slide contributes equally to the training set. For the classifiers, we drew one fixed sample per fold. For $\beta$-CVAE training, the sample was redrawn at every epoch and we applied dynamic augmentation to it, using the following operations: 
+\begin{enumerate}[label=(\alph*)]
+    \item \textit{Within-class mix-up.} We used linear combinations of spectra within the same class to expand the input space: $x = \lambda x_1 + (1-\lambda) x_2$, with $\lambda \sim U(0,\alpha)$, and we set $\alpha = 0.5$.
+    \item \textit{Spectral shift.} We shifted each spectrum along the spectral axis by a random integer drawn uniformly from $[-3,3]$.
+    \item \textit{Baseline perturbation.} We added to each spectrum a smooth random baseline, consisting of a weighted sum of two sinusoids with frequencies from $[1,3)$ and $[3,6)$, respectively, with an amplitude of 5\% of the range of the spectrum.
 \end{enumerate}
+
+% \begin{enumerate}
+%     \item \textit{Spectrum region crop.} In all our experiments, we cropped the spectra to the fingerprint region (700--1800 $\text{ cm}^{-1}$)~\cite{Harris2023}, obtaining 571 selected spectral bands out of the $N_\lambda = 1738$. 
+%     \item \textit{Maximum number of spectra cap per slide.} We randomly drew a sample of a maximum of 500 spectra from each slide, ensuring that the slides are equally represented. We performed this operation to mitigate the high variability in the number of spectra per slide due to varying slide sizes and varying retention rates due to quality (Figure \ref{fig:tumor_retention_rates}). We drew a fixed sample for the classifiers and opted for a dynamic resampling for the CVAE training.
+%     \item \textit{CVAE training data augmentation:} We performed dynamic data augmentation at train time using the following operations: 
+%     (a) \textit{within-class mixup:} we used linear combinations of spectra within the same class to expand the input space; $x = \lambda x_1 + (1-\lambda) x_2$, with $\lambda \sim U(0,\alpha)$, and we set $\alpha = 0.5$; 
+%     (b) \textit{spectral shift:} we shifted the spectra by a random integer in $[-\text{max\_shift},+\text{max\_shift}]$ to simulate Raman calibration drift; we set $\text{max\_shift}=3$ in our experiments.
+% \end{enumerate}
 
 
 \subsection{Statistical Evaluation}
 \label{sec:statistical_eval}
-Each biopsy slide is a \emph{bag} carrying one label; the individual spectra within it
-are \emph{instances} with no ground-truth label of their own. Accordingly, we report every classification result as a genuine bag-level decision, not
-an average over instances: for each slide, the four classifiers' per-spectrum
-predictions are collapsed to a single decision by majority vote, and standard accuracy,
-F1, precision, recall and Cohen's $\kappa$ are computed on these $n=58$ bag decisions
-against the 58 true slide labels. Four slides are assigned to two cross-validation test
-folds each, an unavoidable consequence of stratifying six classes across a cohort where
-two classes have only four patients (Appendix~\ref{app:cv_schema}); such a slide's
-posterior is averaged across the folds it appears in before its single decision is
-taken, so it is never double-counted. We additionally report within-bag instance
-recall — the fraction of a slide's own spectra that carry its own label under the
-(false) instance-level assumption — as a diagnostic only, since no instance-level
-ground truth exists to validate it against; it must not be read as an accuracy.
 
-Due to the hierarchical structure of the dataset, bags are themselves correlated across
-biopsies from the same subject, so evaluating variance solely across the five
-cross-validation folds yields limited statistical power. To obtain more robust
-uncertainty estimates, we implemented a stratified cluster bootstrap procedure at the
-bag level. Across 1,000 bootstrap iterations, bags were sampled with replacement while
-preserving class proportions. This procedure approximates variability across
-independent batches of biopsy slides.
+Each biopsy slide is a bag with a label, and the spectra within it are instances with no individual ground-truth label. Thus, we report all classification results at bag level: for each slide, the per-spectrum predictions of a classifier are combined by majority vote into a single decision. Standard accuracy, balanced accuracy, sensitivity, specificity and AUC are computed on the 59 bag decisions against the true slide labels, under the five-fold cross-validation schema. Four slides are assigned to test partitions of two folds (Appendix \ref{app:cv_schema}), since two classes (\texttt{LGm3} and \texttt{LGm6}) have four patients each (Table \ref{tab:dataset}); for these slides, the predictions from both folds are averaged before making the decision, ensuring that they are not counted twice. 
 
-For pairwise comparisons between evaluation settings (TS/TR vs. TR/TR or TSR/TR vs. TR/TR), we computed bootstrap distributions of the corresponding accuracy differences:
+% Each biopsy slide is a \emph{bag} carrying one label; the individual spectra within it are \emph{instances} with no ground-truth label of their own. Accordingly, we report every classification result as a bag-level decision: for each slide, we report a decision by majority vote the each of the four classifiers' per-spectrum predictions, and standard accuracy, F1, precision, recall and Cohen's $\kappa$ are computed on these $n=59$ bag decisions against the 59 true slide labels. Four slides are assigned to two cross-validation test folds each, due to stratifying six classes across a cohort where two classes have only four patients (Appendix~\ref{app:cv_schema}). For those slides that appear in the test set of two folds, the posterior is averaged across the folds it appears in before its single decision is taken, so it is never double-counted. We additionally report within-bag instance recall — the fraction of a slide's own spectra that carry its own label under the (false) instance-level assumption — as a diagnostic only, since no instance-level ground truth exists to validate it against; it must not be read as an accuracy.
+
+% Due to the hierarchical structure of the dataset, individual spectra originating from the same biopsy sample are strongly correlated. Consequently, statistical evaluation at the individual-spectrum level violates the independent and identically distributed (I.I.D.) assumption and may artificially underestimate uncertainty. Conversely, estimating variance solely across the five cross-validation folds yields limited statistical power.
+
+To obtain more robust uncertainty estimates, we implemented a stratified cluster bootstrap procedure at the slide level. Across 1,000 bootstrap iterations, slides were sampled with replacement while preserving class proportions. For pairwise comparisons between evaluation settings (TS/TR vs. TR/TR or TSR/TR vs. TR/TR), we computed bootstrap distributions of the corresponding accuracy differences:
 \[
 \Delta = \mathrm{Accuracy}_{A} - \mathrm{Accuracy}_{B}.
 \]
 
-Statistical significance was evaluated using bootstrap $p$-value estimates. Confidence Intervals (CI) were determined using the bootstrap distribution, and a result is considered significant when the 95\% CI around $\Delta$ excludes zero. The two sided $p$-value is defined as \[p = 2 \cdot \min\!\left(\frac{\# \{ i = \overline{1, N} : \Delta_i<0\}}{N},\frac{\#\{i = \overline{1, N} :\Delta_i>0\}}{N}\right),\] where $N = 1,000$. We note that no statistical correction is applied for multiple tests across the suite of experiments or classifiers; this is an important limitation and inflates the Type~I error rate.
+Statistical significance was evaluated using bootstrap $p$-value estimates. Confidence Intervals (CI) were determined using the bootstrap distribution, and a result is considered significant when the 95\% CI around $\Delta$ excludes zero. The two sided $p$-value is defined as \[p = 2 \cdot \min\!\left(\frac{\sum_{i = 1}^N \mathbbm{1}_{[\Delta_i<0]}}{N},\frac{\sum_{i = 1}^N \mathbbm{1}_{[\Delta_i>0]}}{N}\right),\] where $N = 1,000$. We note that no statistical correction is applied for multiple tests across the suite of experiments or classifiers; this is an important limitation and inflates the Type~I error rate.
 
+\begin{sidewaysfigure}[H]
+    \centering
+    \includegraphics[scale=0.72]{img/Glioma_Appendix Scheme.drawio.png}
+    \caption{\TODO{De scris caption}}
+    \label{fig:placeholder}
+\end{sidewaysfigure}
 
-
-\section{Results}
+\section{\textcolor{red}{Results}}
 \label{sec:results}
 
-We performed a series of experiments to determine the effects of different design choices on the domain gap metric. Specifically, we tested (a) the reconstruction loss function (MSE, CosineLoss, or a combination of them), (b) the latent space dimension, and (c) the real-to-synthetic data ratio. Detailed results can be found in Appendix~\ref{app:extended_results}. The main findings are presented below.
+\subsection{Classifier Evaluation on Synthetic and Augmented Data}
 
-\subsection{Binary IDH Classification}
-\label{sec:results_binary}
+We test the Naïve MIL models under the TR/TR, TS/TR and TSR/TR regimes to measure the utility of the synthetic data for training classifiers.
+We performed controlled experiments over five aspects: (1) the $\beta$ weight of the $D_{KL}$ regularizing parameter, (2) the latent dimension $d$, (3) the type of the reconstruction loss $\mathcal{L}_{\text{recon}}$, (4) the synthetic to real ratio for TSR/TR; (5) the maximum-intensity threshold \texttt{thr} used as a signal filter during preprocessing.
 
-The binary classification is influenced by broad metabolic differences that can be detected using RS. Under the TR/TR setting, the best-performing discriminative models achieved accuracies above $70\%$ (see Table \ref{tab:binary_results}).
+\subsubsection{Weight $\beta$ Analysis}
+The $\beta$ weight of the $D_{KL}$ regularizer acts as a tradeoff between the reconstruction capability of the autoencoder and the degree of smoothness of the latent space~\cite{higgins2017betavae}. This property is reflected by the inverse proportionality between the reconstruction loss and the $D_{KL}$ loss (Figure \ref{fig:beta-trials}). We also study the variance of the components of the latent vector as given by the CVAE trained with different values of $\beta$ (Table \ref{tab:beta_dims}).
 
-\begin{table}[H] 
-\caption{Binary Classification Results}
-\label{tab:binary_results}
-\small
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc}
-\toprule
-\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{F1-score}\\
-\midrule
-\multirow{3}{*}{RF + SVM} & TR/TR & $0.741$ & -- & -- & $0.728$ \\
- & TS/TR & $0.431$ & $-0.310$* & $[-0.414, -0.207]$ & $0.301$ \\
- & TSR/TR & $0.759$ & $+0.017$ & $[-0.052, +0.086]$ & $0.744$ \\
-\midrule
-\multirow{3}{*}{RF} & TR/TR & $0.810$ & -- & -- & $0.797$ \\
- & TS/TR & $0.707$ & $-0.103$* & $[-0.207, -0.017]$ & $0.696$ \\
- & TSR/TR & $0.810$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ \\
-\midrule
-\multirow{3}{*}{XGBoost} & TR/TR & $0.793$ & -- & -- & $0.776$ \\
- & TS/TR & $0.690$ & $-0.103$ & $[-0.224, +0.017]$ & $0.689$ \\
- & TSR/TR & $0.810$ & $+0.017$ & $[+0.000, +0.052]$ & $0.797$ \\
-\midrule
-\multirow{3}{*}{1D-CNN} & TR/TR & $0.621$ & -- & -- & $0.505$ \\
- & TS/TR & $0.397$ & $-0.224$* & $[-0.345, -0.103]$ & $0.374$ \\
- & TSR/TR & $0.603$ & $-0.017$ & $[-0.121, +0.069]$ & $0.556$ \\
-\midrule
-CbR & -- & $0.741$ & -- & $[+0.621, +0.845]$ & $0.732$ \\
-\bottomrule
-\end{tabular*}
-\note{Regimens: TR/TR (real-only baseline), TS/TR (synthetic-only), TSR/TR (synthetic + real), CbR (Classification by Reconstruction, model-independent). Accuracy, $\Delta$, 95\% CI and F1-score are all computed at the \emph{bag} level: each slide's per-spectrum predictions are collapsed to one majority-vote decision, and every statistic is over the resulting $n=58$ slide decisions, not individual spectra. $\Delta$ and 95\% CI are the bag-level bootstrap difference vs.\ TR/TR; (*) marks a 95\% CI excluding zero. F1-score is macro-averaged over the 58 bag decisions. The CbR row reports its own bag-level accuracy 95\% CI.}
-\end{table}
-
-Across all classifiers, models trained exclusively on synthetic spectra underperformed the corresponding TR/TR baselines, which implies a substantial domain gap between synthetic and real spectra. The performance degradation was statistically significant for RF+SVM, RF and 1D-CNN (95\% CI excluding zero); XGBoost's decline, while similar in magnitude, was not significant at this bag-level sample size ($n=58$).
-
-In the TSR/TR setting, none of the four bag-level deltas reached significance: RF+SVM and XGBoost showed small positive shifts ($+0.017$), RF was unchanged, and 1D-CNN showed a small negative shift ($-0.017$). This is a more conservative picture than the (uncorrected, instance-level) point estimates might suggest in isolation, and is consistent with the wider uncertainty expected from a bootstrap over 58 bags rather than hundreds of thousands of spectra. We therefore read the TSR/TR results as showing synthetic augmentation is not harmful at the bag level for any model, rather than as a confirmed improvement for any specific one.
-
-Of particular interest is the CbR inference method, which reached a bag-level accuracy of $0.741$ — identical to the RF+SVM TR/TR baseline, and well above the $\approx 62\%$ figure from instance-level pooling reported in earlier analyses of this pipeline. CbR requires no classifier training at all beyond the shared CVAE, which makes this result notable independent of the specific number.
-
-\subsection{6-Class Glioma Sub-Grading}
-\label{sec:results_6class}
-
-
-The 6-class glioma sub-grading task proved more challenging than binary IDH-status classification. Under the TR/TR setting, the best-performing models achieved accuracies of approximately $30\%$. Such results pinpoint the difficulty of detecting spectral differences at glioma sub-grades granularity. The outcomes of the 6-class experiments can be found in Appendix~\ref{app:extended_results} (see Tables \ref{tab:appendix_exp_204}--\ref{tab:appendix_exp_206}).
-
-Across all classifiers, training exclusively on synthetic spectra resulted in lower performance than the corresponding TR/TR baselines, reiterating the gap between generated and real spectra. The reduction in performance was more pronounced than in the binary setting, suggesting that subtle inter-class biological differences are more difficult to reproduce through synthetic generation in this small cohort setting.
-
-\subsection{Remarks}
-
-Despite the limitations observed in the TS/TR setting, augmenting the real training data with synthetic spectra generally improved downstream classification performance slightly. In nearly all experiments, RF and XGBoost were the most robust, with the lowest domain gaps and most consistent outcomes across experiments, with results over 70\% for TR/TR, over 60\% for TS/TR and slight improvements over the baseline for TSR/TR.
-
-The accuracies of 1D-CNN were less consistent, showing a tendency of improvement with larger training datasets (see Tables \ref{tab:appendix_exp_401}--\ref{tab:appendix_exp_403}).
-
-We note that, given our large number of model comparisons, for a rigorous statistical evaluation, a correction on the statistical significance should be applied. However, given that most of our results reveal mostly small and not statistically significant improvements, we decided not to perform any correction and discuss the results only as general tendencies.
-
-
-\section{Discussion}
- \label{sec:discussion}
-
-The experiments show that synthetic augmentation can slightly improve Raman-based glioma classification. However, they also reveal a substantial domain gap between generated and real spectra, especially in the 6-class grading task.
-
-Combining synthetic and real spectra in the TSR/TR setting generally improved downstream classification performance across multiple models. This showcases the potential of synthetic spectra to improve the generalization capabilities of downstream models used in small-cohort settings. Therefore, instead of relying on synthetic spectra as a complete replacement for real measurements, they might be of greater use as a regularization strategy. 
-
-To characterize the relationship between the real and synthetic spectral distributions beyond aggregate classification metrics, we examined two complementary embedding methods: PCA and $t$-SNE. Both were computed on $z$-scored, pooled real and synthetic spectra (up to $2000$ spectra per class per source). $t$-SNE was applied to the top $50$ principal components due to the high dimensionality ($N_\lambda$) of the input space. Each embedding is displayed twice: coloured by source (real vs.\ synthetic) and by diagnostic class (IDH-Mutant vs.\ IDH-Wildtype). The results are shown in Figure~\ref{fig:pca_tsne}.
+The results (Table \ref{tab:beta_results}) generally report a better accuracy for the TS/TR and TSR/TR regimens with $\beta=0.5$. Moreover, for this choice of $\beta$, the models that report a TS/TR accuracy lesser than the TR/TR baseline (RF+SVM, 1D-CNN) have a TSR/TR accuracy greater than the baseline, indicating classification improvement when the dataset is augmented with synthetic data.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{img/PCA.png}\\[4pt]
-    \includegraphics[width=\textwidth]{img/TSNE.png}
-    \caption{\footnotesize PCA (top) and $t-$SNE (bottom) embeddings of real and synthetic spectra, coloured by source (left) and class (right).}
-    \label{fig:pca_tsne}
+    \includegraphics[width=\linewidth]{img/beta_sensitivity_fixed.png}
+    \caption{The reconstruction and $D_{KL}$ loss plots during training.}
+    \label{fig:beta-trials}
 \end{figure}
 
-Taken together, the PCA and t-SNE plots offer insight into the spatial structure of the spectral data. The PCA plots reveal a variance difference between the real and the synthetic data sets: synthetic data forms two distinct clusters (corresponding to the two classes) with low variance, while the real data shows higher variance, and the two classes overlap to a great extent. Correlating these plots with the t-SNE plots, we can see that synthetic data is structured in two distinct clusters, whereas the raw data has a heterogeneous structure. It is worth noting that both the PCA and the t-SNE plots show the real data being intertwined. We hypothesize that the two classes might overlap (in the initial space) to such an extent that, under a strict, slide-isolated experiment, the possible accuracy for this particular dataset has a definite upper bound. 
-
-We can visualize the spectral variance by plotting the mean spectrum of the real data and that of the synthetic data along with their standard deviation ($\sigma$) envelopes. We observe that the synthetic data standard deviation is much narrower than that of the real data, which suggests that the synthetic data is generally very close to the mean spectrum (Fig. \ref{fig:mean_std_spectra}).
-
-\begin{figure}[H]
+\begin{table}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{img/A_mean_std_spectra_IDH-Mutant.png}
-\includegraphics[width=0.85\textwidth]{img/A_mean_std_spectra_IDH-Wildtype.png}
-\caption{Mean $\pm \sigma$ Raman spectra, real vs. synthetic, per class.}
-\label{fig:mean_std_spectra}
-\end{figure}
+\scriptsize
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{$\beta$} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{7}{*}{RF + SVM} & TR/TR & -- & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+\cmidrule(lr){2-10}
+ & \multirow{3}{*}{TS/TR} & $0.25$ & $0.576$ & $-0.186$* & $[-0.288, -0.085]$ & $0.519$ & $1.000$ & $0.038$ & $0.744$\\
+ &  & $0.5$ & $0.695$ & $-0.068$ & $[-0.169, +0.034]$ & $0.682$ & $0.788$ & $0.577$ & $0.667$\\
+ &  & $0.75$ & $0.576$ & $-0.186$* & $[-0.322, -0.051]$ & $0.556$ & $0.727$ & $0.385$ & $0.599$\\
+\cmidrule(lr){2-10}
+ & \multirow{3}{*}{TSR/TR} & $0.25$ & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.786$\\
+ &  & $0.5$ & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.803$\\
+ &  & $0.75$ & $0.814$ & $+0.051$ & $[+0.000, +0.102]$ & $0.801$ & $0.909$ & $0.692$ & $0.808$\\
+\midrule
+\multirow{7}{*}{RF} & TR/TR & -- & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+\cmidrule(lr){2-10}
+ & \multirow{3}{*}{TS/TR} & $0.25$ & $0.797$ & $-0.017$ & $[-0.102, +0.051]$ & $0.769$ & $1.000$ & $0.538$ & $0.787$\\
+ &  & $0.5$ & $\textbf{0.831}$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.755$\\
+ &  & $0.75$ & $0.763$ & $-0.051$ & $[-0.136, +0.034]$ & $0.739$ & $0.939$ & $0.538$ & $0.739$\\
+\cmidrule(lr){2-10}
+ & \multirow{3}{*}{TSR/TR} & $0.25$ & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.786$\\
+ &  & $0.5$ & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.783$\\
+ &  & $0.75$ & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.781$\\
+\midrule
+\multirow{7}{*}{XGBoost} & TR/TR & -- & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+\cmidrule(lr){2-10}
+ & \multirow{3}{*}{TS/TR} & $0.25$ & $0.814$ & $+0.000$ & $[-0.051, +0.051]$ & $0.793$ & $0.970$ & $0.615$ & $0.819$\\
+ &  & $0.5$ & $\textbf{0.831}$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.798$\\
+ &  & $0.75$ & $0.763$ & $-0.051$ & $[-0.153, +0.034]$ & $0.739$ & $0.939$ & $0.538$ & $0.763$\\
+\cmidrule(lr){2-10}
+ & \multirow{3}{*}{TSR/TR} & $0.25$ & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.791$\\
+ &  & $0.5$ & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.782$\\
+ &  & $0.75$ & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.786$\\
+\midrule
+\multirow{7}{*}{1D-CNN} & TR/TR & -- & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+\cmidrule(lr){2-10}
+ & \multirow{3}{*}{TS/TR} & $0.25$ & $0.746$ & $+0.034$ & $[-0.051, +0.136]$ & $0.732$ & $0.848$ & $0.615$ & $0.803$\\
+ &  & $0.5$ & $0.678$ & $-0.034$ & $[-0.136, +0.068]$ & $0.675$ & $0.697$ & $0.654$ & $0.768$\\
+ &  & $0.75$ & $0.712$ & $+0.000$ & $[-0.085, +0.085]$ & $0.722$ & $0.636$ & $0.808$ & $0.716$\\
+\cmidrule(lr){2-10}
+ & \multirow{3}{*}{TSR/TR} & $0.25$ & $0.814$ & $+0.102$* & $[+0.017, +0.203]$ & $0.797$ & $0.939$ & $0.654$ & $0.828$\\
+ &  & $0.5$ & $0.746$ & $+0.034$ & $[-0.085, +0.153]$ & $0.724$ & $0.909$ & $0.538$ & $0.786$\\
+ &  & $0.75$ & $0.729$ & $+0.017$ & $[-0.068, +0.119]$ & $0.705$ & $0.909$ & $0.500$ & $0.807$\\
+\midrule
+\multirow{3}{*}{CbR} & \multirow{3}{*}{--} & $0.25$ & $0.746$ & -- & $[+0.644, +0.847]$ & $0.736$ & $0.818$ & $0.654$ & $0.824$\\
+ &  & $0.5$ & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
+ &  & $0.75$ & $0.780$ & -- & $[+0.678, +0.881]$ & $0.779$ & $0.788$ & $0.769$ & $0.688$\\
+\bottomrule
+\end{tabular*}
+\caption{\small Effect of the CVAE KL weight $\beta$ on bag-level binary IDH classification (\texttt{exp\_607}, \texttt{exp\_608}, \texttt{exp\_609}: $d=32$, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6).}
+\label{tab:beta_results}
+\note{Regimens: TR/TR (real-only), TS/TR (synthetic-only), TSR/TR (synthetic + real), CbR (Classification by Reconstruction). All metrics are bag-level ($n=59$ slides, majority vote). $\Delta$ and 95\% CI: class-stratified bootstrap difference in accuracy vs.\ TR/TR (1000 iterations); (*) = CI excluding zero. Balanced accuracy, sensitivity (IDH-wildtype recall), specificity (IDH-mutant recall) and AUC are point estimates. TR/TR is real-only and independent of $\beta$ (one line per model). CbR reports its own accuracy and 95\% CI; its AUC ranks the bags by the mean over their spectra of the normalised reconstruction-error margin $(\mathrm{MSE}_0-\mathrm{MSE}_1)/(\mathrm{MSE}_0+\mathrm{MSE}_1)$.}
+\end{table}
 
-An important observation is that useful augmentation effects were obtained despite the relatively small number of independent patient samples available for training the generative model. In contrast to conventional deep generative modeling settings involving very large datasets, biomedical Raman spectroscopy typically operates in a data-constrained regime characterized by limited patient cohorts, acquisition variability, and strong intra-sample correlations. The present results indicate that generative models may still capture sufficient spectral structure to improve downstream robustness even when trained under these constraints.
+\begin{table}[H]
+\centering
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\toprule
+$\beta$ & Active / 32 & Total $D_{KL}$ \\
+\midrule
+0.25  & 5 & 2.347 \\
+0.5  & 3 & 1.165  \\
+0.75  & 3 & 0.759  \\
+1.0  & 3 & 0.508 \\
+1.25  & 2 & 0.253 \\
+1.5  & 1 & 0.152 \\
+1.75  & 1 & 0.091 \\
+\bottomrule
+\end{tabular*}
+\caption{\small Active latent dimensions (out of 32) and $D_{KL}$, by $\beta$. A dimension is counted \emph{active} if $\mathrm{KL}_d > 0.01$. All inactive dimensions carry negligible information (the encoder's posterior for that dimension has collapsed onto the prior).}\label{tab:beta_dims}
+\end{table}
 
-The proposed Classification by Reconstruction (CbR) framework further demonstrates that the learned latent representations retain class-relevant spectral information. Although reconstruction-based inference did not outperform discriminative classifiers, its performance remained comparable to the TS/TR setting, suggesting that the generative model captures part of the discriminative structure of the underlying data distribution. More broadly, these results indicate that reconstruction-based inference may provide an alternative perspective for evaluating generative representations in biomedical spectroscopy.
+\subsubsection{Dimension $d$ Analysis}
+We trained the $\beta$-CVAE model with the latent space dimension $d \in \{16, 32, 64\}$ and analyzed the TS/TR and TSR/TR performance. While the accuracy is generally greater for $d=32$, the effect is not significant, and falls within the 95\% CI (Table ~\ref{tab:ctrl_boot_latent} in Appendix~\ref{app:controlled_experiments}). This is in accordance with the finding that only about 3 to 5 latent dimensions have significant variance.
 
-\subsection*{Limitations and Future Work}
-Several limitations remain. The dataset size is modest in terms of independent slide samples, and all experiments were conducted on a single acquisition setting. Moreover, the proposed spatio-spectral annotation pipeline includes heuristic and visually guided components that may introduce selection bias -- concretely, as discussed in Section~\ref{sec:annotation}, every spectrum in a labeled slide inherits that slide's grade by construction, so the discriminative classifiers in this paper are trained under a bag-level label applied at the instance level, not a verified instance-level diagnosis. We are pursuing a direct correction: reframing the task as weakly-supervised multiple-instance learning, with each slide a bag of instances (spectra) carrying a latent, per-instance tissue-type distribution rather than an assumed uniform label, exporting the full viable-signal population (not only the previously hand-selected clusters) so that distribution can be learned and validated -- e.g., against spatial coherence of the resulting per-slide maps and agreement with the unsupervised clustering already used for annotation -- rather than assumed. The observed domain gap between synthetic and real spectra further indicates that the current CVAE architecture does not fully capture the variability present in the real data distribution, particularly for subtle multi-class grading tasks; conditioning generation on the learned instance-level distribution, instead of the same assumed bag label, is a natural next step once it is available.
+\begin{table}[H]
+\centering
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc}
+\toprule
+\multirow{2}{*}{\emph{Model}} & \multicolumn{3}{c}{\emph{TS/TR}} & \multicolumn{3}{c}{\emph{TSR/TR}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+ & $d=16$ & $d=32$ & $d=64$ & $d=16$ & $d=32$ & $d=64$ \\
+\midrule
+RF + SVM & $0.627$ & $0.695$ & $0.610$ & $0.831$ & $0.831$ & $0.831$ \\
+RF & $0.797$ & $0.831$ & $0.797$ & $0.831$ & $0.831$ & $0.831$ \\
+XGBoost & $0.763$ & $0.831$ & $0.780$ & $0.814$ & $0.814$ & $0.814$ \\
+1D-CNN & $0.729$ & $0.678$ & $0.746$ & $0.780$ & $0.746$ & $0.797$ \\
+\bottomrule
+\end{tabular*}
+\caption{\small Bag-level accuracy ($n=59$ slides) of the classifiers trained on synthetic data only (TS/TR) and on synthetic and real data (TSR/TR), for CVAE latent dimensions $d \in \{16, 32, 64\}$ ($\beta=0.5$, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6).}
+\label{tab:latent_dim_results}
+\end{table}
 
-Future work could investigate larger multi-site datasets, alternative generative architectures such as diffusion-based models, and more systematic evaluation of synthetic spectrum fidelity and diversity. Additional directions include improving reconstruction-based inference strategies and exploring latent-space regularization methods better suited for highly heterogeneous biomedical spectral data.
+
+\subsubsection{Loss $\mathcal{L}_{\text{recon}}$ Analysis}
+
+The reported accuracy when using only the Mean Squared Error (MSE) is greater in both TS/TR and TSR/TR regimens than only using the CosineLoss (Cos) or the average between MSE and Cos. Furthermore, the TSR/TR regime is more robust to changes, since the training set includes the real data set.
+
+% Mean Squared Error proved to be the most stable reconstruction loss function. A combination of MSE and Cosine Loss or just Cosine Loss degraded the results for the TS/TR regime. 
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc}
+\toprule
+\multirow{2}{*}{\emph{Model}} & \multicolumn{3}{c}{\emph{TS/TR}} & \multicolumn{3}{c}{\emph{TSR/TR}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+ & MSE & MSE + Cos & Cos & MSE & MSE + Cos & Cos \\
+\midrule
+RF + SVM & $0.695$ & $0.576$ & $0.407$ & $0.831$ & $0.814$ & $0.831$ \\
+RF & $0.831$ & $0.746$ & $0.644$ & $0.831$ & $0.831$ & $0.814$ \\
+XGBoost & $0.831$ & $0.797$ & $0.695$ & $0.814$ & $0.814$ & $0.814$ \\
+1D-CNN & $0.678$ & $0.695$ & $0.458$ & $0.746$ & $0.729$ & $0.746$ \\
+\bottomrule
+\end{tabular*}
+\caption{\small Bag-level accuracy ($n=59$ slides) of the classifiers trained on synthetic data only (TS/TR) and on synthetic and real data (TSR/TR), for three CVAE reconstruction losses: mean squared error (MSE), an equal mixture of MSE and cosine loss ($0.5/0.5$, MSE + Cos), and cosine loss (Cos) ($\beta=0.5$, $d=32$, synthetic ratio: 1, maximum intensity threshold = 0.6).}
+\label{tab:recon_loss_results}
+\end{table}
+
+\subsubsection{Synthetic/Real Ratio Analysis}
+
+We analyzed the classification accuracy in the TSR/TR regimen for different numbers of synthetic spectra added in the initial dataset, such that the ratio between the number of synthetic spectra and the number of real spectra (also called \textit{synthetic/real ratio} or \textit{synthetic ratio}) would be in $\{0.5, 1, 2\}$. 
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc}
+\toprule
+\multirow{2}{*}{\emph{Model}} & \multicolumn{2}{c}{\emph{TS/TR}} & \multicolumn{4}{c}{\emph{TSR/TR}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-7}
+ & $40$k & $80$k & $0.5{:}1$ & $1{:}1$ & $2{:}1$ & $3{:}1$ \\
+\midrule
+RF + SVM & $0.695$ & $0.712$ & $0.831$ & $0.831$ & $0.814$ & $0.831$ \\
+RF & $0.831$ & $0.814$ & $0.847$ & $0.831$ & $0.847$ & $0.847$ \\
+XGBoost & $0.831$ & $0.831$ & $0.814$ & $0.814$ & $0.814$ & $0.814$ \\
+1D-CNN & $0.678$ & $0.780^{*}$ & $0.678$ & $0.746$ & $0.712$ & $0.780$ \\
+\bottomrule
+\end{tabular*}
+\caption{\small Bag-level accuracy ($n=59$ slides) of the classifiers trained on synthetic data only (TS/TR; synthetic pools of 40,000 and 80,000 spectra) and on synthetic and real data (TSR/TR) at synthetic-to-real ratios 0.5:1, 1:1, 2:1 and 3:1 ($\beta=0.5$, $d=32$, reconstruction = MSE, maximum intensity threshold = 0.6). \\ $^{*}$ The 80k pool differs from the 40k pool at the 95\% level (bag-level bootstrap; Appendix~\ref{app:controlled_experiments}).}
+\label{tab:synth_ratio_results}
+\end{table}
+
+A notable difference was observed for the 1D-CNN model when augmenting the real dataset with a number of spectra greater or equal to the size of the dataset: in both cases it performed at least as good as the TR/TR baseline of 0.712.
+
+\subsubsection{Intensity Threshold \texttt{thr} Analysis}
+We observe that by setting the spectra intensity threshold too high in the preprocessing pipeline, the accuracy for the TS/TR regime decreases. We noticed a trend of the models performing better when more spectra are in the dataset, with RF and 1D-CNN having slightly better performance with spectra selected at a maximum intensity threshold of 0.4. We reason that the 0.6 threshold is still an adequate tradeoff.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc}
+\toprule
+\multirow{2}{*}{\emph{Model}} & \multicolumn{3}{c}{\emph{TS/TR}} & \multicolumn{3}{c}{\emph{TSR/TR}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+ & $0.4$ & $0.6$ & adaptive & $0.4$ & $0.6$ & adaptive \\
+\midrule
+RF + SVM & $0.661$ & $0.695$ & $0.559$ & $0.814$ & $0.831$ & $0.814$ \\
+RF & $0.847$ & $0.831$ & $0.780$ & $0.831$ & $0.831$ & $0.831$ \\
+XGBoost & $0.831$ & $0.831$ & $0.763$ & $0.814$ & $0.814$ & $0.814$ \\
+1D-CNN & $0.712$ & $0.678$ & $0.610$ & $0.712$ & $0.746$ & $0.746$ \\
+\bottomrule
+\end{tabular*}
+\caption{\small Bag-level accuracy ($n=59$ slides) of the classifiers trained on synthetic data only (TS/TR) and on synthetic and real data (TSR/TR), for the maximum-intensity threshold of the strong-signal mask: fixed thresholds of $0.4$ and $0.6$, and an adaptive rule that keeps each slide's top $90\%$ of pixels by maximum intensity subject to an absolute floor of $0.8$ ($\beta=0.5$, $d=32$, reconstruction = MSE, synthetic ratio: 1).}
+\label{tab:threshold_results}
+\end{table}
+
+
+\subsection{MIL Evaluation}
+
+We compared the best performing Naïve MIL implementation (RF) with the other MIL algorithms. While no other MIL formulation achieved a better accuracy than the Naïve MIL, the accuracy reported for the CVAE encoder head was the closest. This observation remains valid even for other experimental settings, e.g. different values of $\beta$ (\nameref{app:mil-results} in Appendix~\ref{app:controlled_experiments}). In a single experiment we found that Bayesian MIL achieved better classification accuracy than CVAE encoder head MIL (Table~\ref{tab:ctrl_mil_4608} in Appendix~\ref{app:controlled_experiments}), however both MIL formulations surpassed the other models and CVAE encoder head MIL performed as good as Naïve MIL.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+\emph{Model} & \emph{Accuracy} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC} \\
+\midrule
+Na\"{\i}ve MIL (RF) & $0.814$ & $0.797$ & $0.939$ & $0.654$ & $0.790$ \\
+\midrule
+mi-SVM & $0.763$ & $0.772$ & $0.697$ & $0.846$ & $0.774$ \\
+CVAE-Attention & $0.559$ & $0.529$ & $0.788$ & $0.269$ & $0.521$ \\
+CVAE reconstruction & $0.729$ & $0.709$ & $0.879$ & $0.538$ & $0.758$ \\
+CVAE encoder\_head & $0.797$ & $0.786$ & $0.879$ & $0.692$ & $0.784$ \\
+Bayesian MIL & $0.729$ & $0.733$ & $0.697$ & $0.769$ & $0.800$ \\
+\bottomrule
+\end{tabular*}
+\caption{\small Bag-level results ($n=59$ slides) of the multiple-instance learning (MIL) formulations against the na\"{\i}ve MIL benchmark, a random forest trained on real data in which every instance inherits its bag's label, with one majority-vote decision per bag (\texttt{exp\_608}: $\beta=0.5$, $d=32$, reconstruction = MSE, maximum intensity threshold = 0.6). Attention and CbR use the $\beta=0.5$ CVAE; mi-SVM and Bayesian MIL are independent of $\beta$.}
+\label{tab:mil_results}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccccc}
+\toprule
+ & \multicolumn{5}{c}{\emph{Spatial coherence ($\delta=3$)}} & \multicolumn{3}{c}{\emph{Key-instance utility}} \\
+\cmidrule(lr){2-6} \cmidrule(lr){7-9}
+ & \multicolumn{2}{c}{\emph{Moran\textquotesingle s $I$}} & \multicolumn{2}{c}{\emph{Variogram}} & \multirow{2}{*}{\shortstack{\emph{Real $>$}\\\emph{shuffled?}}} & \multicolumn{2}{c}{\emph{RF accuracy}} & \multirow{2}{*}{\shortstack{\emph{Selected\ $>$}\\\emph{random?}}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){7-8}
+\emph{Model} & \emph{Real} & \emph{Shuf.} & \emph{Real} & \emph{Shuf.} & & \emph{Selected} & \emph{Random} & & \\
+\midrule
+mi-SVM & $0.0046$ & $0.0173$ & $0.0105$ & $0.0524$ & no & $0.7627$ & $0.7797$ & no \\
+CVAE-Attention & $0.0541$ & $0.0657$ & $0.0688$ & $0.0768$ & no & $0.7966$ & $0.8136$ & no \\
+CVAE reconstruction & $0.1570$ & $0.1710$ & $0.2791$ & $0.2854$ & no & $0.7627$ & $0.7627$ & tie \\
+CVAE encoder head & $0.0594$ & $0.0565$ & $0.0759$ & $0.0658$ & yes & $0.8136$ & $0.8136$ & tie \\
+Bayesian MIL & $0.1336$ & $0.1122$ & $0.2255$ & $0.2617$ & no & $0.8644$ & $0.7797$ & yes \\
+\bottomrule
+\end{tabular*}
+\caption{\small Status of the MIL validation tests for the $\beta=0.5$ configuration (\texttt{exp\_608}). \emph{Spatial coherence:} Moran's $I$ and the variance-standardized variogram, \textcolor{red}{reported as $1-\hat\gamma_3/\hat\sigma^2$ (on the same scale as $I$; higher is more coherent)} at Chebyshev distance $\delta=3$, for the real fit and for a refit under shuffled bag labels. The verdict is "yes" only if the real fit exceeds the shuffled one on both statistics by more than 3\% of the larger value. \emph{Key-instance utility:} bag accuracy of a random forest trained \textcolor{red}{on the instances a tier selects (median split on non-diagnostic mass)}, against (i) the na\"{\i}ve MIL benchmark, the same forest trained on all instances with all of them voting, and (ii) a forest trained on a size-matched random subset of the training instances.}
+\label{tab:mil_tests_status}
+\end{table}
+
+
+
+
+
+\subsection{Remarks}
+
+% Despite the limitations observed in the TS/TR setting, augmenting the real training data with synthetic spectra generally improved downstream classification performance slightly. In nearly all experiments, RF and XGBoost were the most robust, with the lowest domain gaps and most consistent outcomes across experiments, with results over 70\% for TR/TR, over 60\% for TS/TR and slight improvements over the baseline for TSR/TR.
+
+% The accuracies of 1D-CNN were less consistent, showing a tendency of improvement with larger training datasets (Tables \ref{tab:appendix_exp_401}--\ref{tab:appendix_exp_403}).
+
+% We note that, given our large number of model comparisons, for a rigorous statistical evaluation, a correction on the statistical significance should be applied. However, given that most of our results reveal mostly small and not statistically significant improvements, we decided not to perform any correction and discuss the results only as general tendencies.
+
+\section{\textcolor{red}{Discussion}}
+ \label{sec:discussion}
+
+\subsection{Sample-level evaluation of synthetic spectra}
+\label{sec:alaa_discussion}
+
+TS/TR and TSR/TR measure the predictive utility of synthetic spectra, not whether they follow the
+distribution of real spectra. We therefore also assessed fidelity, diversity and novelty with the
+sample-level metrics of Alaa et al.~\cite{pmlr-v162-alaa22a}\footnote{In this section, $\alpha$ and
+$\beta$ denote probability-mass levels; they are unrelated to the CVAE loss weights and to the
+mix-up parameter.} for the $\beta=0.5$ generator (MSE reconstruction, $d=32$).
+
+\paragraph{Metrics.}
+Let $\mathbb{P}_r$ and $\mathbb{P}_g$ be the distributions of real training and generated spectra.
+The $\alpha$-support $\mathcal{S}_r^{\alpha}$ is the smallest region containing a fraction $\alpha$
+of $\mathbb{P}_r$, i.e.\ its most typical spectra; $\mathcal{S}_g^{\beta}$ is defined analogously
+for $\mathbb{P}_g$. $\alpha$-Precision and $\beta$-Recall are
+\begin{equation}
+P_\alpha=\mathbb{P}\bigl(X_g\in\mathcal{S}_r^{\alpha}\bigr),\qquad
+R_\beta=\mathbb{P}\bigl(X_r\in\mathcal{S}_g^{\beta}\bigr),\qquad \alpha,\beta\in[0,1].
+\end{equation}
+If $\mathbb{P}_g=\mathbb{P}_r$, every region holds the same fraction of generated as of real
+spectra, so $P_\alpha=\alpha$ and $R_\beta=\beta$ at all levels, and conversely~\cite{pmlr-v162-alaa22a}.
+$P_\alpha>\alpha$ means that generated spectra are over-concentrated on typical real spectra;
+$R_\beta<\beta$ means that part of the real distribution is not covered. The deviations are
+summarised by
+\begin{equation}
+IP_\alpha=1-2\int_0^1\lvert P_\alpha-\alpha\rvert\,d\alpha,\qquad
+IR_\beta=1-2\int_0^1\lvert R_\beta-\beta\rvert\,d\beta,
+\end{equation}
+evaluated on 30 equally spaced levels. Both equal $1$ when the curves follow the diagonal, i.e.\
+for a generator that reproduces $\mathbb{P}_r$ exactly, and decrease towards $0$ as the curves
+depart from it. The supports are estimated as balls whose radii are empirical quantiles of the
+distances to a centre. A real spectrum $x_r$ counts as covered if its nearest synthetic spectrum
+lies inside $\hat{\mathcal{S}}_g^{\beta}$ and is no farther from $x_r$ than the nearest other real
+spectrum. A synthetic spectrum $x_g$ with nearest real spectrum $x_r^{*}$ is \emph{authentic}
+(novel) if
+\begin{equation}
+\lVert x_g-x_r^{*}\rVert>\min_{x_r\neq x_r^{*}}\lVert x_r^{*}-x_r\rVert ,
+\end{equation}
+i.e.\ if it is farther from $x_r^{*}$ than any other real spectrum is; Authenticity is the
+fraction of authentic synthetic spectra. We apply this test to each synthetic spectrum, as defined
+in~\cite{pmlr-v162-alaa22a}, rather than the population-level comparison of \texttt{synthcity};
+otherwise our implementation reproduces \texttt{synthcity} to three decimals.
+
+\paragraph{Representations.}
+A ball around a single centre is a good estimate of the smallest region of a given mass only if
+the density decreases with distance from that centre. Raw spectra need not satisfy this, since
+different tissue types form separate clusters. Alaa et al.\ therefore compute the metrics in a
+one-class embedding: a network trained with the Deep SVDD objective~\cite{ruff2018deep} maps real
+spectra as close as possible to a fixed centre $c$, so that typicality becomes distance from $c$
+and the ball estimates are appropriate. Because this embedding is learned, it depends on training
+and initialisation. We therefore computed the metrics both on min - max scaled spectra (raw space,
+centred at the real centroid; scaling fitted on the reference) and in the embedding (centred at
+$c$; averaged over three initialisations).
+
+\paragraph{Protocol and reference values.}
+In each fold, the real reference was a random subsample of the capped training spectra (at most
+$500$ per slide) of the same size $m$ as the capped held-out set ($m=5{,}500$ - $7{,}000$). The
+synthetic set consisted of $m$ spectra drawn from that fold's decoder, with the class counts of the
+held-out set. Even a perfect generator would not reach $IP_\alpha=IR_\beta=1$ here, because the
+metrics are estimated from finite samples and new patients differ from the training patients. We
+therefore scored the held-out spectra of unseen patients in place of the synthetic ones, against the
+same reference. The resulting real-versus-real values indicate what is attainable in this cohort
+and serve as the benchmark for the synthetic values. We report mean $\pm$ s.d.\ over the five folds.
+
+\paragraph{Slide-aware variant.}
+Adjacent pixels of a map are almost identical, partly because of the $3\times3$ median filter. The
+nearest real neighbour of a real spectrum is therefore usually an adjacent pixel of the same slide,
+and the distance to it, which sets the threshold of both the coverage and the authenticity tests,
+is very small. A synthetic spectrum then covers a real one only if it is almost as close as an
+adjacent pixel, a condition that even spectra of new patients rarely meet: with the standard test,
+$IR_\beta$ was $0.27\pm0.06$ for synthetic and only $0.10\pm0.03$ for held-out spectra. These low
+values reflect near-duplicate pixels within each slide rather than missing regions of the
+distribution. For a spectrum $x$ from slide $s(x)$ we therefore take the nearest real neighbour from
+other slides,
+\begin{equation}
+d_{-s}(x)=\min\bigl\{\lVert x-x'\rVert : x'\in\mathcal{D}_{\mathrm{real}},\ s(x')\neq s(x)\bigr\},
+\end{equation}
+in both tests (leave-slide-out, LSO).
+
+\paragraph{Fidelity.}
+In raw space, $IP_\alpha$ was $0.60\pm0.04$ for synthetic and $0.87\pm0.07$ for held-out spectra.
+The synthetic spectra are over-concentrated on typical patterns: $39\%$ lie in the region holding
+the $10\%$ most typical real spectra, against $10\%$ of held-out spectra, consistent with the compact
+synthetic clusters in the PCA and $t$-SNE embeddings. Their peaks are also lower (maximum
+$\approx0.9$ versus $1$). This follows from averaging. Each real spectrum is scaled to a maximum of
+$1$, but the maximum lies at different wavenumbers, so the maximum of an average of spectra is below
+the average of their maxima, i.e.\ below $1$ (Jensen's inequality). An MSE-trained decoder
+approximately outputs such an average, $\mathbb{E}[x\mid z,y]$, and mix-up forms one explicitly.
+Rescaling the synthetic spectra to unit maximum raised $IP_\alpha$ from $0.63$ to $0.87$ but lowered
+slide-aware $IR_\beta$ from $0.40$ to $0.28$ (full-pool comparison of all synthetic and all capped
+training spectra).
+
+\paragraph{Diversity.}
+$\beta$-Recall asks how much of the real training distribution the synthetic spectra cover. With the
+slide-aware test, $IR_\beta$ was $0.49\pm0.07$ for synthetic and $0.39\pm0.09$ for held-out spectra in
+raw space, and $0.41\pm0.06$ versus $0.49\pm0.03$ in the embedding. The differences are small, of
+opposite sign in the two representations, and within about one standard deviation, so neither set
+covers the training distribution better than the other. Both fall short of complete coverage (recall
+curves below the diagonal), as expected for a finite sample. We conclude that the generator has not
+collapsed onto a few spectral patterns: its samples cover the training distribution about as well
+as spectra from new patients, although, as shown above, they over-represent its typical part.
+
+\paragraph{Novelty.}
+Authenticity asks whether synthetic spectra are new or near-copies of individual training spectra.
+Because spectra of similar tissue are close, even genuinely new spectra occasionally fail the test.
+Held-out spectra quantify this: they come from patients unseen in training, yet $3\%$ fail the
+standard test and $17\%$ the slide-aware test (Authenticity $0.97\pm0.02$ and $0.83\pm0.04$). The
+synthetic spectra fail more often, $15\%$ and $27\%$ (Authenticity $0.85\pm0.03$ and $0.73\pm0.02$),
+an excess of about $10$ percentage points over this chance level. Thus most synthetic spectra are
+novel, and a minority lie closer to a training spectrum than a new patient's spectrum would. The
+test cannot tell whether these are near-copies or simply lie in the dense, typical region where the
+generator concentrates its samples (see Fidelity), but in either case the excess is small. In the
+embedding, Authenticity was low for both sets ($0.44\pm0.02$ versus $0.40\pm0.04$) and therefore not
+informative.
+
+\paragraph{Class conditioning.}
+Slide-aware recall of real spectra by the synthetic spectra of the same versus the opposite class was
+$0.54$ versus $0.28$ (IDH-mutant) and $0.56$ versus $0.35$ (IDH-wildtype). For held-out spectra the
+contrasts were smaller ($0.38$ versus $0.25$ and $0.37$ versus $0.24$). The synthetic classes are
+thus more sharply separated than the real ones, which overlap in the PCA and $t$-SNE embeddings; the
+auxiliary classification head may contribute, but this was not isolated. Because every spectrum
+inherits the label of its slide (Section~3.2), the generator learns label-associated distributions
+that may include non-diagnostic tissue: the results show agreement with these distributions, not
+diagnostic identity at the spectrum level.
+
+\paragraph{Utility versus fidelity.}
+These results explain why downstream utility does not imply distributional fidelity: a generator
+that under-represents atypical spectra and exaggerates class separation can still supply easily
+separable training examples. With synthetic-only training, the within-bag instance recall of RF+SVM
+fell from $0.71$ to $0.60$, whereas its slide-level accuracy fell less and not significantly
+($0.76$ to $0.69$; 95\% CI of the difference $[-0.17,\,0.03]$), because majority voting absorbs
+errors on individual spectra.
+
+\textcolor{red}{Verifica cele 4 numere (results/exp\_608/statistical\_eval/TSTR\_20261002\_163015) sa se potriveasca cu tabelul beta=0.5 din appendix.}
+
+Augmentation gains were modest and model-dependent. Across the binary configurations
+(Tables~B.1 - B.3 and B.7 - B.11), TSR/TR changed the slide-level balanced accuracy of RF+SVM, RF and
+XGBoost by at most $0.021$, with every 95\% CI containing zero, whereas the 1D-CNN gained $+0.014$
+to $+0.143$ over a TR/TR baseline with a specificity of only $0.15$ - $0.18$. A regularising effect on
+an unstable classifier is therefore a plausible alternative to added distributional information.
+Utility and sample-level metrics are thus complementary, and both are needed to judge a generator.
+
+% The experiments show that synthetic augmentation can slightly improve Raman-based glioma classification. However, they also reveal a substantial domain gap between generated and real spectra, especially in the 6-class grading task.
+
+% Combining synthetic and real spectra in the TSR/TR setting generally improved downstream classification performance across multiple models. This showcases the potential of synthetic spectra to improve the generalization capabilities of downstream models used in small-cohort settings. Therefore, instead of relying on synthetic spectra as a complete replacement for real measurements, they might be of greater use as a regularization strategy. 
+
+% To characterize the relationship between the real and synthetic spectral distributions beyond aggregate classification metrics, we examined two complementary embedding methods: PCA and $t$-SNE. Both were computed on $z$-scored, pooled real and synthetic spectra (up to $2000$ spectra per class per source). $t$-SNE was applied to the top $50$ principal components due to the high dimensionality ($N_\lambda$) of the input space. Each embedding is displayed twice: coloured by source (real vs.\ synthetic) and by diagnostic class (IDH-Mutant vs.\ IDH-Wildtype). The results are shown in Figure~\ref{fig:pca_tsne}.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{img/PCA.png}\\[4pt]
+%     \includegraphics[width=\textwidth]{img/TSNE.png}
+%     \caption{\footnotesize PCA (top) and $t-$SNE (bottom) embeddings of real and synthetic spectra, coloured by source (left) and class (right).}
+%     \label{fig:pca_tsne}
+% \end{figure}
+
+% Taken together, the PCA and t-SNE plots offer insight into the spatial structure of the spectral data. The PCA plots reveal a variance difference between the real and the synthetic data sets: synthetic data forms two distinct clusters (corresponding to the two classes) with low variance, while the real data shows higher variance, and the two classes overlap to a great extent. Correlating these plots with the t-SNE plots, we can see that synthetic data is structured in two distinct clusters, whereas the raw data has a heterogeneous structure. It is worth noting that both the PCA and the t-SNE plots show the real data being intertwined. We hypothesize that the two classes might overlap (in the initial space) to such an extent that, under a strict, slide-isolated experiment, the possible accuracy for this particular dataset has a definite upper bound. 
+
+% We can visualize the spectral variance by plotting the mean spectrum of the real data and that of the synthetic data along with their standard deviation ($\sigma$) envelopes. We observe that the synthetic data standard deviation is much narrower than that of the real data, which suggests that the synthetic data is generally very close to the mean spectrum (Fig. \ref{fig:mean_std_spectra}).
+
+% \begin{figure}[H]
+% \centering
+% \includegraphics[width=0.85\textwidth]{img/A_mean_std_spectra_IDH-Mutant.png}
+% \includegraphics[width=0.85\textwidth]{img/A_mean_std_spectra_IDH-Wildtype.png}
+% \caption{Mean $\pm \sigma$ Raman spectra, real vs. synthetic, per class.}
+% \label{fig:mean_std_spectra}
+% \end{figure}
+
+% An important observation is that useful augmentation effects were obtained despite the relatively small number of independent patient samples available for training the generative model. In contrast to conventional deep generative modeling settings involving very large datasets, biomedical Raman spectroscopy typically operates in a data-constrained regime characterized by limited patient cohorts, acquisition variability, and strong intra-sample correlations. The present results indicate that generative models may still capture sufficient spectral structure to improve downstream robustness even when trained under these constraints.
+
+% The proposed Classification by Reconstruction (CbR) framework further demonstrates that the learned latent representations retain class-relevant spectral information. Although reconstruction-based inference did not outperform discriminative classifiers, its performance remained comparable to the TS/TR setting, suggesting that the generative model captures part of the discriminative structure of the underlying data distribution. More broadly, these results indicate that reconstruction-based inference may provide an alternative perspective for evaluating generative representations in biomedical spectroscopy.
+
+\section{Limitations and Future Work}
+
+\textcolor{red}{Standard MIL formulations failed to provide results better than the naïve MIL, therefore it remains an open question whether on larger datasets standard MIL approaches offer improvements.}
+
+\textcolor{red}{The proposed CVAE architecture should be studied with different datasets. An investigative direction can be to combine multiple Raman Spectra datasets and apply our framework to encode a diverse type of spectra.}
+
+% Several limitations remain. The dataset size is modest in terms of independent slide samples, and all experiments were conducted on a single acquisition setting. Moreover, the proposed spatio-spectral annotation pipeline includes heuristic and visually guided components that may introduce selection bias-- concretely, as discussed in Section~\ref{sec:annotation}, every spectrum in a labeled slide inherits that slide's grade by construction, so the discriminative classifiers in this paper are trained under a bag-level label applied at the instance level, not a verified instance-level diagnosis.
+% \textcolor{red}{Therefore, we are framing the task as weakly-supervised multiple-instance learning, with each slide a bag of instances (spectra) carrying a latent, per-instance tissue-type distribution rather than an assumed uniform label, exporting the full viable-signal population (not only the previously hand-selected clusters) so that distribution can be learned and validated -- e.g., against spatial coherence of the resulting per-slide maps and agreement with the unsupervised clustering already used for annotation -- rather than assumed. The observed domain gap between synthetic and real spectra further indicates that the current CVAE architecture does not fully capture the variability present in the real data distribution, particularly for subtle multi-class grading tasks; conditioning generation on the learned instance-level distribution, instead of the same assumed bag label, is a natural next step once it is available.
+% The observed domain gap between synthetic and real spectra further indicates that the current CVAE architecture does not fully capture the variability present in the real data distribution, particularly for subtle multi-class grading tasks.}
+
+% Future work could investigate larger multi-site datasets, alternative generative architectures such as diffusion-based models, and more systematic evaluation of synthetic spectrum fidelity and diversity. Additional directions include improving reconstruction-based inference strategies and exploring latent-space regularization methods better suited for highly heterogeneous biomedical spectral data. \textcolor{red}{++ MIL and transfer models + algo genetici pentru MIL}
 
 \section{Conclusion}
 
-The present study supports the use of synthetic augmentation to improve model robustness in small-cohort Raman spectroscopy studies and highlights the potential of generative modeling as a complementary strategy for addressing data scarcity in biomedical spectral diagnostics. 
+% The present study supports the use of synthetic augmentation to improve model robustness in small-cohort Raman spectroscopy studies and highlights the potential of generative modeling as a complementary strategy for addressing data scarcity in biomedical spectral diagnostics. 
 
-In this work, we addressed the problem of data scarcity in Raman spectroscopy-based glioma classification by developing a conditional variational autoencoder capable of generating class-conditioned synthetic spectra. We have designed and applied a spatio-spectral preprocessing pipeline to extract tumor-spectra from $58$ glioma biopsy slides, combining median filtering, NMF-based clustering, and GMM-guided visual selection. The conditional VAE was trained under a multi-task objective that jointly optimized spectral reconstruction and auxiliary class discrimination, with a KL-regularized latent space to support generative sampling. Synthetic spectra were evaluated under TS/TR and TSR/TR protocols within a strict slide-isolated cross-validation scheme across four downstream classifiers, i.e., RF+SVM, Random Forest, XGBoost, and $1$D-CNN, on both binary IDH-status and $6$-class methylation subtype tasks. We have also proposed and evaluated Classification by Reconstruction (CbR) as a generative inference strategy that bypasses discriminative classifiers entirely. We gained the insight that, whereas synthetic spectra were not able to substitute for real data, they are useful as an augmentation data tool in order to improve classification robustness.
+% In this work, we addressed the problem of data scarcity in Raman spectroscopy-based glioma classification by developing a conditional variational autoencoder capable of generating class-conditioned synthetic spectra. We have designed and applied a spatio-spectral preprocessing pipeline to extract tumor-spectra from $58$ glioma biopsy slides, combining median filtering, NMF-based clustering, and GMM-guided visual selection. The conditional VAE was trained under a multi-task objective that jointly optimized spectral reconstruction and auxiliary class discrimination, with a KL-regularized latent space to support generative sampling. Synthetic spectra were evaluated under TS/TR and TSR/TR protocols within a strict slide-isolated cross-validation scheme across four downstream classifiers, i.e., RF+SVM, Random Forest, XGBoost, and $1$D-CNN, on both binary IDH-status and $6$-class methylation subtype tasks. We have also proposed and evaluated Classification by Reconstruction (CbR) as a generative inference strategy that bypasses discriminative classifiers entirely. We gained the insight that, whereas synthetic spectra were not able to substitute for real data, they are useful as an augmentation data tool in order to improve classification robustness.
 
+\section*{Code Availability}
+\TODO{Clean GitHub repo and reference it}
+
+\section*{Authors Contributions}
+Andrei Iușan proposed the CVAE architecture, proposed the methodology, the evaluation protocol, developed and conducted the experiments, and contributed to the manuscript.
+Iulian Vasile conducted the synthetic data quality analysis and wrote the findings, contributed to the CVAE model architecture design and created the visuals for it.
+Daria Voiculescu contributed literature review, writing, editing and experimental suggestions.
+Ion Petre and Bogdan Oancea formulated the research direction and supervised the project.
+Andrei Păun and Mihaela Păun supervised the project.
+
+\section*{Note on AI usage}
+Claude code was used for code implementation and manuscript consistency checks, formatting and transcribing results into manuscript tables.
 
 \printbibliography
-\nocite{*}
+% \nocite{*}
 
 \newpage
 \input{appendix}

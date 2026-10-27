@@ -1,0 +1,19 @@
+\begin{table}[H]
+\centering
+\small
+\caption{Bag-level results ($n=59$ slides) of the multiple-instance learning (MIL) formulations against the na\"{\i}ve MIL benchmark, a random forest trained on real data in which every instance inherits its bag's label, with one majority-vote decision per bag (\texttt{exp\_608}: $\beta=0.5$, \texttt{latent\_dim}=32, reconstruction = MSE, maximum intensity threshold = 0.6). CVAE-Attention, CVAE reconstruction and CVAE encoder head use the $\beta=0.5$ CVAE; mi-SVM and Bayesian MIL do not. Bayesian MIL is scored blind: the bag label is never given to the scorer.}
+\label{tab:mil_results}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+\emph{Model} & \emph{Accuracy} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC} \\
+\midrule
+Na\"{\i}ve MIL (RF) & $0.814$ & $0.797$ & $0.939$ & $0.654$ & $0.790$ \\
+\midrule
+mi-SVM & $0.763$ & $0.772$ & $0.697$ & $0.846$ & $0.774$ \\
+Attention & $0.559$ & $0.529$ & $0.788$ & $0.269$ & $0.521$ \\
+CbR reconstruction & $0.729$ & $0.709$ & $0.879$ & $0.538$ & $0.758$ \\
+CbR encoder\_head & $0.797$ & $0.786$ & $0.879$ & $0.692$ & $0.784$ \\
+Bayesian MIL (blind) & $0.729$ & $0.733$ & $0.697$ & $0.769$ & $0.800$ \\
+\bottomrule
+\end{tabular*}
+\end{table}

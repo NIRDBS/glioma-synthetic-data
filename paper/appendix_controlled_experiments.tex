@@ -1,0 +1,461 @@
+\section{Controlled Experiments: Downstream Classifier Results}
+\label{app:controlled_experiments}
+\setcounter{table}{0}
+\renewcommand{\thetable}{\Alph{section}.\arabic{table}}
+\setcounter{figure}{0}
+\renewcommand{\thefigure}{\Alph{section}.\arabic{figure}}
+
+We report complete results of the downstream classifiers for all of the experiments in this project. We select five aspects, each varying by one factor: (1) the CVAE's $D_{KL}$ loss weight $\beta$, (2) the nominal latent dimension $d$, (3) the reconstruction-loss weighting $\gamma$, (4) the synthetic/real ratio used by TSR/TR, and (5) the strong-signal mask's max-intensity threshold \texttt{thr}. We compare all experiments with the shared anchor \texttt{exp\_608} (configuration: $\beta=0.5$, $d=32$, $\gamma=1$, synthetic/real ratio = 1, \texttt{thr}=0.6). 
+
+We report the bag-level accuracy for each training regimen (TR/TR: real only; TS/TR: synthetic only; TSR/TR: synthetic+real) under the naïve MIL approach (one majority-vote decision per bag, i.e. per biopsy slide), and the bootstrap difference $\Delta$ relative to the TR/TR baseline with its 95\% bootstrap confidence interval; (*) marks a 95\% CI excluding zero, and four additional bag-level metrics: balanced accuracy, sensitivity, specificity, and AUC.
+
+The bootstrap $\Delta$/CI/significance columns are computed for raw accuracy. We report the balanced accuracy as well and we mention that given the fairly balanced nature of this dataset for the binary IDH classification task, the two metrics are close.
+The CbR row reports the bag-level accuracy and 95\% CI for it, and it does not represent a difference vs.\ TR/TR.
+\newpage
+\input{appendix_controlled_experiments_tables}
+
+\subsection*{MIL tier results}\label{app:mil-results}
+
+MIL tier experiments were performed for the most relevant configurations. Below are all the results with the same metrics as the downstream classifiers: accuracy, balanced accuracy, sensitivity, specificity, and AUC. We note that mi-SVM and Markov MIL are independent of $\beta$, and the others are built on top of the CVAE.
+% Full MIL tier results (methodology, spatial validation, shuffled-label controls) are reported in full in the project's own MIL findings reference. The five bag-level metrics below are reproduced here for the experiments in this family that have them, using the same convention as the downstream-classifier tables above: balanced accuracy and sensitivity/specificity as per-class recall (class 1 / class 0), AUC from the continuous bag-level diagnostic-class score. For mi-SVM/attention/CbR this score is the pooled, renormalized $(K{+}1)$-way posterior's diagnostic column; for Bayesian MIL's blind classification (\texttt{score\_bayes\_mil\_blind}) it is a softmax of the duplicate-bag-averaged posterior-predictive log-likelihood, since that path returns log-likelihoods, not a normalized probability. Bayesian MIL's Gibbs-sampled posterior is PCA-based and does not depend on $\beta$, which is why mi-SVM and Bayesian MIL are identical across \texttt{exp\_607}/\texttt{608}/\texttt{609} and again across \texttt{exp\_2.607}/\texttt{2.608}.
+
+\begin{table}[H]
+\centering
+\scriptsize
+
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.763$ & $0.772$ & $0.697$ & $0.846$ & $0.773$ \\
+Attention & $0.525$ & $0.511$ & $0.636$ & $0.385$ & $0.566$ \\
+CbR reconstruction & $0.729$ & $0.717$ & $0.818$ & $0.615$ & $0.828$ \\
+CbR encoder\_head & $0.763$ & $0.751$ & $0.848$ & $0.654$ & $0.777$ \\
+Bayesian MIL (blind) & $0.729$ & $0.733$ & $0.697$ & $0.769$ & $0.800$ \\
+\bottomrule
+\end{tabular*}
+\caption{\small MIL tier bag-level results, \texttt{exp\_607} ($\beta=0.25$, v1).}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_608} ($\beta=0.5$, v1).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.763$ & $0.772$ & $0.697$ & $0.846$ & $0.774$ \\
+Attention & $0.559$ & $0.529$ & $0.788$ & $0.269$ & $0.521$ \\
+CbR reconstruction & $0.729$ & $0.709$ & $0.879$ & $0.538$ & $0.758$ \\
+CbR encoder\_head & $0.797$ & $0.786$ & $0.879$ & $0.692$ & $0.784$ \\
+Bayesian MIL (blind) & $0.729$ & $0.733$ & $0.697$ & $0.769$ & $0.800$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_609} ($\beta=0.75$, v1).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.763$ & $0.772$ & $0.697$ & $0.846$ & $0.774$ \\
+Attention & $0.610$ & $0.578$ & $0.848$ & $0.308$ & $0.622$ \\
+CbR reconstruction & $0.678$ & $0.667$ & $0.758$ & $0.577$ & $0.659$ \\
+CbR encoder\_head & $0.780$ & $0.766$ & $0.879$ & $0.654$ & $0.772$ \\
+Bayesian MIL (blind) & $0.729$ & $0.733$ & $0.697$ & $0.769$ & $0.800$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_2.607} ($\beta=0.25$, v2).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.627$ & $0.626$ & $0.636$ & $0.615$ & $0.691$ \\
+Attention & $0.593$ & $0.567$ & $0.788$ & $0.346$ & $0.624$ \\
+CbR reconstruction & $0.746$ & $0.732$ & $0.848$ & $0.615$ & $0.807$ \\
+CbR encoder\_head & $0.780$ & $0.770$ & $0.848$ & $0.692$ & $0.800$ \\
+Bayesian MIL (blind) & $0.712$ & $0.706$ & $0.758$ & $0.654$ & $0.810$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_2.608} ($\beta=0.5$, v2).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.627$ & $0.626$ & $0.636$ & $0.615$ & $0.691$ \\
+Attention & $0.593$ & $0.551$ & $0.909$ & $0.192$ & $0.550$ \\
+CbR reconstruction & $0.729$ & $0.721$ & $0.788$ & $0.654$ & $0.746$ \\
+CbR encoder\_head & $0.797$ & $0.786$ & $0.879$ & $0.692$ & $0.775$ \\
+Bayesian MIL (blind) & $0.712$ & $0.706$ & $0.758$ & $0.654$ & $0.810$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_4.608} ($\beta=0.5$, v3, $\text{thr}=0.4$).}
+\label{tab:ctrl_mil_4608}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.627$ & $0.618$ & $0.697$ & $0.538$ & $0.667$ \\
+Attention & $0.610$ & $0.599$ & $0.697$ & $0.500$ & $0.562$ \\
+CbR reconstruction & $0.712$ & $0.698$ & $0.818$ & $0.577$ & $0.798$ \\
+CbR encoder\_head & $0.814$ & $0.801$ & $0.909$ & $0.692$ & $0.794$ \\
+Bayesian MIL (blind) & $0.848$ & $0.843$ & $0.879$ & $0.808$ & $0.860$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+
+\newpage
+%---------------------------------------------------------------------------------------
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_607} ($\beta=0.25$, v1).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.763$ & $0.772$ & $0.697$ & $0.846$ & $0.773$ \\
+Attention & $0.525$ & $0.511$ & $0.636$ & $0.385$ & $0.566$ \\
+CbR reconstruction & $0.729$ & $0.717$ & $0.818$ & $0.615$ & $0.828$ \\
+CbR encoder\_head & $0.763$ & $0.751$ & $0.848$ & $0.654$ & $0.777$ \\
+Bayesian MIL (blind) & $0.729$ & $0.733$ & $0.697$ & $0.769$ & $0.800$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Spatial coherence, \texttt{exp\_607} ($\beta=0.25$, v1): pooled Moran's $I$ ($z$) and empirical variogram at Chebyshev lag 3, real fit vs.\ shuffled-bag-label-control fit.}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ll ccp{3.5cm}}
+\toprule
+Tier & Fit & Moran's $I$ ($z$) & Variogram (rng) & Verdict \\
+\midrule
+mi-SVM & Real & $+0.0047$ ($+1.20$) & $0.00971$ (rng 2) & no control \\
+\multirow{2}{*}{Attention} & Real & $+0.0742$ ($+19.10$) & $0.00501$ (rng 2) & agree: real more coherent \\
+ & Shuffled & $+0.0650$ ($+16.14$) & $0.00584$ (rng 2) & \\
+\multirow{2}{*}{CbR \texttt{reconstruction}} & Real & $+0.1437$ ($+34.54$) & $0.00105$ (rng 4) & agree: shuffled more coherent \\
+ & Shuffled & $+0.1497$ ($+37.09$) & $0.00065$ (rng 4) & \\
+\multirow{2}{*}{CbR \texttt{encoder\_head}} & Real & $+0.0557$ ($+12.93$) & $0.00537$ (rng 3) & $I$ tied; var.\ real more coherent \\
+ & Shuffled & $+0.0561$ ($+13.40$) & $0.00830$ (rng 2) & \\
+Bayesian MIL (blind) & Real & $+0.1336$ ($+33.66$) & $0.03261$ (rng 3) & no control \\
+\bottomrule
+\end{tabular*}
+\note{mi-SVM has no shuffled-bag-label control under v1 preprocessing (no \texttt{stage5\_misvm\_mi\_svm\_shuffled.json} on disk for this experiment). Bayesian MIL has no shuffled-bag-label control in the codebase at any preprocessing version, by design (\texttt{docs/mil\_tiers\_findings.md} \S8.5) -- not run, not failed. Verdict is point-estimate direction only.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_608} ($\beta=0.5$, v1).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.763$ & $0.772$ & $0.697$ & $0.846$ & $0.774$ \\
+Attention & $0.559$ & $0.529$ & $0.788$ & $0.269$ & $0.521$ \\
+CbR reconstruction & $0.729$ & $0.709$ & $0.879$ & $0.538$ & $0.758$ \\
+CbR encoder\_head & $0.797$ & $0.786$ & $0.879$ & $0.692$ & $0.784$ \\
+Bayesian MIL (blind) & $0.729$ & $0.733$ & $0.697$ & $0.769$ & $0.800$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Spatial coherence, \texttt{exp\_608} ($\beta=0.5$, v1): pooled Moran's $I$ ($z$) and empirical variogram at Chebyshev lag 3, real fit vs.\ shuffled-bag-label-control fit.}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ll ccp{3.5cm}}
+\toprule
+Tier & Fit & Moran's $I$ ($z$) & Variogram (rng) & Verdict \\
+\midrule
+mi-SVM & Real & $+0.0046$ ($+1.17$) & $0.00961$ (rng 2) & no control \\
+\multirow{2}{*}{Attention} & Real & $+0.0541$ ($+13.10$) & $0.00430$ (rng 2) & $I$: shuffled more coherent; var.\ tied \\
+ & Shuffled & $+0.0657$ ($+16.25$) & $0.00421$ (rng 3) & \\
+\multirow{2}{*}{CbR \texttt{reconstruction}} & Real & $+0.1570$ ($+38.88$) & $0.00114$ (rng 4) & $I$: shuffled more coherent; var.\ tied \\
+ & Shuffled & $+0.1710$ ($+42.08$) & $0.00113$ (rng 4) & \\
+\multirow{2}{*}{CbR \texttt{encoder\_head}} & Real & $+0.0594$ ($+13.79$) & $0.00548$ (rng 3) & agree: real more coherent \\
+ & Shuffled & $+0.0565$ ($+13.59$) & $0.00829$ (rng 2) & \\
+Bayesian MIL (blind) & Real & $+0.1336$ ($+33.66$) & $0.03261$ (rng 3) & no control \\
+\bottomrule
+\end{tabular*}
+\note{mi-SVM has no shuffled-bag-label control under v1 preprocessing (no \texttt{stage5\_misvm\_mi\_svm\_shuffled.json} on disk for this experiment). Bayesian MIL has no shuffled-bag-label control in the codebase at any preprocessing version, by design (\texttt{docs/mil\_tiers\_findings.md} \S8.5) -- not run, not failed. Verdict is point-estimate direction only.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_609} ($\beta=0.75$, v1).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.763$ & $0.772$ & $0.697$ & $0.846$ & $0.774$ \\
+Attention & $0.610$ & $0.578$ & $0.848$ & $0.308$ & $0.622$ \\
+CbR reconstruction & $0.678$ & $0.667$ & $0.758$ & $0.577$ & $0.659$ \\
+CbR encoder\_head & $0.780$ & $0.766$ & $0.879$ & $0.654$ & $0.772$ \\
+Bayesian MIL (blind) & $0.729$ & $0.733$ & $0.697$ & $0.769$ & $0.800$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Spatial coherence, \texttt{exp\_609} ($\beta=0.75$, v1): pooled Moran's $I$ ($z$) and empirical variogram at Chebyshev lag 3, real fit vs.\ shuffled-bag-label-control fit.}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ll ccp{3.5cm}}
+\toprule
+Tier & Fit & Moran's $I$ ($z$) & Variogram (rng) & Verdict \\
+\midrule
+mi-SVM & Real & $+0.0046$ ($+1.17$) & $0.00961$ (rng 2) & no control \\
+\multirow{2}{*}{Attention} & Real & $+0.0428$ ($+10.75$) & $0.00351$ (rng 2) & disagree -- $I$: shuffled more coherent, var.: real more coherent (trust var.) \\
+ & Shuffled & $+0.0610$ ($+15.24$) & $0.00461$ (rng 2) & \\
+\multirow{2}{*}{CbR \texttt{reconstruction}} & Real & $+0.1577$ ($+38.56$) & $0.00148$ (rng 4) & disagree -- $I$: shuffled more coherent, var.: real more coherent (trust var.) \\
+ & Shuffled & $+0.1641$ ($+40.77$) & $0.00156$ (rng 4) & \\
+\multirow{2}{*}{CbR \texttt{encoder\_head}} & Real & $+0.0612$ ($+14.12$) & $0.00550$ (rng 3) & agree: real more coherent \\
+ & Shuffled & $+0.0581$ ($+13.57$) & $0.00831$ (rng 2) & \\
+Bayesian MIL (blind) & Real & $+0.1336$ ($+33.66$) & $0.03261$ (rng 3) & no control \\
+\bottomrule
+\end{tabular*}
+\note{mi-SVM has no shuffled-bag-label control under v1 preprocessing (no \texttt{stage5\_misvm\_mi\_svm\_shuffled.json} on disk for this experiment). Bayesian MIL has no shuffled-bag-label control in the codebase at any preprocessing version, by design (\texttt{docs/mil\_tiers\_findings.md} \S8.5) -- not run, not failed. Attention and CbR \texttt{reconstruction} are the two cases in this family where Moran's $I$ and the variogram disagree on direction; per \texttt{docs/mil\_validation\_test\_suite.md} \S A the variogram is trusted, so both are read here as real more coherent despite $I$ favoring shuffled. Verdict is point-estimate direction only.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_2.607} ($\beta=0.25$, v2).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.627$ & $0.626$ & $0.636$ & $0.615$ & $0.691$ \\
+Attention & $0.593$ & $0.567$ & $0.788$ & $0.346$ & $0.624$ \\
+CbR reconstruction & $0.746$ & $0.732$ & $0.848$ & $0.615$ & $0.807$ \\
+CbR encoder\_head & $0.780$ & $0.770$ & $0.848$ & $0.692$ & $0.800$ \\
+Bayesian MIL (blind) & $0.712$ & $0.706$ & $0.758$ & $0.654$ & $0.810$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Spatial coherence, \texttt{exp\_2.607} ($\beta=0.25$, v2): pooled Moran's $I$ ($z$) and empirical variogram at Chebyshev lag 3, real fit vs.\ shuffled-bag-label-control fit.}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ll ccp{3.5cm}}
+\toprule
+Tier & Fit & Moran's $I$ ($z$) & Variogram (rng) & Verdict \\
+\midrule
+\multirow{2}{*}{mi-SVM} & Real & $+0.0056$ ($+1.30$) & $0.00987$ (rng 2) & agree: shuffled more coherent \\
+ & Shuffled & $+0.0117$ ($+2.61$) & $0.00905$ (rng 2) & \\
+\multirow{2}{*}{Attention} & Real & $+0.0580$ ($+13.73$) & $0.00413$ (rng 2) & disagree -- $I$: shuffled more coherent, var.: real more coherent (trust var.) \\
+ & Shuffled & $+0.0627$ ($+14.50$) & $0.00480$ (rng 2) & \\
+\multirow{2}{*}{CbR \texttt{reconstruction}} & Real & $+0.1357$ ($+30.40$) & $0.00058$ (rng 3) & $I$ tied; var.\ shuffled more coherent \\
+ & Shuffled & $+0.1345$ ($+30.50$) & $0.00044$ (rng 3) & \\
+\multirow{2}{*}{CbR \texttt{encoder\_head}} & Real & $+0.0508$ ($+10.89$) & $0.00552$ (rng 3) & agree: real more coherent \\
+ & Shuffled & $+0.0410$ ($+8.46$) & $0.00865$ (rng 2) & \\
+Bayesian MIL (blind) & Real & n/a & n/a & not run under this preprocessing \\
+\bottomrule
+\end{tabular*}
+\note{mi-SVM's shuffled-bag-label control exists under v2 preprocessing (unlike v1). Bayesian MIL was never run under v2 preprocessing at all -- no \texttt{stage5\_bayes\_mil\_gibbs.json} exists in \texttt{results/exp\_2.607/spatial\_validation/}, real or shuffled -- so its row reflects an untested configuration, not merely a missing control. Attention is the one case here where Moran's $I$ and the variogram disagree on direction; per \texttt{docs/mil\_validation\_test\_suite.md} \S A the variogram is trusted. Verdict is point-estimate direction only.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_2.608} ($\beta=0.5$, v2).}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.627$ & $0.626$ & $0.636$ & $0.615$ & $0.691$ \\
+Attention & $0.593$ & $0.551$ & $0.909$ & $0.192$ & $0.550$ \\
+CbR reconstruction & $0.729$ & $0.721$ & $0.788$ & $0.654$ & $0.746$ \\
+CbR encoder\_head & $0.797$ & $0.786$ & $0.879$ & $0.692$ & $0.775$ \\
+Bayesian MIL (blind) & $0.712$ & $0.706$ & $0.758$ & $0.654$ & $0.810$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Spatial coherence, \texttt{exp\_2.608} ($\beta=0.5$, v2): pooled Moran's $I$ ($z$) and empirical variogram at Chebyshev lag 3, real fit vs.\ shuffled-bag-label-control fit.}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ll ccp{3.5cm}}
+\toprule
+Tier & Fit & Moran's $I$ ($z$) & Variogram (rng) & Verdict \\
+\midrule
+\multirow{2}{*}{mi-SVM} & Real & $+0.0056$ ($+1.30$) & $0.00987$ (rng 2) & agree: shuffled more coherent \\
+ & Shuffled & $+0.0117$ ($+2.61$) & $0.00905$ (rng 2) & \\
+\multirow{2}{*}{Attention} & Real & $+0.0523$ ($+11.56$) & $0.00325$ (rng 2) & $I$: shuffled more coherent; var.\ tied \\
+ & Shuffled & $+0.0647$ ($+14.38$) & $0.00326$ (rng 2) & \\
+\multirow{2}{*}{CbR \texttt{reconstruction}} & Real & $+0.1524$ ($+34.90$) & $0.00075$ (rng 3) & $I$ tied; var.\ real more coherent \\
+ & Shuffled & $+0.1513$ ($+35.07$) & $0.00090$ (rng 3) & \\
+\multirow{2}{*}{CbR \texttt{encoder\_head}} & Real & $+0.0504$ ($+10.54$) & $0.00525$ (rng 3) & agree: real more coherent \\
+ & Shuffled & $+0.0385$ ($+7.98$) & $0.00857$ (rng 2) & \\
+Bayesian MIL (blind) & Real & n/a & n/a & not run under this preprocessing \\
+\bottomrule
+\end{tabular*}
+\note{mi-SVM's shuffled-bag-label control exists under v2 preprocessing (unlike v1). Bayesian MIL was never run under v2 preprocessing at all -- no \texttt{stage5\_bayes\_mil\_gibbs.json} exists in \texttt{results/exp\_2.608/spatial\_validation/}, real or shuffled -- so its row reflects an untested configuration, not merely a missing control. Verdict is point-estimate direction only.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{MIL tier bag-level results, \texttt{exp\_4.608} ($\beta=0.5$, $\text{thr}=0.4$).}
+\label{tab:ctrl_mil_4608}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Tier & Accuracy & Bal.\ Acc & Sensitivity & Specificity & AUC \\
+\midrule
+mi-SVM & $0.627$ & $0.618$ & $0.697$ & $0.538$ & $0.667$ \\
+Attention & $0.610$ & $0.599$ & $0.697$ & $0.500$ & $0.562$ \\
+CbR reconstruction & $0.712$ & $0.698$ & $0.818$ & $0.577$ & $0.798$ \\
+CbR encoder\_head & $0.814$ & $0.801$ & $0.909$ & $0.692$ & $0.794$ \\
+Bayesian MIL (blind) & $0.848$ & $0.843$ & $0.879$ & $0.808$ & $0.860$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Spatial coherence, \texttt{exp\_4.608} ($\beta=0.5$, v3, $\mathrm{thr}=0.4$): pooled Moran's $I$ ($z$) and empirical variogram at Chebyshev lag 3, real fit vs.\ shuffled-bag-label-control fit.}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ll ccp{3.5cm}}
+\toprule
+Tier & Fit & Moran's $I$ ($z$) & Variogram (rng) & Verdict \\
+\midrule
+\multirow{2}{*}{mi-SVM} & Real & $+0.0093$ ($+3.06$) & $0.00806$ (rng 2) & disagree -- $I$: shuffled more coherent, var.: real more coherent (trust var.) \\
+ & Shuffled & $+0.0134$ ($+3.52$) & $0.00975$ (rng 2) & \\
+\multirow{2}{*}{Attention} & Real & $+0.0739$ ($+19.04$) & $0.00486$ (rng 3) & disagree -- $I$: real more coherent, var.: shuffled more coherent (trust var.) \\
+ & Shuffled & $+0.0696$ ($+17.33$) & $0.00419$ (rng 2) & \\
+\multirow{2}{*}{CbR \texttt{reconstruction}} & Real & $+0.1549$ ($+38.39$) & $0.00143$ (rng 3) & agree: shuffled more coherent \\
+ & Shuffled & $+0.1837$ ($+44.73$) & $0.00109$ (rng 4) & \\
+\multirow{2}{*}{CbR \texttt{encoder\_head}} & Real & $+0.0658$ ($+15.94$) & $0.00591$ (rng 3) & agree: real more coherent \\
+ & Shuffled & $+0.0599$ ($+14.70$) & $0.00781$ (rng 2) & \\
+Bayesian MIL (blind) & Real & $+0.1657$ ($+41.72$) & $0.04920$ (rng 3) & no control \\
+\bottomrule
+\end{tabular*}
+\note{Bayesian MIL has no shuffled-bag-label control in the codebase at any preprocessing version, by design (\texttt{docs/mil\_tiers\_findings.md} \S8.5) -- not run, not failed. This table's cells are computed directly from \texttt{results/exp\_4.608/spatial\_validation/*.json} (already on disk, no refit) and post-date \texttt{docs/mil\_tiers\_findings.md} \S8.5, which predates this experiment's completion. mi-SVM and Attention are the two cases in this family where Moran's $I$ and the variogram disagree on direction; per \texttt{docs/mil\_validation\_test\_suite.md} \S A the variogram is trusted in both. Verdict is point-estimate direction only.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Key-instance utility: \texttt{key\_instance\_train} (RF refit on only the tier's selected ``key'' instances) vs.\ a size-matched \texttt{random\_subsample} control.}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccc}
+\toprule
+Tier/variant & Config ($\beta$, preproc.) & \texttt{key\_instance\_train} & \texttt{random\_subsample} & Selection beats random? \\
+\midrule
+Attention & \texttt{607} (0.25, v1) & $0.8305$ & $0.7966$ & yes \\
+Attention & \texttt{608} (0.5, v1) & $0.7966$ & $0.8136$ & no \\
+Attention & \texttt{609} (0.75, v1) & $0.7797$ & $0.8136$ & no \\
+Attention & \texttt{2.607} (0.25, v2) & $0.7966$ & $0.8136$ & no \\
+Attention & \texttt{2.608} (0.5, v2) & $0.7966$ & $0.7797$ & yes \\
+Attention & \texttt{4.608} (0.5, v3) & $0.7797$ & $0.7966$ & no \\
+CbR \texttt{reconstruction} & \texttt{607} (0.25, v1) & $0.7627$ & $0.8136$ & no \\
+CbR \texttt{reconstruction} & \texttt{608} (0.5, v1) & $0.7627$ & $0.7627$ & tie \\
+CbR \texttt{reconstruction} & \texttt{609} (0.75, v1) & $0.7458$ & $0.7627$ & no (*) \\
+CbR \texttt{reconstruction} & \texttt{2.607} (0.25, v2) & $0.7797$ & $0.7966$ & no \\
+CbR \texttt{reconstruction} & \texttt{2.608} (0.5, v2) & $0.7966$ & $0.7458$ & yes \\
+CbR \texttt{reconstruction} & \texttt{4.608} (0.5, v3) & $0.7797$ & $0.7797$ & tie \\
+CbR \texttt{encoder\_head} & \texttt{607} (0.25, v1) & $0.7966$ & $0.7966$ & tie \\
+CbR \texttt{encoder\_head} & \texttt{608} (0.5, v1) & $0.8136$ & $0.8136$ & tie \\
+CbR \texttt{encoder\_head} & \texttt{609} (0.75, v1) & $0.8136$ & $0.8136$ & tie \\
+CbR \texttt{encoder\_head} & \texttt{2.607} (0.25, v2) & $0.8305$ & $0.7966$ & yes \\
+CbR \texttt{encoder\_head} & \texttt{2.608} (0.5, v2) & $0.8136$ & $0.7797$ & yes \\
+CbR \texttt{encoder\_head} & \texttt{4.608} (0.5, v3) & $0.8305$ & $0.8136$ & yes \\
+\bottomrule
+\end{tabular*}
+\note{(*) significantly below the shared Tier~0 baseline, $p=0.022$ (bag-level bootstrap); not independently significant vs.\ its own random-subsample control ($p=0.056$). Baseline for v1/v3 rows is the same shared Tier~0 RF reused from \texttt{exp\_501} ($\mathrm{bag\_acc}\approx0.8136$) -- \texttt{exp\_4.608} reuses its own TRTR RF (\texttt{results/exp\_4.608/models/trtr/}), which happens to share this value; none of the other deltas above are individually bootstrap-significant. mi-SVM and Bayesian MIL were not evaluated under this test (no binarizable ``key'' posterior run for either, any preprocessing version). \texttt{encoder\_head} is the only tier/variant where selection beats random at every config tested so far (\texttt{607}, \texttt{2.607}, \texttt{2.608}, \texttt{4.608}) except \texttt{608}/\texttt{609} (ties, not losses).}
+\end{table}
+
+
+%------------------------------------------------------------------------------------------
+\newpage
+
+
+\subsection*{Per-fold class composition: \texttt{exp\_608}}
+
+Computed directly from the CV split assignment (Appendix~\ref{app:cv_schema}) and each bag's binary label, at both the bag level (one count per biopsy slide) and the instance level (one count per retained spectrum) -- the two can diverge sharply when bag sizes are uneven, since a handful of large bags of one class can dominate a fold's instance count while leaving its bag count roughly balanced.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Per-fold bag-level and instance-level class balance, \texttt{exp\_608}.}
+\label{tab:ctrl_fold_balance}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc|cccc}
+\toprule
+& \multicolumn{4}{c}{Train (bag-level)} & \multicolumn{1}{c|}{} & \multicolumn{4}{c}{Test (bag-level)} \\
+Fold & Class 0 & Class 1 & Total & \% minority & & Class 0 & Class 1 & Total & \% minority \\
+\midrule
+0 & 20 & 25 & 45 & $44.4\%$ & & 6 & 8 & 14 & $42.9\%$ \\
+1 & 22 & 25 & 47 & $46.8\%$ & & 4 & 8 & 12 & $33.3\%$ \\
+2 & 18 & 27 & 45 & $40.0\%$ & & 8 & 6 & 14 & $42.9\%$ \\
+3 & 21 & 27 & 48 & $43.8\%$ & & 5 & 6 & 11 & $45.5\%$ \\
+4 & 20 & 27 & 47 & $42.6\%$ & & 6 & 6 & 12 & $50.0\%$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Per-fold instance-level class balance, \texttt{exp\_608}.}
+\label{tab:ctrl_fold_balance_instance}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc|cccc}
+\toprule
+& \multicolumn{4}{c}{Train (instance-level)} & \multicolumn{1}{c|}{} & \multicolumn{4}{c}{Test (instance-level)} \\
+Fold & Class 0 & Class 1 & Total & \% minority & & Class 0 & Class 1 & Total & \% minority \\
+\midrule
+0 & 138625 & 97460 & 236085 & $41.3\%$ & & 24117 & 28476 & 52593 & $45.9\%$ \\
+1 & 136548 & 91934 & 228482 & $40.2\%$ & & 26194 & 34002 & 60196 & $43.5\%$ \\
+2 & 107721 & 104397 & 212118 & $49.2\%$ & & 55021 & 21539 & 76560 & $28.1\%$ \\
+3 & 125752 & 103062 & 228814 & $45.0\%$ & & 36990 & 22874 & 59864 & $38.2\%$ \\
+4 & 131263 & 103447 & 234710 & $44.1\%$ & & 31479 & 22489 & 53968 & $41.7\%$ \\
+\bottomrule
+\end{tabular*}
+\note{Class 0 = IDH-mutant, Class 1 = IDH-wildtype (binary mapping: raw grade $<3 \to 0$, else $1$; \texttt{pipeline/\_common.py::prepare\_fold}). Fold~2's test set is the most visibly skewed at the instance level (28.1\% minority, a $\sim$2.6:1 ratio) despite a near-balanced bag count (8 vs.\ 6) -- consistent with this dataset's roughly 8$\times$ spread in bag size (1,878--14,674 instances per slide).}
+\end{table}
+
+
+\subsection*{Per-fold downstream-classifier accuracy: \texttt{exp\_608}}
+
+TR/TR only (the real-data baseline), bag-level accuracy computed independently within each fold's own held-out bags -- not pooled across folds as in the headline tables above -- to show variability between folds directly, alongside the per-fold class composition reported in Tables~\ref{tab:ctrl_fold_balance}--\ref{tab:ctrl_fold_balance_instance}.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Per-fold TR/TR bag-level accuracy, \texttt{exp\_608}.}
+\label{tab:ctrl_fold_accuracy}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+Model & Fold 0 ($n{=}14$) & Fold 1 ($n{=}12$) & Fold 2 ($n{=}14$) & Fold 3 ($n{=}11$) & Fold 4 ($n{=}12$) \\
+\midrule
+RF + SVM & $0.643$ & $0.750$ & $0.857$ & $0.818$ & $0.583$ \\
+RF & $0.643$ & $0.833$ & $0.929$ & $0.909$ & $0.583$ \\
+XGBoost & $0.643$ & $0.833$ & $0.929$ & $0.909$ & $0.583$ \\
+1D-CNN & $0.571$ & $0.833$ & $0.571$ & $0.818$ & $0.583$ \\
+\bottomrule
+\end{tabular*}
+\note{Fold~4 is uniformly the weakest fold for every model despite being the most class-balanced by bag count (Table~\ref{tab:ctrl_fold_balance}, 50.0\% minority) -- fold-to-fold accuracy variability here does not track bag-level class balance directly. Fold~2, the most instance-level-skewed fold (28.1\% minority, Table~\ref{tab:ctrl_fold_balance_instance}), is the strongest fold for RF/XGBoost/RF\,+\,SVM but one of the weakest for the 1D-CNN.}
+\end{table}

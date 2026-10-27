@@ -1,0 +1,531 @@
+\subsection*{CVAE $\beta$}
+The effect of $\beta$ on the classifiers.
+\begin{table}[H]
+\centering
+\scriptsize
+
+\label{tab:ctrl_exp_501}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.559$ & $-0.203$* & $[-0.356, -0.034]$ & $0.586$ & $0.364$ & $0.808$ & $0.565$\\
+ & TSR/TR & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.761$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.729$ & $-0.085$ & $[-0.186, +0.017]$ & $0.705$ & $0.909$ & $0.500$ & $0.758$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.786$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.763$ & $-0.051$ & $[-0.136, +0.017]$ & $0.751$ & $0.848$ & $0.654$ & $0.774$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.789$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.542$ & $-0.169$ & $[-0.339, +0.034]$ & $0.534$ & $0.606$ & $0.462$ & $0.544$\\
+ & TSR/TR & $0.729$ & $+0.017$ & $[-0.102, +0.136]$ & $0.713$ & $0.848$ & $0.577$ & $0.812$\\
+\midrule
+CbR & -- & $0.678$ & -- & $[+0.559, +0.797]$ & $0.684$ & $0.636$ & $0.731$ & $0.732$\\
+\bottomrule
+\end{tabular*}
+\caption{\small \texttt{exp\_501}: IDH binary classification, $\beta$ = 2, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.593$ & $-0.169$* & $[-0.288, -0.051]$ & $0.587$ & $0.636$ & $0.538$ & $0.605$\\
+ & TSR/TR & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.809$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.729$ & $-0.085$ & $[-0.186, +0.000]$ & $0.700$ & $0.939$ & $0.462$ & $0.685$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.783$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.746$ & $-0.068$ & $[-0.153, +0.034]$ & $0.720$ & $0.939$ & $0.500$ & $0.762$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.787$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.661$ & $-0.051$ & $[-0.186, +0.085]$ & $0.644$ & $0.788$ & $0.500$ & $0.702$\\
+ & TSR/TR & $0.712$ & $+0.000$ & $[-0.119, +0.119]$ & $0.685$ & $0.909$ & $0.462$ & $0.782$\\
+\midrule
+CbR & -- & $0.729$ & -- & $[+0.610, +0.831]$ & $0.733$ & $0.697$ & $0.769$ & $0.681$\\
+\bottomrule
+\end{tabular*}
+\caption{\small \texttt{exp\_601}: IDH binary classification, $\beta$ = 1, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_601}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_607}: IDH binary classification, $\beta$ = 0.25, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_607}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.576$ & $-0.186$* & $[-0.288, -0.085]$ & $0.519$ & $1.000$ & $0.038$ & $0.744$\\
+ & TSR/TR & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.786$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.797$ & $-0.017$ & $[-0.102, +0.051]$ & $0.769$ & $1.000$ & $0.538$ & $0.787$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.786$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.814$ & $+0.000$ & $[-0.051, +0.051]$ & $0.793$ & $0.970$ & $0.615$ & $0.819$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.791$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.746$ & $+0.034$ & $[-0.051, +0.136]$ & $0.732$ & $0.848$ & $0.615$ & $0.803$\\
+ & TSR/TR & $0.814$ & $+0.102$* & $[+0.017, +0.203]$ & $0.797$ & $0.939$ & $0.654$ & $0.828$\\
+\midrule
+CbR & -- & $0.746$ & -- & $[+0.644, +0.847]$ & $0.736$ & $0.818$ & $0.654$ & $0.824$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_608}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.695$ & $-0.068$ & $[-0.169, +0.034]$ & $0.682$ & $0.788$ & $0.577$ & $0.667$\\
+ & TSR/TR & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.803$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.755$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.783$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.798$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.782$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.678$ & $-0.034$ & $[-0.136, +0.068]$ & $0.675$ & $0.697$ & $0.654$ & $0.768$\\
+ & TSR/TR & $0.746$ & $+0.034$ & $[-0.085, +0.153]$ & $0.724$ & $0.909$ & $0.538$ & $0.786$\\
+\midrule
+CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_609}: IDH binary classification, $\beta$ = 0.75, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_609}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.576$ & $-0.186$* & $[-0.322, -0.051]$ & $0.556$ & $0.727$ & $0.385$ & $0.599$\\
+ & TSR/TR & $0.814$ & $+0.051$ & $[+0.000, +0.102]$ & $0.801$ & $0.909$ & $0.692$ & $0.808$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.763$ & $-0.051$ & $[-0.136, +0.034]$ & $0.739$ & $0.939$ & $0.538$ & $0.739$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.781$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.763$ & $-0.051$ & $[-0.153, +0.034]$ & $0.739$ & $0.939$ & $0.538$ & $0.763$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.786$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.712$ & $+0.000$ & $[-0.085, +0.085]$ & $0.722$ & $0.636$ & $0.808$ & $0.716$\\
+ & TSR/TR & $0.729$ & $+0.017$ & $[-0.068, +0.119]$ & $0.705$ & $0.909$ & $0.500$ & $0.807$\\
+\midrule
+CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.779$ & $0.788$ & $0.769$ & $0.688$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\subsection*{Latent dimension}
+The effect of the CVAE's latent vector size on the classifiers. The number of active components is much smaller (see Appendix \ref{app:beta_sensitivity})
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_701}: IDH binary classification, $\beta$ = 0.5, $d$=16, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_701}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.627$ & $-0.136$* & $[-0.237, -0.034]$ & $0.626$ & $0.636$ & $0.615$ & $0.638$\\
+ & TSR/TR & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.810$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.797$ & $-0.017$ & $[-0.068, +0.034]$ & $0.773$ & $0.970$ & $0.577$ & $0.775$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.783$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.763$ & $-0.051$ & $[-0.119, +0.017]$ & $0.739$ & $0.939$ & $0.538$ & $0.787$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.791$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.729$ & $+0.017$ & $[-0.051, +0.102]$ & $0.721$ & $0.788$ & $0.654$ & $0.780$\\
+ & TSR/TR & $0.780$ & $+0.068$ & $[-0.034, +0.169]$ & $0.762$ & $0.909$ & $0.615$ & $0.772$\\
+\midrule
+CbR & -- & $0.797$ & -- & $[+0.695, +0.898]$ & $0.798$ & $0.788$ & $0.808$ & $0.761$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\texttt{exp\_608}: shared anchor, see its table above.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_702}: IDH binary classification, $\beta$ = 0.5, $d$=64, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_702}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.610$ & $-0.153$* & $[-0.254, -0.051]$ & $0.570$ & $0.909$ & $0.231$ & $0.641$\\
+ & TSR/TR & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.803$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.797$ & $-0.017$ & $[-0.085, +0.034]$ & $0.773$ & $0.970$ & $0.577$ & $0.793$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.781$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.780$ & $-0.034$ & $[-0.119, +0.051]$ & $0.758$ & $0.939$ & $0.577$ & $0.809$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.784$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.746$ & $+0.034$ & $[-0.068, +0.136]$ & $0.740$ & $0.788$ & $0.692$ & $0.791$\\
+ & TSR/TR & $0.797$ & $+0.085$ & $[+0.000, +0.169]$ & $0.781$ & $0.909$ & $0.654$ & $0.815$\\
+\midrule
+CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.779$ & $0.788$ & $0.769$ & $0.772$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\subsection*{Pairwise bootstrap comparisons}
+
+Paired bag-level bootstrap tests between experiments that differ in one factor: the CVAE latent dimension (Table~\ref{tab:ctrl_boot_latent}) and the size of the synthetic pool used for TS/TR (Table~\ref{tab:ctrl_boot_pool}). The procedure is the one used for the downstream-classifier tables above: one majority-vote decision per bag from each experiment's own fold models, class-stratified resampling of the $n=59$ paired bag decisions, 1000 iterations, percentile 95\% CI.
+
+\input{appendix_bootstrap_tables}
+
+\subsection*{Per-fold class composition: \texttt{exp\_608}}
+
+Computed directly from the CV split assignment (Appendix~\ref{app:cv_schema}) and each bag's binary label, at both the bag level (one count per biopsy slide) and the instance level (one count per retained spectrum) -- the two can diverge sharply when bag sizes are uneven, since a handful of large bags of one class can dominate a fold's instance count while leaving its bag count roughly balanced.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Per-fold bag-level and instance-level class balance, \texttt{exp\_608}.}
+\label{tab:ctrl_fold_balance}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc|cccc}
+\toprule
+& \multicolumn{4}{c}{Train (bag-level)} & \multicolumn{1}{c|}{} & \multicolumn{4}{c}{Test (bag-level)} \\
+Fold & Class 0 & Class 1 & Total & \% minority & & Class 0 & Class 1 & Total & \% minority \\
+\midrule
+0 & 20 & 25 & 45 & $44.4\%$ & & 6 & 8 & 14 & $42.9\%$ \\
+1 & 22 & 25 & 47 & $46.8\%$ & & 4 & 8 & 12 & $33.3\%$ \\
+2 & 18 & 27 & 45 & $40.0\%$ & & 8 & 6 & 14 & $42.9\%$ \\
+3 & 21 & 27 & 48 & $43.8\%$ & & 5 & 6 & 11 & $45.5\%$ \\
+4 & 20 & 27 & 47 & $42.6\%$ & & 6 & 6 & 12 & $50.0\%$ \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\subsection*{Reconstruction-loss}
+\label{app:recon-loss}
+We experiment with reconstruction loss as MSE, cosine, or 0.5 MSE + 0.5 cosine.
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_703}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE + Cosine (0.5/0.5), synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_703}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.576$ & $-0.186$* & $[-0.322, -0.051]$ & $0.556$ & $0.727$ & $0.385$ & $0.483$\\
+ & TSR/TR & $0.814$ & $+0.051$ & $[+0.000, +0.102]$ & $0.801$ & $0.909$ & $0.692$ & $0.803$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.746$ & $-0.068$ & $[-0.169, +0.034]$ & $0.724$ & $0.909$ & $0.538$ & $0.709$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.781$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.797$ & $-0.017$ & $[-0.102, +0.051]$ & $0.777$ & $0.939$ & $0.615$ & $0.802$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.695$ & $-0.017$ & $[-0.119, +0.085]$ & $0.699$ & $0.667$ & $0.731$ & $0.740$\\
+ & TSR/TR & $0.729$ & $+0.017$ & $[-0.102, +0.136]$ & $0.725$ & $0.758$ & $0.692$ & $0.816$\\
+\midrule
+CbR & -- & $0.746$ & -- & $[+0.627, +0.847]$ & $0.748$ & $0.727$ & $0.769$ & $0.679$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_704}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = Cosine, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_704}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.407$ & $-0.356$* & $[-0.525, -0.186]$ & $0.437$ & $0.182$ & $0.692$ & $0.478$\\
+ & TSR/TR & $0.831$ & $+0.068$ & $[+0.000, +0.153]$ & $0.812$ & $0.970$ & $0.654$ & $0.749$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.644$ & $-0.169$* & $[-0.271, -0.068]$ & $0.600$ & $0.970$ & $0.231$ & $0.751$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.782$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.695$ & $-0.119$* & $[-0.220, -0.017]$ & $0.662$ & $0.939$ & $0.385$ & $0.718$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.789$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.458$ & $-0.254$* & $[-0.390, -0.102]$ & $0.511$ & $0.061$ & $0.962$ & $0.493$\\
+ & TSR/TR & $0.746$ & $+0.034$ & $[-0.102, +0.169]$ & $0.744$ & $0.758$ & $0.731$ & $0.818$\\
+\midrule
+CbR & -- & $0.576$ & -- & $[+0.458, +0.695]$ & $0.564$ & $0.667$ & $0.462$ & $0.706$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\subsection*{Synthetic/real ratio for TSR/TR}
+\label{app:synth-ratio}
+We change the ratio of syhthetic/real data. For all other experiments, this ratio is fixed at 1.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_705}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 0.5, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_705}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.695$ & $-0.068$ & $[-0.169, +0.034]$ & $0.682$ & $0.788$ & $0.577$ & $0.667$\\
+ & TSR/TR & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.795$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.755$\\
+ & TSR/TR & $0.847$ & $+0.034$ & $[+0.000, +0.085]$ & $0.831$ & $0.970$ & $0.692$ & $0.782$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.798$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.678$ & $-0.034$ & $[-0.136, +0.068]$ & $0.675$ & $0.697$ & $0.654$ & $0.768$\\
+ & TSR/TR & $0.678$ & $-0.034$ & $[-0.153, +0.068]$ & $0.700$ & $0.515$ & $0.885$ & $0.728$\\
+\midrule
+CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_706}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 2, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_706}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.695$ & $-0.068$ & $[-0.169, +0.034]$ & $0.682$ & $0.788$ & $0.577$ & $0.667$\\
+ & TSR/TR & $0.814$ & $+0.051$ & $[+0.000, +0.119]$ & $0.797$ & $0.939$ & $0.654$ & $0.798$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.755$\\
+ & TSR/TR & $0.847$ & $+0.034$ & $[+0.000, +0.085]$ & $0.831$ & $0.970$ & $0.692$ & $0.787$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.798$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.779$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.678$ & $-0.034$ & $[-0.136, +0.068]$ & $0.675$ & $0.697$ & $0.654$ & $0.768$\\
+ & TSR/TR & $0.712$ & $+0.000$ & $[-0.119, +0.119]$ & $0.689$ & $0.879$ & $0.500$ & $0.808$\\
+\midrule
+CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\subsection*{Maximum Intensity Threshold}\label{subsec:max_int}
+We test the spectra selection criteria with thresholds $\text{thr} \in \{0.4, 0.6, 0.8\}$.
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_4.608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.4.}
+\label{tab:ctrl_exp_4.608}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.746$ & -- & -- & $0.732$ & $0.848$ & $0.615$ & $0.735$\\
+ & TS/TR & $0.661$ & $-0.085$ & $[-0.203, +0.034]$ & $0.619$ & $0.970$ & $0.269$ & $0.724$\\
+ & TSR/TR & $0.814$ & $+0.068$ & $[+0.000, +0.153]$ & $0.797$ & $0.939$ & $0.654$ & $0.797$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.770$\\
+ & TS/TR & $0.847$ & $+0.034$ & $[+0.000, +0.085]$ & $0.831$ & $0.970$ & $0.692$ & $0.755$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.784$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.776$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.789$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.787$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.678$ & -- & -- & $0.700$ & $0.515$ & $0.885$ & $0.759$\\
+ & TS/TR & $0.712$ & $+0.034$ & $[-0.102, +0.186]$ & $0.718$ & $0.667$ & $0.769$ & $0.759$\\
+ & TSR/TR & $0.712$ & $+0.034$ & $[-0.085, +0.169]$ & $0.685$ & $0.909$ & $0.462$ & $0.807$\\
+\midrule
+CbR & -- & $0.797$ & -- & $[+0.678, +0.881]$ & $0.794$ & $0.818$ & $0.769$ & $0.776$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+\label{tab:ctrl_exp_608_thr}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.763$ & -- & -- & $0.751$ & $0.848$ & $0.654$ & $0.745$\\
+ & TS/TR & $0.695$ & $-0.068$ & $[-0.169, +0.034]$ & $0.682$ & $0.788$ & $0.577$ & $0.667$\\
+ & TSR/TR & $0.831$ & $+0.068$* & $[+0.017, +0.136]$ & $0.816$ & $0.939$ & $0.692$ & $0.803$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.755$\\
+ & TSR/TR & $0.831$ & $+0.017$ & $[+0.000, +0.051]$ & $0.812$ & $0.970$ & $0.654$ & $0.783$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.814$ & -- & -- & $0.797$ & $0.939$ & $0.654$ & $0.780$\\
+ & TS/TR & $0.831$ & $+0.017$ & $[-0.034, +0.085]$ & $0.812$ & $0.970$ & $0.654$ & $0.798$\\
+ & TSR/TR & $0.814$ & $+0.000$ & $[+0.000, +0.000]$ & $0.797$ & $0.939$ & $0.654$ & $0.782$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.712$ & -- & -- & $0.706$ & $0.758$ & $0.654$ & $0.790$\\
+ & TS/TR & $0.678$ & $-0.034$ & $[-0.136, +0.068]$ & $0.675$ & $0.697$ & $0.654$ & $0.768$\\
+ & TSR/TR & $0.746$ & $+0.034$ & $[-0.085, +0.153]$ & $0.724$ & $0.909$ & $0.538$ & $0.786$\\
+\midrule
+CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_2.608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing; see note below).}
+\label{tab:ctrl_exp_2.608}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.746$ & -- & -- & $0.732$ & $0.848$ & $0.615$ & $0.726$\\
+ & TS/TR & $0.559$ & $-0.186$* & $[-0.305, -0.051]$ & $0.573$ & $0.455$ & $0.692$ & $0.608$\\
+ & TSR/TR & $0.814$ & $+0.068$ & $[+0.000, +0.153]$ & $0.797$ & $0.939$ & $0.654$ & $0.809$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.780$ & -- & -- & $0.762$ & $0.909$ & $0.615$ & $0.775$\\
+ & TS/TR & $0.780$ & $+0.000$ & $[-0.085, +0.085]$ & $0.754$ & $0.970$ & $0.538$ & $0.742$\\
+ & TSR/TR & $0.831$ & $+0.051$ & $[+0.000, +0.102]$ & $0.812$ & $0.970$ & $0.654$ & $0.793$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.797$ & -- & -- & $0.777$ & $0.939$ & $0.615$ & $0.790$\\
+ & TS/TR & $0.763$ & $-0.034$ & $[-0.136, +0.051]$ & $0.735$ & $0.970$ & $0.500$ & $0.783$\\
+ & TSR/TR & $0.814$ & $+0.017$ & $[+0.000, +0.051]$ & $0.797$ & $0.939$ & $0.654$ & $0.789$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.661$ & -- & -- & $0.681$ & $0.515$ & $0.846$ & $0.756$\\
+ & TS/TR & $0.610$ & $-0.051$ & $[-0.169, +0.068]$ & $0.627$ & $0.485$ & $0.769$ & $0.737$\\
+ & TSR/TR & $0.746$ & $+0.085$ & $[-0.034, +0.203]$ & $0.716$ & $0.970$ & $0.462$ & $0.823$\\
+\midrule
+CbR & -- & $0.763$ & -- & $[+0.661, +0.864]$ & $0.759$ & $0.788$ & $0.731$ & $0.755$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\emph{Note.} \texttt{exp\_2.608}'s preprocessing is not a pure fixed threshold despite the $0.8$ figure above: it keeps each slide's own top-90\% of pixels by max-intensity rank (a per-slide 10th-percentile cutoff), with $\text{thr}>0.8$ applied only as an absolute floor within that selection (rarely binding). \texttt{exp\_608} and \texttt{exp\_4.608} use a single fixed threshold directly on max-intensity, with no rank-based component.
+
+\subsection*{Analysis of $\beta$ at 0.8 threshold}
+We test two more values for beta for the 0.8 spectra selection threshold.
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_2.607}: IDH binary classification, $\beta$ = 0.25, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing).}
+\label{tab:ctrl_exp_2.607}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.746$ & -- & -- & $0.732$ & $0.848$ & $0.615$ & $0.726$\\
+ & TS/TR & $0.644$ & $-0.102$ & $[-0.220, +0.000]$ & $0.608$ & $0.909$ & $0.308$ & $0.589$\\
+ & TSR/TR & $0.831$ & $+0.085$* & $[+0.033, +0.153]$ & $0.816$ & $0.939$ & $0.692$ & $0.796$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.780$ & -- & -- & $0.762$ & $0.909$ & $0.615$ & $0.775$\\
+ & TS/TR & $0.797$ & $+0.017$ & $[-0.051, +0.085]$ & $0.773$ & $0.970$ & $0.577$ & $0.780$\\
+ & TSR/TR & $0.831$ & $+0.051$ & $[+0.000, +0.102]$ & $0.812$ & $0.970$ & $0.654$ & $0.794$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.797$ & -- & -- & $0.777$ & $0.939$ & $0.615$ & $0.790$\\
+ & TS/TR & $0.814$ & $+0.017$ & $[-0.068, +0.085]$ & $0.788$ & $1.000$ & $0.577$ & $0.826$\\
+ & TSR/TR & $0.814$ & $+0.017$ & $[+0.000, +0.051]$ & $0.797$ & $0.939$ & $0.654$ & $0.787$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.678$ & -- & -- & $0.700$ & $0.515$ & $0.885$ & $0.719$\\
+ & TS/TR & $0.695$ & $+0.017$ & $[-0.136, +0.169]$ & $0.691$ & $0.727$ & $0.654$ & $0.815$\\
+ & TSR/TR & $0.814$ & $+0.136$* & $[+0.017, +0.254]$ & $0.797$ & $0.939$ & $0.654$ & $0.748$\\
+\midrule
+CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.770$ & $0.848$ & $0.692$ & $0.809$\\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\texttt{exp\_2.608}: shared anchor, see its table above.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{\texttt{exp\_2.609}: IDH binary classification, $\beta$ = 0.75, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing).}
+\label{tab:ctrl_exp_2.609}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
+\toprule
+\emph{Model} & \emph{Regimen} & \emph{Accuracy} & \emph{$\Delta$} & \emph{95\% CI} & \emph{Bal.\ Acc} & \emph{Sensitivity} & \emph{Specificity} & \emph{AUC}\\
+\midrule
+\multirow{3}{*}{RF + SVM} & TR/TR & $0.746$ & -- & -- & $0.732$ & $0.848$ & $0.615$ & $0.726$\\
+ & TS/TR & $0.525$ & $-0.220$* & $[-0.339, -0.085]$ & $0.543$ & $0.394$ & $0.692$ & $0.580$\\
+ & TSR/TR & $0.814$ & $+0.068$* & $[+0.017, +0.136]$ & $0.801$ & $0.909$ & $0.692$ & $0.821$\\
+\midrule
+\multirow{3}{*}{RF} & TR/TR & $0.780$ & -- & -- & $0.762$ & $0.909$ & $0.615$ & $0.775$\\
+ & TS/TR & $0.729$ & $-0.051$ & $[-0.169, +0.051]$ & $0.700$ & $0.939$ & $0.462$ & $0.758$\\
+ & TSR/TR & $0.814$ & $+0.034$ & $[+0.000, +0.085]$ & $0.793$ & $0.970$ & $0.615$ & $0.790$\\
+\midrule
+\multirow{3}{*}{XGBoost} & TR/TR & $0.797$ & -- & -- & $0.777$ & $0.939$ & $0.615$ & $0.790$\\
+ & TS/TR & $0.695$ & $-0.102$ & $[-0.220, +0.000]$ & $0.662$ & $0.939$ & $0.385$ & $0.768$\\
+ & TSR/TR & $0.814$ & $+0.017$ & $[+0.000, +0.051]$ & $0.797$ & $0.939$ & $0.654$ & $0.782$\\
+\midrule
+\multirow{3}{*}{1D-CNN} & TR/TR & $0.610$ & -- & -- & $0.619$ & $0.545$ & $0.692$ & $0.652$\\
+ & TS/TR & $0.475$ & $-0.136$* & $[-0.254, -0.017]$ & $0.510$ & $0.212$ & $0.808$ & $0.754$\\
+ & TSR/TR & $0.695$ & $+0.085$ & $[-0.085, +0.271]$ & $0.670$ & $0.879$ & $0.462$ & $0.772$\\
+\midrule
+CbR & -- & $0.746$ & -- & $[+0.627, +0.847]$ & $0.748$ & $0.727$ & $0.769$ & $0.669$\\
+\bottomrule
+\end{tabular*}
+\end{table}

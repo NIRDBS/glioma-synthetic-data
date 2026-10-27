@@ -268,6 +268,13 @@ def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_na
     gc.collect()
 
     # --- MODEL 4: 1D-CNN ---
+    # GLIOMA_DEFER_CNN=1: skip the CNN here because it is trained separately and
+    # concurrently across folds (scripts/train_cnn_modal_parallel.py). The config
+    # still says backend=modal; the deferral is a per-run scheduling choice.
+    if os.environ.get('GLIOMA_DEFER_CNN') == '1':
+        print("  [4/4] 1D-CNN deferred (GLIOMA_DEFER_CNN=1; trained by scripts/train_cnn_modal_parallel.py)")
+        accs['1D_CNN'] = float('nan')
+        return accs
     cnn_backend = cnn_cfg.get('backend', 'local')
     print(f"  [4/4] 1D-CNN (epochs={cnn_cfg['epochs']}, backend={cnn_backend})...")
     try:

@@ -35,7 +35,7 @@ DEFAULT_STAGES     = ['trtr', 'cvae', 'tstr', 'tsrtr', 'stats_eval', 'mil_eval',
 CLASSIFIER_STAGES  = {'trtr', 'tstr', 'tsrtr'}
 STAGE_ALIASES = {
     'preprocess': 'preprocessing', 'preprocessing': 'preprocessing',
-    'trtr': 'trtr', 'cvae': 'cvae', 'tstr': 'tstr', 'tsrtr': 'tsrtr',
+    'trtr': 'trtr', 'cvae': 'cvae', 'synth_gen': 'synth_gen', 'tstr': 'tstr', 'tsrtr': 'tsrtr',
     'eval': 'stats_eval', 'evaluation': 'stats_eval', 'stats_eval': 'stats_eval',
     'mil_eval': 'mil_eval', 'mil': 'mil_eval', 'tier0': 'mil_eval',
     'mil_fit': 'mil_fit', 'misvm': 'mil_fit', 'em': 'mil_fit',
@@ -76,6 +76,10 @@ def _stage_outputs_exist(stage, config):
             sd = Path(paths['synthetic_dir'])
             return all((md / f"decoder_{fn}.weights.h5").exists()
                        and (sd / f"{fn}_X_synth.npy").exists() for fn in fold_names)
+        if stage == 'synth_gen':
+            sd = Path(paths['synthetic_dir'])
+            return all((sd / f"{fn}_X_synth.npy").exists()
+                       and (sd / f"{fn}_y_synth.npy").exists() for fn in fold_names)
         if stage == 'stats_eval':
             d = Path(paths['statistical_dir'])
             return d.exists() and any(d.glob('statistical_evaluation_*.json'))
@@ -113,6 +117,9 @@ def _run_stage(stage, config, output_dir, cvae_backend, epochs):
         return trtr_stage(config, output_dir)
     if stage == 'cvae':
         return cvae_stage(config, output_dir, backend=cvae_backend, epochs=epochs)
+    if stage == 'synth_gen':
+        from pipeline.synth_gen_stage import synth_gen_stage
+        return synth_gen_stage(config, output_dir)
     if stage == 'tstr':
         return tstr_stage(config, output_dir)
     if stage == 'tsrtr':

@@ -57,7 +57,13 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
        seed=42, permutation_seed=123, store_suffix='shuffled',
        attn_dim=32, dropout_rate=0.3, l2=1e-3, center_by_bag=True,
        sub_bag_size=None, n_per_bag_per_epoch=50, max_epochs=200, patience=15,
-       fold_names=None, cvae_epochs=None):
+       fold_names=None, cvae_epochs=None, backend='local'):
+    """``backend='modal'`` (misvm/em only): fold-parallel on Modal instead
+    of ~4h sequential locally -- pipeline/modal_mil_fit.py::run_mil_fit_parallel's
+    label_map/store_path override, the shuffled-control analogue of the real
+    fit's own --backend modal path (pipeline/mil_fit_stage.py). attention's
+    own training loop and cvae's Modal GPU retrain are unaffected by this
+    flag -- they already run as they always have."""
     from src.utils.config_manager import ConfigManager
 
     config = ConfigManager.load_config(config_name)
@@ -133,9 +139,27 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
         print(f"  cvae_weights_dir -> {cvae_weights_dir}  "
               f"cbr_temperature={cbr_kwargs['cbr_temperature']}")
 
+    if backend == 'modal' and method in ('misvm', 'em'):
+        from pipeline.modal_mil_fit import run_mil_fit_parallel
+        run_mil_fit_parallel(
+            config, methods=(method,), pi_min=pi_min, max_iters=max_iters, seed=seed,
+            svm_subsample_per_bag=svm_subsample_per_bag, label_map=label_map, store_path=store_path,
+        )
+        print(f"\n  Shuffled-label control fit complete (modal) -> {store_path}")
+        return {'store_path': str(store_path), 'label_map': label_map}
+
+    bayes_kwargs = {}
+    if method == 'bayes_mil':
+        # Same sourcing as the real (non-shuffled) fit stage
+        # (pipeline/mil_fit_stage.py's own `bayes_cfg = mil_cfg.get('bayes', {})`)
+        # -- _fit_one_formulation already dispatches 'bayes_mil' to
+        # _fit_one_fold_bayes_mil (Gibbs refit + score_bayes_mil); this was
+        # simply never threaded through here, not a missing capability.
+        bayes_kwargs = {'bayes_cfg': config.get('mil', {}).get('bayes', {})}
+
     _fit_one_formulation(
         method, loader, config, n_classes, store_path, pi_min, max_iters, seed,
-        svm_subsample_per_bag=svm_subsample_per_bag, **cbr_kwargs,
+        svm_subsample_per_bag=svm_subsample_per_bag, **cbr_kwargs, **bayes_kwargs,
     )
     print(f"\n  Shuffled-label control fit complete -> {store_path}")
     return {'store_path': str(store_path), 'label_map': label_map}
@@ -145,7 +169,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Shuffled-bag-label control")
     parser.add_argument('--config', required=True)
     parser.add_argument('--method', required=True,
-                        choices=['misvm', 'em', 'attention', 'cvae', 'cbr'])
+                        choices=['misvm', 'em', 'attention', 'cvae', 'cbr', 'bayes_mil'])
     parser.add_argument('--epochs', type=int, default=None,
                         help="cvae only: override epoch count (smoke-test use)")
     parser.add_argument('--pi-min', type=float, default=None)
@@ -153,6 +177,10 @@ if __name__ == '__main__':
     parser.add_argument('--svm-subsample-per-bag', type=int, default=500)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--permutation-seed', type=int, default=123)
+    parser.add_argument('--store-suffix', default='shuffled',
+                        help="shuffled store is latent_labels_<suffix>.h5 (default 'shuffled'); use a "
+                             "distinct suffix to run two controls concurrently without two writers "
+                             "on one HDF5 file")
     parser.add_argument('--attn-dim', type=int, default=32)
     parser.add_argument('--dropout-rate', type=float, default=0.3)
     parser.add_argument('--l2', type=float, default=1e-3)
@@ -163,6 +191,10 @@ if __name__ == '__main__':
     parser.add_argument('--patience', type=int, default=15)
     parser.add_argument('--folds', nargs='+', default=None,
                         help="attention only: subset of fold names, e.g. fold_0 (smoke-test use)")
+    parser.add_argument('--backend', default='local', choices=['local', 'modal'],
+                        help="misvm/em only: 'modal' fits every fold in its own parallel "
+                             "CPU container instead of ~4h sequential locally (mirrors the "
+                             "real fit's own --backend modal). No effect on attention/cvae/cbr.")
     args = parser.parse_args()
     run(args.config, args.method, pi_min=args.pi_min, max_iters=args.max_iters,
        svm_subsample_per_bag=args.svm_subsample_per_bag, seed=args.seed,
@@ -170,4 +202,4 @@ if __name__ == '__main__':
        dropout_rate=args.dropout_rate, l2=args.l2, center_by_bag=not args.no_center_by_bag,
        sub_bag_size=args.sub_bag_size, n_per_bag_per_epoch=args.n_per_bag_per_epoch,
        max_epochs=args.max_epochs, patience=args.patience, fold_names=args.folds,
-       cvae_epochs=args.epochs)
+       cvae_epochs=args.epochs, backend=args.backend, store_suffix=args.store_suffix)

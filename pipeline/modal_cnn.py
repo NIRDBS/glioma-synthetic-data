@@ -101,22 +101,51 @@ def train_cnn_remote(run_id: str, cnn_cfg: dict, aug_cfg: dict, seed: int, has_b
 
 
 def run_cnn_on_modal(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg, model_dir, fold_name,
-                     seed=42, train_bag_ids=None):
+                     seed=42, train_bag_ids=None, attempts=3, backoff_s=120):
     """
     Local-side driver, called from pipeline/_common.py::train_four_models in
     place of train_cnn_only when models.cnn.backend == 'modal'. Same return
     contract (float accuracy) and the same saved-file layout
     (model_dir/cnn_{fold_name}.keras) as the local path.
-    """
-    import json
 
+    Retries the whole call (fresh run_id each time) on any exception: a transient
+    network failure (e.g. DNS ``getaddrinfo`` errors after the machine wakes from
+    sleep) used to fail a fold's CNN outright, and on Windows the temp-dir cleanup
+    then raised ``WinError 32`` that masked the real error. The underlying error
+    is now printed on every failed attempt.
+    """
+    import time
+
+    last = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return _run_cnn_on_modal_once(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg,
+                                          model_dir, fold_name, seed, train_bag_ids)
+        except Exception as e:  # noqa: BLE001 -- retry on anything, surface the cause
+            last = e
+            print(f"        [modal] CNN attempt {attempt}/{attempts} failed: "
+                  f"{type(e).__name__}: {str(e)[:200]}", flush=True)
+            if attempt < attempts:
+                time.sleep(backoff_s * attempt)
+    raise last
+
+
+def submit_cnn_on_modal(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg, seed=42,
+                        train_bag_ids=None):
+    """
+    Upload one fold's arrays and START its remote training WITHOUT waiting
+    (``Function.spawn``). Must be called inside a ``with app.run():`` block that
+    stays open until ``collect_cnn_from_modal`` has been called on the handle.
+
+    Lets several folds train on Modal GPUs concurrently from one local process:
+    the caller prepares fold k, submits it, frees the arrays, and moves on to
+    fold k+1, so local memory holds one fold at a time (the dataset is large and
+    each process that loads it costs ~2 GB), while the GPU jobs overlap.
+    """
     import numpy as np
 
     run_id = uuid.uuid4().hex
-    model_dir = Path(model_dir)
-    model_dir.mkdir(parents=True, exist_ok=True)
-
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         tmp = Path(tmp)
         np.save(tmp / "X_train.npy", X_train)
         np.save(tmp / "y_train.npy", y_train)
@@ -125,29 +154,61 @@ def run_cnn_on_modal(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg, model_dir
         has_bag_ids = train_bag_ids is not None
         if has_bag_ids:
             np.save(tmp / "train_bag_ids.npy", np.asarray(train_bag_ids))
-
         remote_prefix = f"inputs/{run_id}"
         with volume.batch_upload() as batch:
             for f in tmp.glob("*.npy"):
                 batch.put_file(str(f), f"{remote_prefix}/{f.name}")
 
-        with app.run():
-            acc = train_cnn_remote.remote(run_id, cnn_cfg, aug_cfg, seed, has_bag_ids)
+    call = train_cnn_remote.spawn(run_id, cnn_cfg, aug_cfg, seed, has_bag_ids)
+    return {'run_id': run_id, 'has_bag_ids': has_bag_ids, 'call': call, 'acc': None,
+            'cnn_cfg': cnn_cfg, 'aug_cfg': aug_cfg, 'seed': seed}
 
-            out_prefix = f"outputs/{run_id}"
-            dest = model_dir / f"cnn_{fold_name}.keras"
+
+def collect_cnn_from_modal(handle, model_dir, fold_name, attempts=3, backoff_s=120):
+    """
+    Wait for a submitted job, download ``cnn_{fold_name}.keras`` into ``model_dir``,
+    and clean this call's inputs/outputs off the Volume. On any failure the real
+    error is printed and the step is retried: if the remote job had not finished,
+    it is re-spawned from the SAME uploaded inputs (still on the Volume until
+    success); if it had, only the download is retried.
+    """
+    import time
+
+    run_id = handle['run_id']
+    out_prefix = f"outputs/{run_id}"
+    remote_prefix = f"inputs/{run_id}"
+    model_dir = Path(model_dir)
+    model_dir.mkdir(parents=True, exist_ok=True)
+    dest = model_dir / f"cnn_{fold_name}.keras"
+
+    for attempt in range(1, attempts + 1):
+        try:
+            if handle['acc'] is None:
+                handle['acc'] = float(handle['call'].get())
             with open(dest, "wb") as fh:
                 for chunk in volume.read_file(f"{out_prefix}/cnn_remote.keras"):
                     fh.write(chunk)
+            break
+        except Exception as e:  # noqa: BLE001 -- retry on anything, surface the cause
+            print(f"        [modal] {fold_name} collect attempt {attempt}/{attempts} failed: "
+                  f"{type(e).__name__}: {str(e)[:200]}", flush=True)
+            if attempt == attempts:
+                raise
+            time.sleep(backoff_s * attempt)
+            if handle['acc'] is None:
+                handle['call'] = train_cnn_remote.spawn(
+                    run_id, handle['cnn_cfg'], handle['aug_cfg'], handle['seed'],
+                    handle['has_bag_ids'])
 
-        # Clean up this call's uploaded inputs/outputs -- nothing should
-        # accumulate on the Volume across repeated calls. (No explicit
-        # volume.commit() here: that's only valid on the in-container mounted
-        # handle, which is what train_cnn_remote's own commit() call -- after
-        # writing outputs -- already is. batch_upload()/remove_file() from
-        # this local/client-side handle persist on their own.)
-        volume.remove_file(remote_prefix, recursive=True)
-        volume.remove_file(out_prefix, recursive=True)
+    volume.remove_file(remote_prefix, recursive=True)
+    volume.remove_file(out_prefix, recursive=True)
+    print(f"        [modal] CNN trained remotely -> {dest}  (acc={handle['acc']:.4f})", flush=True)
+    return handle['acc']
 
-    print(f"        [modal] CNN trained remotely -> {dest}  (acc={acc:.4f})")
-    return float(acc)
+
+def _run_cnn_on_modal_once(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg, model_dir, fold_name,
+                           seed=42, train_bag_ids=None):
+    with app.run():
+        handle = submit_cnn_on_modal(X_train, y_train, X_val, y_val, cnn_cfg, aug_cfg, seed,
+                                     train_bag_ids)
+        return collect_cnn_from_modal(handle, model_dir, fold_name, attempts=1)

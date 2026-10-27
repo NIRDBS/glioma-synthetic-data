@@ -323,7 +323,11 @@ def _fit_one_formulation(method, loader, config, n_classes, store_path, pi_min,
                 fold_data, config, n_classes, full_bag_ids, full_coords,
                 seed, bayes_cfg or {})
             bayes_diagnostics_by_fold[fold_name] = bayes_diag
-            bayes_path = Path(store_path).parent / 'bayes_diagnostics.json'
+            # Suffix-aware like the store itself (latent_labels.h5 -> bayes_diagnostics.json,
+            # latent_labels_shuffled.h5 -> bayes_diagnostics_shuffled.json): a shuffled-label
+            # control used to overwrite the REAL fit's diagnostics fold by fold.
+            store_suffix = Path(store_path).stem[len('latent_labels'):]
+            bayes_path = Path(store_path).parent / f'bayes_diagnostics{store_suffix}.json'
             bayes_path.parent.mkdir(parents=True, exist_ok=True)
             with open(bayes_path, 'w') as f:
                 json.dump(bayes_diagnostics_by_fold, f, indent=2)

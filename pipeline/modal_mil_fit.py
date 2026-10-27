@@ -93,11 +93,21 @@ def _upload_h5(config) -> str:
 @app.function(cpu=3.0, memory=4096, volumes={VOL_MOUNT: volume}, timeout=60 * 60 * 3)
 def fit_fold_remote(config_name: str, method: str, fold_name: str, h5_name: str,
                     pi_min: float, max_iters: int, seed: int,
-                    svm_subsample_per_bag: int = 500):
+                    svm_subsample_per_bag: int = 500, label_map: dict | None = None):
     """Fit one MIL formulation on one fold, remotely. Returns
     (fold_name, variant, posterior_full, in_sample_full, em_diagnostics) --
     em_diagnostics is None except for method='em' -- no store writes happen
-    here; the local driver collects every result and writes them."""
+    here; the local driver collects every result and writes them.
+
+    ``label_map`` (optional): {bag_id: permuted_label}, computed ONCE by the
+    caller (src/mil/shuffle_control.py::permuted_bag_label_map) and passed
+    in explicitly rather than recomputed remotely -- avoids any risk of
+    local/remote RNG divergence producing a different permutation per
+    container. When given, substitutes the loader's own y_class before fold
+    splitting, exactly mirroring scripts/stage6_shuffled_label_control.py's
+    local path (the only "shuffled" intervention; everything downstream is
+    identical to a real fit) -- this is what lets the shuffled-label
+    control run fold-parallel on Modal instead of ~4h sequential locally."""
     import os
     import pathlib
     import shutil
@@ -121,6 +131,10 @@ def fit_fold_remote(config_name: str, method: str, fold_name: str, h5_name: str,
     full_bag_ids = loader.groups
     full_coords = loader.coords
 
+    if label_map is not None:
+        from src.mil.shuffle_control import apply_permuted_labels
+        loader.y_class = apply_permuted_labels(loader.groups, label_map)
+
     fold_data = None
     for fd in loader:
         if fd["fold_name"] == fold_name:
@@ -129,20 +143,31 @@ def fit_fold_remote(config_name: str, method: str, fold_name: str, h5_name: str,
     if fold_data is None:
         raise ValueError(f"fold {fold_name!r} not found for {config_name}")
 
-    print(f"[modal:{config_name}:{method}:{fold_name}] fitting "
+    tag = "shuffled" if label_map is not None else "real"
+    print(f"[modal:{config_name}:{method}:{fold_name}:{tag}] fitting "
           f"(svm_subsample_per_bag={svm_subsample_per_bag})...")
     result = _fit_one_fold(fold_data, config, method, n_classes, pi_min, max_iters, seed,
                            full_bag_ids, full_coords,
                            svm_subsample_per_bag=svm_subsample_per_bag)
-    print(f"[modal:{config_name}:{method}:{fold_name}] done")
+    print(f"[modal:{config_name}:{method}:{fold_name}:{tag}] done")
     return result
 
 
 def run_mil_fit_parallel(config, methods=('misvm', 'em'), pi_min=None, max_iters=10, seed=None,
-                         svm_subsample_per_bag=None):
+                         svm_subsample_per_bag=None, label_map=None, store_path=None):
     """
     Fit every (method, fold) pair for one config in parallel on Modal, then
     write every result into the local latent-label store.
+
+    ``label_map`` / ``store_path`` (optional, both or neither): the same
+    shuffled-label-control override scripts/stage6_shuffled_label_control.py
+    uses locally (see fit_fold_remote's docstring) -- lets the shuffled
+    misvm/em control run fold-parallel on Modal instead of ~4h sequential
+    locally. ``store_path`` defaults to the real store
+    (results/<name>/latent/latent_labels.h5) when not given; pass
+    results/<name>/latent/latent_labels_<suffix>.h5 together with a
+    label_map to write a shuffled run to its own separate store, never the
+    real one.
     """
     import json
 
@@ -158,10 +183,14 @@ def run_mil_fit_parallel(config, methods=('misvm', 'em'), pi_min=None, max_iters
     n_folds = int(config.get('cv_strategy', {}).get('n_folds', 5))
     fold_names = [f"fold_{i}" for i in range(n_folds)]
 
-    store_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
-        / 'latent' / 'latent_labels.h5'
+    if store_path is None:
+        store_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
+            / 'latent' / 'latent_labels.h5'
+    else:
+        store_path = Path(store_path)
 
-    print(f"\n{'='*80}\nMIL FIT STAGE (modal, fold-parallel): {config['name']}\n{'='*80}")
+    tag = "shuffled" if label_map is not None else "real"
+    print(f"\n{'='*80}\nMIL FIT STAGE (modal, fold-parallel, {tag}): {config['name']}\n{'='*80}")
     print(f"  methods: {methods}  folds: {fold_names}  pi_min={pi_min}  "
           f"svm_subsample_per_bag={svm_subsample_per_bag}")
     print(f"  store -> {store_path}")
@@ -186,7 +215,7 @@ def run_mil_fit_parallel(config, methods=('misvm', 'em'), pi_min=None, max_iters
         handles = {
             (method, fold_name): fit_fold_remote.spawn(
                 config['name'], method, fold_name, h5_name, pi_min, max_iters, seed,
-                svm_subsample_per_bag=svm_subsample_per_bag)
+                svm_subsample_per_bag=svm_subsample_per_bag, label_map=label_map)
             for method, fold_name in jobs
         }
         em_diagnostics_by_fold = {}

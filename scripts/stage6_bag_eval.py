@@ -21,13 +21,11 @@ and is deliberately not part of this comparison.
 support restriction throughout scoring, not just fitting** (docs/
 MIL_REFRAME_PLAN.md §1: each instance's state is restricted to
 {null_1..null_M, Y_b} -- never another diagnostic class -- so it cannot,
-architecturally, ever place mass on the "wrong" diagnostic column). Verified
-directly against the real store (2026-09-28): EM's `columns 1..K` have
-*zero* instances with both diagnostic columns simultaneously nonzero, on
-held-out validation rows too, giving a trivial, always-correct bag_accuracy
-of 1.0000 that reflects the model's known-by-construction bag label, not
-anything it learned -- excluded from every real writeup
-(docs/stage6_generative_mil.md §5). mi-SVM (independent one-vs-rest scores,
+architecturally, ever place mass on the "wrong" diagnostic column). Such a
+posterior has *zero* instances with both diagnostic columns simultaneously
+nonzero, giving a trivial, always-correct bag_accuracy of 1.0000 that
+reflects the model's known-by-construction bag label, not anything it
+learned (docs/stage6_generative_mil.md §5). mi-SVM (independent one-vs-rest scores,
 no hard mask) and Tier 4's cbr variants (plain softmax, no notion of
 "allowed states" at all) do NOT have this property (16.5% and ~100% of
 instances respectively show real competition between the two diagnostic
@@ -165,8 +163,8 @@ def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
     print(f"  out-of-sample instances across {n_folds} folds: {n_oos}")
 
     # Circularity guard (see module docstring): a method that hard-restricts
-    # each instance to {nulls, own-bag-class} throughout scoring (Model (C),
-    # e.g. EM) can never place mass on the "wrong" diagnostic column, making
+    # each instance to {nulls, own-bag-class} throughout scoring (Model (C))
+    # can never place mass on the "wrong" diagnostic column, making
     # the argmax below trivially, always correct -- not a finding. Checked
     # directly on real out-of-sample data, not assumed from the method name.
     competition_frac = diagnostic_column_competition_frac(fold_data)

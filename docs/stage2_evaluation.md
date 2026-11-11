@@ -1,5 +1,7 @@
 # Stage 2 — evaluation reframing and Tier 0
 
+> **Note (`review-refactor`).** Files referenced below that paper v2.3 does not use were removed from the repository; they remain in the `mil-reframe` history.
+
 **Status: complete.** Branch `mil-reframe`. Core: `src/utils/statistical_evaluation.py`.
 Wired through `pipeline/evaluation_stage.py`, new `pipeline/mil_eval_stage.py`,
 `pipeline/run_suite.py`, `patch_cbr_metrics.py`, `paper/gen_appendix_tables.py`.
@@ -267,7 +269,7 @@ already made mid-Stage-2.
 ## 6. What Stage 3 inherits
 
 - `bag_decisions`, `pool_instance_scores`, `aggregate_bag_scores_across_folds`, and
-  `bag_level_bootstrap` are the stable primitives every later MIL tier (mi-SVM, EM,
+  `bag_level_bootstrap` are the stable primitives every later MIL tier (mi-SVM,
   attention, generative) is measured against — Tier 0's numbers in §2 are the
   reference row.
 - The `SCALAR_METRIC_KEYS` / `build_summary_rows` schema (`bag_*` primary,

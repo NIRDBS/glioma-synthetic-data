@@ -11,10 +11,9 @@ file when a method changes; record numbers elsewhere.
 Code: `src/models/cvae.py`, `src/models/losses.py`, `pipeline/cvae_stage.py`
 (`_train_one_fold`, `run_local`), `pipeline/modal_cvae.py` (`run_on_modal`,
 resume-checkpoint upload/download), `pipeline/run_suite.py`. Diagnostics:
-`scripts/plot_beta_sweep_recon_loss.py`, `scripts/plot_suite600_loss_curves.py`,
-`scripts/plot_beta_window_continuation.py`,
-`scripts/plot_beta_window_continuation_kl.py`, `scripts/compute_synth_std_ratio.py`,
-`scripts/compute_within_vs_between_slide_variance.py`. Promotion tooling:
+`scripts/plot_beta_sensitivity_combined.py`; the per-sweep loss-curve plots and the
+`compute_synth_std_ratio.py` / `compute_within_vs_between_slide_variance.py`
+diagnostics were removed (not in paper v2.3; `mil-reframe` history). Promotion tooling:
 `scripts/concat_cvae_history.py`. Tests: `tests/test_cvae_resume.py`. Configs:
 `configs/exp_501.yaml` (corrected baseline), `configs/exp_601.yaml`–`exp_609.yaml`.
 
@@ -22,8 +21,8 @@ resume-checkpoint upload/download), `pipeline/run_suite.py`. Diagnostics:
 
 ## 1. Motivation: diagnosing decoder collapse
 
-This investigation was triggered by a finding from the CVAE counterfactual probe
-(docs/counterfactual_probe.md): at the CVAE's original hyperparameters (β=2.0), the
+This investigation was triggered by a finding from a CVAE counterfactual analysis
+(decoding the same latent $z$ under both class labels): at the CVAE's original hyperparameters (β=2.0), the
 decoder was found to reconstruct close to a near-constant per-class mean spectrum
 regardless of the input's own latent code — a **posterior/decoder collapse**, not a
 genuine per-instance effect. This was confirmed, not assumed, via three independent
@@ -65,8 +64,7 @@ $$\mathcal{L} = \mathcal{L}_{\text{recon}} + \beta \cdot \mathcal{L}_{\text{KL}}
   $\mathcal{N}(0,I)$.
 - $\mathcal{L}_{\text{class}}$: categorical cross-entropy of the encoder's auxiliary
   class head (`class_pred`) against the true label; $\alpha{=}0.2$, held fixed
-  throughout this sweep (not itself the swept parameter — see
-  docs/counterfactual_probe.md's α=0 ablation for that axis).
+  throughout this sweep (not itself the swept parameter).
 
 **Mechanism linking β to collapse.** The decoder is conditioned on the true class
 label directly (`Concatenate()([z, label])`), so it has two ways to minimize

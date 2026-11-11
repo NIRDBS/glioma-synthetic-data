@@ -126,7 +126,6 @@ mil:
   pi_floor: 0.02
   svm_subsample_per_bag: 500
   cbr_temperature: 0.001
-  bayes: {}   # defaults: pca_components=10, n_chains=3, n_iter=600, burn_in=200, thin=5
 
 output:
   output_base: "results"
@@ -144,12 +143,12 @@ notes: |
     values), so exp_501's/exp_607's/exp_2.608's TRTR models are not valid
     references for this dataset.
   - This dataset's HDF5 has no tissue_cluster/viable_legacy columns (v2 has
-    no clustering stage at all) -- Tier 2 (EM, which reads tissue_cluster)
-    and the spatial-validation script's external-agreement check (which
-    reads viable_legacy) are not applicable here without further work; Tier 1
-    (mi-SVM) does not use tissue_cluster and is unaffected.
-  - MIL tiers requested: Tier 1 (mi-svm), Tier 3 (attention), Tier 4 (cbr),
-    Tier 5 (bayes_mil) -- run via pipeline/mil_fit_stage.py,
+    no clustering stage at all) -- the spatial-validation script's
+    external-agreement check (which reads viable_legacy) is not applicable
+    here without further work; the MIL tiers do not use tissue_cluster and
+    are unaffected.
+  - MIL tiers requested: Tier 1 (mi-svm), Tier 3 (attention), Tier 4 (cbr) --
+    run via pipeline/mil_fit_stage.py,
     pipeline/mil_attention_stage.py directly, same as exp_607/608/2.608's own
     Tier 3/4 runs (mil_fit/mil_eval deliberately excluded from
     pipeline.stages above, consistent with every other Suite 600 config).

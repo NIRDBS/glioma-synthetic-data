@@ -21,11 +21,11 @@ def _subsample_for_svm(bag_ids, cap_per_bag, seed):
     Cap each bag's contribution to at most ``cap_per_bag`` instances, for the
     SVM *fitting* step only -- scoring (predict_proba) still runs on every
     instance in the fold. Apollo's RBF SVM scales badly with sample count,
-    and Stage 4 deliberately retired the old global `patient_cap` (mi-SVM/EM
-    need every instance available for scoring/relabeling) -- so training set
+    and Stage 4 deliberately retired the old global `patient_cap` (mi-SVM
+    needs every instance available for scoring/relabeling) -- so training set
     size grew roughly 10x versus any previous Apollo fit in this project
     (patient_cap=500/slide capped every prior TRTR/TSTR/TSRTR run to ~29k
-    instances total; mi-SVM/EM see full, uncapped folds, ~230k). Confirmed
+    instances total; mi-SVM sees full, uncapped folds, ~230k). Confirmed
     empirically to make a single SVM fit impractically slow at that scale.
 
     This re-caps only what actually needs it (the SVM's own training set),

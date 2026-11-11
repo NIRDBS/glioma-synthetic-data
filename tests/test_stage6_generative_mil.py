@@ -231,15 +231,14 @@ def test_score_one_fold_cbr_not_in_default_methods_but_in_all_methods():
 
 
 # ---------------------------------------------------------------------------
-# 4. scripts/stage6_bag_eval.py's circularity guard -- the real bug this
-# stage's own real-data run surfaced for EM (docs/stage6_generative_mil.md
+# 4. scripts/stage6_bag_eval.py's circularity guard (docs/stage6_generative_mil.md
 # §5): a method that hard-restricts every instance to {nulls, own-bag-class}
 # throughout scoring makes K-diagnostic-column bag classification trivially,
 # vacuously correct. This must stay caught, not silently regress.
 # ---------------------------------------------------------------------------
 
 def test_diagnostic_column_competition_frac_detects_hard_masked_posterior():
-    """The exact EM shape: every instance has exactly one nonzero diagnostic
+    """A hard-masked Model (C) shape: every instance has exactly one nonzero diagnostic
     column (its own bag's known class) -- zero real competition."""
     from scripts.stage6_bag_eval import diagnostic_column_competition_frac
 

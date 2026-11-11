@@ -270,7 +270,6 @@ docs/stage6_generative_mil.md §4 respectively — not re-run here):
 | method | Moran's I (lag 3) | mean p | mean z | variogram range | shuffled control |
 |---|---|---|---|---|---|
 | mi-SVM (Tier 1) | +0.006 | 0.361 | +1.5 | median 2px | **failed — z=+5.01 shuffled vs +1.50 real; dropped** |
-| EM (Tier 2) | — | — | — | collapsed (variogram ≡ 0) | not run (moot) |
 | **attention (Tier 3)** | **+0.024** | **0.111** | **+5.6** | median 2.0px | **failed — z=+14.70 shuffled vs +5.63 real; dropped** |
 | CbR reconstruction (Tier 4) | +0.122 | 0.028 | +29.4 | median 3.0px | not run yet (needs CVAE retrain) |
 | CbR encoder_head (Tier 4) | +0.049 | 0.057 | +11.1 | median 3.0px | not run yet (needs CVAE retrain) |
@@ -335,7 +334,7 @@ legitimate engineering work over §5a's outcome.
   result (early stop at epoch 15 vs. the real fit's 40, `sub_bag_null_rate`
   jumping from 0.0000 to 0.3368) before being trusted for the full run.
 - **New `tests/test_stage5_spatial.py` cases for `hard_diagnostic_threshold`**
-  (2026-09-29): confirms mi-SVM/EM stay at a flat 0.5, confirms the K=2
+  (2026-09-29): confirms mi-SVM stays at a flat 0.5, confirms the K=2
   joint-softmax cutoff is exactly 1/6, confirms the cutoff loosens (but
   stays below 0.5) as K grows.
 - **Full suite re-run against `tests/` (this pass, 2026-09-29): 152

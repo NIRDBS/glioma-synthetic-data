@@ -4,8 +4,8 @@ Synthesis of what this project's experiments establish, intended as source mater
 paper's Results and Discussion sections. Analysis, not publication prose: tables, exact
 statistical support, and precise characterization of what is and is not established. Companion
 to `docs/mil_tiers_methodology.md` (methods only, no results). Full per-tier derivations:
-`docs/stage4_mil.md` (Tiers 1–2), `docs/stage5_spatial_validation.md` (spatial validation,
-Tiers 1–2, cross-tier synthesis), `docs/stage6_attention_mil.md` (Tier 3),
+`docs/stage4_mil.md` (Tier 1), `docs/stage5_spatial_validation.md` (spatial validation,
+Tier 1, cross-tier synthesis), `docs/stage6_attention_mil.md` (Tier 3),
 `docs/stage6_generative_mil.md` (Tier 4).
 
 All values below are read directly from persisted result files
@@ -16,17 +16,17 @@ transcribed from console logs or recalled from memory.
 
 ## 0. Experiment Overview
 
-Four MIL tiers — mi-SVM (Tier 1), EM (Tier 2), gated-attention MIL (Tier 3), generative/CbR-based
-MIL (Tier 4, two variants) — each fit on `exp_501` (binary IDH-mutant vs. wildtype), evaluated at
+Three MIL tiers — mi-SVM (Tier 1), gated-attention MIL (Tier 3), generative/CbR-based MIL
+(Tier 4, two variants) — each fit on `exp_501` (binary IDH-mutant vs. wildtype), evaluated at
 bag level against all four Tier 0 classifiers and, where a real posterior existed, against a
 lag-banded spatial-coherence test with a shuffled-bag-label control. Naive pooling (Tier 0) is
-the reference, not a tier under test. §1–§3 below cover `exp_501` only; §8 extends this to five
-further experiments (the CVAE β sweep and the v2-preprocessing replication), and §9 maps which
+the reference, not a tier under test. §1–§2 below cover `exp_501` only; §7 extends this to five
+further experiments (the CVAE β sweep and the v2-preprocessing replication), and §8 maps which
 remaining experiments in the current paper's family (`exp_5xx`–`exp_7xx`) do and do not have MIL
 results.
 
-**Comparability constraint.** mi-SVM/EM's fits predate the discovery that slide
-`HF-1887_via-t_2_1.h5_3` was silently excluded from every prior analysis. Their bag-level
+**Comparability constraint.** mi-SVM's fit predates the discovery that slide
+`HF-1887_via-t_2_1.h5_3` was silently excluded from every prior analysis. Its bag-level
 numbers are computed on **n=58** bags; Tier 3/Tier 4's are computed on the corrected **n=59**.
 The two sample sizes correspond to slightly different Tier 0 reference numbers, reported
 separately in both tables below. mi-SVM was not refit after the correction: its spatial claim
@@ -56,7 +56,6 @@ CNN specifically (~20 points).
 | tier | n | bag acc (F1, κ) | Δ vs CNN | Δ vs Apollo | Δ vs RF | Δ vs XGBoost |
 |---|---|---|---|---|---|---|
 | mi-SVM (Tier 1) | 58 | 0.6897 (0.689, 0.385) | +0.086, CI[−0.017,+0.190], p=0.126 | −0.069, CI[−0.190,+0.035], p=0.238 | **−0.121, CI[−0.225,−0.017], p=0.046** | **−0.121, CI[−0.225,−0.017], p=0.046** |
-| EM (Tier 2) | — | excluded — §1.2 | — | — | — | — |
 | attention (Tier 3) | 59 | 0.6441 (0.623, 0.257) | +0.051, CI[−0.102,+0.203], p=0.604 | **−0.119, CI[−0.220,−0.034], p=0.012** | **−0.170, CI[−0.288,−0.068], p=0.002** | **−0.170, CI[−0.288,−0.068], p=0.002** |
 | CbR `reconstruction` (Tier 4) | 59 | 0.7119 (0.711, 0.423) | +0.119, CI[−0.051,+0.254], p=0.150 | −0.051, CI[−0.169,+0.051], p=0.474 | −0.102, CI[−0.203,0.000], p=0.104 | −0.102, CI[−0.203,0.000], p=0.104 |
 | CbR `encoder_head` (Tier 4) | 59 | 0.7966 (0.786, 0.577) | **+0.203, CI[+0.085,+0.339], p=0.006** | +0.034, CI[−0.034,+0.102], p=0.410 | −0.017, CI[−0.051,0.000], p=0.694 | −0.017, CI[−0.051,0.000], p=0.694 |
@@ -64,18 +63,7 @@ CNN specifically (~20 points).
 Bold indicates statistical significance at the 95% level. All other cells are non-significant
 ties, in either direction, not demonstrated wins or losses.
 
-### 1.2 Invalidity of EM's Bag Accuracy
-
-A naive bag-classification accuracy, computed identically to §1.1, gives EM a perfect
-**1.0000**. This value is provably meaningless, not a finding: Model (C)'s hard support
-restriction confines every instance's state to `{null_1, null_2, null_3, Y_b}` — its own bag's
-already-known label, never another bag's — so the metric recovers the label EM was given, not
-one it inferred. Verified directly: 0% of instances, including held-out ones, ever show
-competition between diagnostic columns. Excluded from every comparison in §1.1, with a
-permanent code guard (`diagnostic_column_competition_frac`) preventing recurrence for any future
-Model-(C)-constrained formulation.
-
-### 1.3 Interpretation
+### 1.2 Interpretation
 
 - RF and XGBoost are not significantly beaten by any MIL tier, in either direction, anywhere in
   this project. The strongest MIL result (`encoder_head`) is a statistical tie with both, not a
@@ -105,7 +93,6 @@ the permuted labels.
 | tier | real lag-3 (I, z) | shuffled lag-3 (I, z) | variogram range (real / shuffled) | verdict |
 |---|---|---|---|---|
 | mi-SVM (Tier 1) | +0.006, z=+1.5 | +0.018, z=+5.01 | 2px / 2px | failed — dropped |
-| EM (Tier 2) | variogram ≡ 0 (collapsed) | not run (moot) | n/a | no claim produced |
 | attention (Tier 3) | +0.0236, z=+5.63 | +0.0613, z=+14.70 | 2.0px / 2.0px | failed — dropped |
 | CbR `reconstruction` (Tier 4) | +0.122, z=+29.4 | +0.1253, z=+32.31 | 3.0px / 3.0px | failed — dropped |
 | CbR `encoder_head` (Tier 4) | +0.049, z=+11.1 | +0.0485, z=+11.04 | 3.0px / 2.0px | failed — numerically identical, dropped |
@@ -128,15 +115,14 @@ over 100 epochs, direct independent evidence of this flexibility — produces a 
 regardless of the label, since the coherence never originated from the label.
 
 **Methodological note.** The two-statistic design (scale-free Moran's I + scale-sensitive
-variogram) is what distinguishes EM's collapse (floating-point noise around a constant,
-initially misread as significant) from a genuine signal; the shuffled-label control is what
-identifies the remaining four false positives. The validation pipeline performed as designed;
+variogram) guards against reading a numerically constant map as significant; the
+shuffled-label control is what identifies the four false positives. The validation pipeline performed as designed;
 the result it returns is negative.
 
 ### 2.2 Agreement with Unsupervised Tissue Clustering
 
 Hard-threshold ARI/AMI against the legacy unsupervised cluster selection (`viable_legacy`) — not
-ground truth (no tumor annotation of any kind exists in this dataset; §4).
+ground truth (no tumor annotation of any kind exists in this dataset; §3).
 
 | tier | ARI | AMI | "diagnostic" fraction |
 |---|---|---|---|
@@ -153,26 +139,7 @@ here unchanged.)
 
 ---
 
-## 3. π_b External Validity — Tier 2 (EM)
-
-- $\pi_b$ (the inferred per-bag diagnostic fraction) remains pinned near the numerical
-  identifiability floor across two independent full refits: range **[0.0200, 0.0443]** over 59
-  bags, $\text{std}=0.0031$.
-- Spearman correlation against three independent NMF/GMM tissue-cluster proportions and against
-  the `viable_legacy` fraction: $\rho \in [-0.16, +0.14]$, every $p>0.19$ ($n=59$) — null,
-  agreeing with §2.2's ARI/AMI-based null result via an independent statistic.
-- $\sigma$ (the population spread of logit $\pi_b$) hits the 0.000 boundary in most folds on both
-  refits, and which folds collapse differs between the two nominally identical reruns (same
-  seed, same code) — informal evidence of poor identifiability at this bag count, consistent
-  with the plan's pre-registered expectation, though short of a formal profile-likelihood
-  criterion (not constructed).
-
-**Conclusion.** EM recovers no genuine, externally verifiable per-bag signal at 58–59 bags:
-$\pi_b$ is close to a single global constant, not an informative per-slide estimate.
-
----
-
-## 4. Absence of Instance-Level Ground Truth
+## 3. Absence of Instance-Level Ground Truth
 
 No instance-level (pixel-level) tumor annotation exists anywhere in this dataset, at any point
 in this project's history. `viable_legacy` and `tissue_cluster` are both the output of an
@@ -188,7 +155,7 @@ assumption.
 
 ---
 
-## 5. Methodological Corrections
+## 4. Methodological Corrections
 
 Each item independently verifiable from the code or tests, not merely asserted:
 
@@ -211,42 +178,36 @@ Each item independently verifiable from the code or tests, not merely asserted:
 
 ---
 
-## 6. Summary of Claims
+## 5. Summary of Claims
 
 **Established, positive.**
-- The MIL reframing is justified by direct evidence, not principle alone (§4): every prior
+- The MIL reframing is justified by direct evidence, not principle alone (§3): every prior
   instance-level label was unsupervised-derived.
 - `encoder_head` (Tier 4) is a bag-level classifier statistically tied with the strongest
   conventional methods (Apollo/RF/XGBoost) and significantly ahead of the weakest one (CNN), at
   zero additional training cost.
 - The spatial-validation methodology (lag-banded two-statistic design + shuffled-label control)
-  correctly detects a scale-free-statistic artifact (EM) and four label-independent false
-  positives (mi-SVM, attention, both CbR variants).
+  correctly identifies four label-independent false positives (mi-SVM, attention, both CbR
+  variants).
 - Multiple independently verifiable bugs in the pre-MIL evaluation pipeline were found and fixed
-  (§5); the numbers reported here reflect the corrected pipeline.
+  (§4); the numbers reported here reflect the corrected pipeline.
 
 **Established, negative — equally rigorous, not lesser findings.**
 - No MIL tier significantly beats the strongest conventional classifiers (RF, XGBoost) at
   bag-level diagnosis; two tiers are significantly worse.
 - No MIL tier's posterior map demonstrates spatial coherence attributable to the true diagnostic
   label; all four testable claims failed an adversarial shuffled-label control.
-- $\pi_b$ shows no detectable relationship to any independent tissue-composition proxy available
-  in this project, and remains pinned near its numerical floor.
 
 **Open.**
 - Whether 58–59 bags is fundamentally insufficient for pixel-level latent inference in this
-  setting, versus these five specific formulations simply not finding it. The project's checks
+  setting, versus these specific formulations simply not finding it. The project's checks
   establish "not demonstrated," not "impossible."
-- EM's collapse root cause (genuine weak signal vs. this specific configuration) — deferred, not
-  pursued further (2026-09-29 decision).
 - Tier 3's inner-validation-vs-true-test generalization gap (0.893 vs. 0.644 bag accuracy) —
   deferred, not pursued further (2026-09-29 decision).
-- $\sigma$'s formal identifiability (a profile-likelihood interval, the plan's stated criterion)
-  — informal evidence only (§3); not constructed.
 
 ---
 
-## 7. Stages 7–8: Disposition
+## 6. Stages 7–8: Disposition
 
 Not pursued, by deliberate decision (2026-09-30), given the results above — not merely
 unstarted. Stage 7 (CVAE soft conditioning) requires selecting a posterior to condition
@@ -260,38 +221,26 @@ hard support) than the full mixture would require. The experimental programme is
 complete for writing up Stages 0–6; `docs/MIL_REFRAME_PLAN.md` §13 carries the full backlog if
 either stage is revisited.
 
-**Addendum.** A free-standing analysis was added after this section was written: a CVAE
-counterfactual probe (`docs/counterfactual_probe.md`) — decode the same latent $z$ under both
-class labels and treat the difference as a learned "IDH effect" spectrum. Unlike every result
-above, its shuffled-label control is genuinely mixed, not uniformly negative: the Δ spectrum's
-magnitude and cross-fold consistency fail the same way every tier above did (shuffled ≥ real),
-but an independent classifier's counterfactual-flip rate does not (real ≫ shuffled, 99.87%/91.16%
-vs. 41.13%/52.84%) — the first statistic in this project to survive an adversarial shuffled-label
-control. A follow-up $\alpha=0$ ablation (retraining the CVAE with its auxiliary class head's
-loss weight zeroed, real GPU cost, run 2026-09-30) settled the architectural concern that
-motivated this check: every statistic is unchanged, within noise, whether that head trains or
-not — the flip-to-target finding does not depend on it. See that document for the full write-up.
-
 ---
 
-## 8. Replication Across CVAE β and Preprocessing Variant
+## 7. Replication Across CVAE β and Preprocessing Variant
 
 Five further experiments carry MIL results beyond `exp_501`: three CVAE β values under v1
 preprocessing (`exp_607`: β=0.25, `exp_608`: β=0.5, `exp_609`: β=0.75 — TRTR reused unchanged
 from `exp_501`, so the Tier 0 reference table is §1.0's n=59 column throughout) and two
 v2-preprocessing replications of the first two β values (`exp_2.607`: β=0.25, `exp_2.608`:
-β=0.5). All five share `exp_501`'s n=59 bag count and evaluation machinery (§9).
+β=0.5). All five share `exp_501`'s n=59 bag count and evaluation machinery (§8).
 
 **Coverage is uneven across these five experiments** — different runs evaluated against
 different subsets of the four Tier 0 references, and not every tier/variant carries a
 shuffled-label control. Each table below states exactly which comparisons exist; a cell is
 never filled in by inference from another experiment.
 
-### 8.1 mi-SVM and Tier 5 Are Invariant to β
+### 7.1 mi-SVM Is Invariant to β
 
-mi-SVM (Tier 1) and Bayesian MIL (Tier 5) fit on PCA-reduced raw spectral features, never the
-CVAE latent space (`docs/mil_tiers_methodology.md` §1.1) — their results cannot depend on which
-β an experiment otherwise trains, and do not: both are bit-for-bit identical across all three of
+mi-SVM (Tier 1) fits on raw spectral features, never the CVAE latent space
+(`docs/mil_tiers_methodology.md` §1.1) — its results cannot depend on which β an experiment
+otherwise trains, and do not: they are bit-for-bit identical across all three of
 `exp_607`/`608`/`609`, and identical again (at different values, from a different dataset) across
 both of `exp_2.607`/`2.608`. Reported once per preprocessing version rather than three times.
 
@@ -303,28 +252,7 @@ both of `exp_2.607`/`2.608`. Reported once per preprocessing version rather than
 mi-SVM ties Apollo under v1 preprocessing but loses significantly under v2 — the only case in
 this replication where a tier's significance verdict flips with the preprocessing variant.
 
-### 8.2 Bayesian MIL (Tier 5): Genuine Blind Classification, Not the Circular Metric
-
-`stage6_bag_eval.py`'s posterior for this tier is scored by `score_bayes_mil`, which — exactly
-like Tier 2's EM (§1.2) — is handed each bag's already-known label and asked what fraction of
-its instances match it (`docs/mil_tiers_methodology.md` §8.2, §9.1). Confirmed directly:
-`k_diagnostic_columns_competition_frac=0.0000` in every one of these files. The resulting
-bag accuracy (0.9153 in every v1 config) is excluded here for the same reason EM's 1.0000 was
-excluded in §1.2.
-
-The non-circular alternative, `score_bayes_mil_blind` (`tier5_blind_bag_classification.py`),
-never receives $Y_b$ and evaluates each candidate class's posterior-predictive likelihood
-directly:
-
-| preprocessing | merged bag acc ($n$=59) | vs Apollo |
-|---|---|---|
-| v1 (607/608/609) | 0.7288 | −0.0327, CI[−0.153,+0.068], p=0.668 |
-| v2 (2.607/2.608) | 0.7119 | −0.0339, CI[−0.136,+0.051], p=0.592 |
-
-A non-significant tie with Apollo, both preprocessing versions, invariant to β — consistent with
-§8.1's mi-SVM result and with no other tier's win in this project.
-
-### 8.3 Attention MIL (Tier 3): Significantly Loses to Apollo at Every β
+### 7.2 Attention MIL (Tier 3): Significantly Loses to Apollo at Every β
 
 **Correction (2026-10-19).** This table previously reported incorrect `exp_608`/`609`/`2.607`/`2.608`
 accuracies and an incorrect `exp_607` delta, from a transcription error in an earlier manual
@@ -340,13 +268,13 @@ entirely) before replacing the numbers below.
 | 0.25 | v2 (`exp_2.607`) | 0.5932 (0.556, 0.140) | not evaluated | **−0.1525, CI[−0.254,−0.034], p=0.008** |
 | 0.5 | v2 (`exp_2.608`) | 0.5932 (0.504, 0.109) | not evaluated | **−0.1525, CI[−0.254,−0.051], p=0.010** |
 
-**Remark.** `exp_501`'s significant loss to Apollo (§1.3) is not a one-off: it replicates at
+**Remark.** `exp_501`'s significant loss to Apollo (§1.2) is not a one-off: it replicates at
 every β and both preprocessing versions tested. Under v1 preprocessing, accuracy and $\kappa$
 rise monotonically with β (0.525→0.559→0.610; $\kappa$ 0.021→0.060→0.165, always positive — not
 below chance-weighted agreement at any β), and the loss to Apollo *narrows* accordingly
 (−0.237→−0.203→−0.153) while remaining significant throughout.
 
-### 8.4 Generative MIL (Tier 4): CbR Variants
+### 7.3 Generative MIL (Tier 4): CbR Variants
 
 | β | preprocessing | variant | acc (F1, κ) | vs CNN | vs Apollo |
 |---|---|---|---|---|---|
@@ -366,11 +294,7 @@ p=0.006) replicates under a different preprocessing version: `exp_2.608` (β=0.5
 same comparison at p=0.048. Every `reconstruction` comparison across both preprocessing versions
 is a non-significant tie in either direction.
 
-`latent_rf` (Tier 4's third variant) was evaluated once, at β=0.25 (`exp_607`) only: acc=0.7288
-(F1 0.715, κ 0.436), vs CNN +0.0203, CI[−0.102,+0.136], p=0.842 — not replicated at any other β
-or preprocessing version.
-
-### 8.5 Spatial Coherence: Same Verdict at Every β and Preprocessing Variant
+### 7.4 Spatial Coherence: Same Verdict at Every β and Preprocessing Variant
 
 Same lag-banded Moran's I / variogram design as §2. A tier/variant is marked "no control" where
 no shuffled-label fit exists in `results/{exp}/spatial_validation/` — absence of a control, not a
@@ -398,18 +322,14 @@ pass.
 | CbR `encoder_head` | 0.75 | v1 (609) | +0.0612, z=+14.12 | +0.0581, z=+13.57 | failed — dropped |
 | CbR `encoder_head` | 0.25 | v2 (2.607) | +0.0508, z=+10.89 | +0.0410, z=+8.46 | failed — dropped |
 | CbR `encoder_head` | 0.5 | v2 (2.608) | +0.0504, z=+10.54 | +0.0385, z=+7.98 | failed — dropped |
-| Bayesian MIL (Gibbs) | any | v1 (607/608/609, identical) | +0.1336, z=+33.66 | **no shuffled control exists for this tier in the codebase** | open — see remark |
 
 **Remark.** Every shuffled-label comparison that could be run reaches the same verdict as
-`exp_501`'s original five: label-independent tissue autocorrelation, not label-driven structure.
-mi-SVM under v1 preprocessing and Bayesian MIL at every β are exceptions only because no
-shuffled-label control was ever run for them, not because either passed one — mi-SVM's real
-lag-3 $z\approx1.2$ is itself weak evidence of coherence regardless; Bayesian MIL's real lag-3
-coherence ($z$=+33.66, the strongest of any tier) is therefore the one spatial result in this
-entire project that has never been tested against an adversarial control, and should not be read
-as label-driven on that basis (§9's open-items list carries this forward).
+`exp_501`'s original four: label-independent tissue autocorrelation, not label-driven structure.
+mi-SVM under v1 preprocessing is an exception only because no shuffled-label control was run for
+it, not because it passed one — its real lag-3 $z\approx1.2$ is itself weak evidence of
+coherence regardless.
 
-### 8.6 External Agreement vs. `viable_legacy`
+### 7.5 External Agreement vs. `viable_legacy`
 
 Only defined for v1 preprocessing — `viable_legacy` does not exist as a column in v2-preprocessed
 data, so this check is not applicable (not merely unrun) for `exp_2.607`/`2.608`.
@@ -427,31 +347,28 @@ data, so this check is not applicable (not merely unrun) for `exp_2.607`/`2.608`
 | CbR `encoder_head` | 0.25 (607) | −0.0538 | 0.0128 |
 | CbR `encoder_head` | 0.5 (608) | −0.0435 | 0.0079 |
 | CbR `encoder_head` | 0.75 (609) | −0.0484 | 0.0100 |
-| Bayesian MIL (Gibbs) | any (607/608/609, identical) | 0.0071 | 0.00016 |
 
 Uniformly weak to null at every β, consistent with `exp_501`'s §2.2 conclusion — no β recovers a
 positive external-agreement signal this check did not already rule out.
 
-### 8.7 Interpretation
+### 7.6 Interpretation
 
 - The β sweep and the v2-preprocessing replication change no qualitative conclusion from `exp_501`:
   no tier reaches significant spatial coherence under its shuffled-label control at any β or
-  preprocessing variant tested with a control available (§8.5).
-- Two tiers are structurally invariant to β (§8.1–§8.2) because neither uses the CVAE latent
-  space; this is a property of their formulation, not a finding that needed five reruns to
+  preprocessing variant tested with a control available (§7.4).
+- mi-SVM is structurally invariant to β (§7.1) because it does not use the CVAE latent
+  space; this is a property of its formulation, not a finding that needed five reruns to
   discover, and is reported once rather than repeated per β.
-- Attention's significant loss to Apollo (`exp_501`, §1.3) replicates at every β and preprocessing
-  variant tested — though under v1 preprocessing the loss *narrows* as β increases (§8.3), the
+- Attention's significant loss to Apollo (`exp_501`, §1.2) replicates at every β and preprocessing
+  variant tested — though under v1 preprocessing the loss *narrows* as β increases (§7.2), the
   opposite of "worsens" — and replicates independently under v2 preprocessing at both β values tested
-  (§8.3) — the most consistently negative result in this project.
-- `encoder_head`'s single significant win (`exp_501` vs. CNN, §1.3) replicates once, at β=0.5
-  under v2 preprocessing (§8.4) — not at every β, and not against Apollo at any β tested.
-- Bayesian MIL's real spatial coherence is the strongest of any tier measured ($z$=+33.66) and
-  the only one with no shuffled-label control at all (§8.5) — a genuine open item, not a result.
+  (§7.2) — the most consistently negative result in this project.
+- `encoder_head`'s single significant win (`exp_501` vs. CNN, §1.2) replicates once, at β=0.5
+  under v2 preprocessing (§7.3) — not at every β, and not against Apollo at any β tested.
 
 ---
 
-## 9. Experiment Coverage Map
+## 8. Experiment Coverage Map
 
 Scope: the current paper's experiment family (`exp_5xx` onward — earlier suites, `exp_1xx`
 through `exp_4xx`, predate the MIL reframing entirely and are out of scope, not "missing"
@@ -459,14 +376,13 @@ results). Status as of this writing; `exp_4.608` is mid-run.
 
 | experiment | what it is | MIL results |
 |---|---|---|
-| `exp_501` | v1 preprocessing, β=2.0 (original) | Full — §1–§3 |
-| `exp_607` | v1 preprocessing, β=0.25 | Full — §8 |
-| `exp_608` | v1 preprocessing, β=0.5 | Full — §8 |
-| `exp_609` | v1 preprocessing, β=0.75 | Full — §8 |
-| `exp_2.607` | v2 preprocessing, β=0.25 | Full — §8 |
-| `exp_2.608` | v2 preprocessing, β=0.5 | Full — §8 |
+| `exp_501` | v1 preprocessing, β=2.0 (original) | Full — §1–§2 |
+| `exp_607` | v1 preprocessing, β=0.25 | Full — §7 |
+| `exp_608` | v1 preprocessing, β=0.5 | Full — §7 |
+| `exp_609` | v1 preprocessing, β=0.75 | Full — §7 |
+| `exp_2.607` | v2 preprocessing, β=0.25 | Full — §7 |
+| `exp_2.608` | v2 preprocessing, β=0.5 | Full — §7 |
 | `exp_2.609` | v2 preprocessing, β=0.75 | Not run |
-| `exp_3.608` | v1 preprocessing, training restricted to the legacy `viable_legacy` tumour mask, β=0.5 | Not run |
 | `exp_4.608` | v3 preprocessing (fixed intensity threshold 0.4), β=0.5 | In progress (fit stage only) |
 | `exp_601`–`606` | CVAE β/epoch-schedule sweep without a dedicated MIL follow-up | Not run |
 | `exp_701` | latent-dim ablation, dim=16 | Not run |
@@ -476,6 +392,6 @@ results). Status as of this writing; `exp_4.608` is mid-run.
 | `exp_705` | synth/real ratio ablation, ratio=0.5 | Not run |
 | `exp_706` | synth/real ratio ablation, ratio=2.0 | Not run |
 
-Nine experiments in the current paper's family carry no MIL fit of any kind. This is a scope
-statement, not an implied finding — §6–§8's conclusions apply only to the six experiments
+Eight experiments in the current paper's family carry no MIL fit of any kind. This is a scope
+statement, not an implied finding — §5–§7's conclusions apply only to the six experiments
 actually tested.

@@ -6,7 +6,7 @@ results/{exp}/latent/attention_bag_level.json).
 Why this is a SEPARATE script from scripts/stage6_bag_eval.py rather than
 another --method choice there: that script reads the latent-label STORE's
 per-instance posterior and pools it (mean, across folds) -- correct for
-mi-SVM/EM/Tier 4, whose evaluation doesn't depend on attention. For Tier 3,
+mi-SVM/Tier 4, whose evaluation doesn't depend on attention. For Tier 3,
 the store's per-instance posterior is deliberately attention-FREE (right
 for Stage 5's spatial validation, wrong for bag classification -- see
 AttentionMIL.bag_posterior's docstring and docs/stage6_generative_mil.md's

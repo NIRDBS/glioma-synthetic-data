@@ -67,7 +67,7 @@
     "status": "running",
     "last_run_date": "2026-10-27T10:49:12.301851",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Completes the v2 beta sweep alongside exp_2.607/exp_2.608. Queued behind exp_3.608 (currently running) to avoid overloading local resources with simultaneous heavy jobs."
+    "notes": "Completes the v2 beta sweep alongside exp_2.607/exp_2.608."
   },
   "exp_4.608": {
     "created_date": "2026-10-13T00:00:00.000000",

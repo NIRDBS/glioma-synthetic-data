@@ -11,9 +11,8 @@
 # max_intensity >= 0.6, _archive/dev_scripts/batch_process_all_slides.py) --
 # so 0.4 here tests a WIDER mask than the project's actual current default,
 # continuing the observed trend, not an isolated new idea. This is a
-# different preprocessing pipeline (v3, glioma-preproc-3.h5), not an instance
-# filter like exp_3.608's viable_legacy ablation -- nothing is reused from
-# exp_608/exp_501/exp_3.608: own TRTR, own CVAE, own everything.
+# different preprocessing pipeline (v3, glioma-preproc-3.h5) -- nothing is
+# reused from exp_608/exp_501: own TRTR, own CVAE, own everything.
 name: exp_4.608
 description: "v3-preprocessing (fixed threshold=0.4) replication of exp_608: same settings (beta=0.5, 120 epochs), new dataset (glioma-preproc-3.h5), full retrain -- nothing transferred"
 version: "1.0"
@@ -136,7 +135,6 @@ mil:
   pi_floor: 0.02
   svm_subsample_per_bag: 500
   cbr_temperature: 0.001
-  bayes: {}   # defaults: pca_components=10, n_chains=3, n_iter=600, burn_in=200, thin=5
 
 output:
   output_base: "results"
@@ -154,13 +152,13 @@ notes: |
     etc.) stays local -- best cost/time balance at the moment, per explicit
     instruction, a deliberate departure from exp_2.607-609's mi-SVM-on-Modal
     pattern.
-  - TRTR is OWN, not reused from exp_501/exp_608/exp_3.608/exp_2.608 -- the
+  - TRTR is OWN, not reused from exp_501/exp_608/exp_2.608 -- the
     training instances themselves changed (different pixels survive the
     mask, different per-spectrum baseline-corrected values), so none of
     those are valid references for this dataset.
   - This dataset's HDF5 has no tissue_cluster/viable_legacy columns (v3 has
-    no clustering stage at all, same as v2) -- Tier 2 (EM) and the spatial-
-    validation script's external-agreement check are not applicable here
-    without further work; Tier 1 (mi-SVM) is unaffected.
-  - MIL tiers requested: Tier 1 (mi-svm), Tier 3 (attention), Tier 4 (cbr),
-    Tier 5 (bayes_mil) -- same pattern as exp_2.607-609/exp_3.608's backlog.
+    no clustering stage at all, same as v2) -- the spatial-validation
+    script's external-agreement check is not applicable here without further
+    work; the MIL tiers are unaffected.
+  - MIL tiers requested: Tier 1 (mi-svm), Tier 3 (attention), Tier 4 (cbr)
+    -- same pattern as exp_2.607-609.

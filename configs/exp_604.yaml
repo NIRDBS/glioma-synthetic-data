@@ -1,5 +1,5 @@
 # Suite 600: CVAE beta tuning, to fix the decoder-collapse failure mode found while
-# building the counterfactual probe (docs/counterfactual_probe.md) -- at beta=2.0,
+# building a CVAE counterfactual analysis -- at beta=2.0,
 # the decoder reconstructs almost a constant per-class mean spectrum regardless of z
 # (reconstruction std measured at 0.1%-16% of real data's own within-class std; the
 # SAME collapse was confirmed in the TSTR/TSRTR synthetic pools too). This config is
@@ -135,9 +135,9 @@ output:
 
 notes: |
   - Suite 600: CVAE beta tuning, to address decoder/posterior collapse found at
-    exp_501's beta=2.0 (docs/counterfactual_probe.md). Every key here is identical
+    exp_501's beta=2.0. Every key here is identical
     to configs/exp_501.yaml except beta, name/description, and the paths/pipeline
     keys needed to make this a standalone experiment with its own output tree.
-  - Evaluate with src/evaluation/synthetic_realism.py::compute_diversity (pairwise-
-    distance diversity_ratio_synth_real) plus a direct reconstruction-std-vs-real-std
-    ratio -- the same two checks that confirmed exp_501's collapse.
+  - Evaluate with a pairwise-distance synthetic/real diversity ratio plus a
+    direct reconstruction-std-vs-real-std ratio -- the same two checks that
+    confirmed exp_501's collapse.

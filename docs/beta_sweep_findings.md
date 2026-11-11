@@ -1,5 +1,7 @@
 # CVAE β Sweep — Findings
 
+> **Note (`review-refactor`).** Files referenced below that paper v2.3 does not use were removed from the repository; they remain in the `mil-reframe` history.
+
 Results companion to docs/beta_sweep_methodology.md (methodology only, no
 numbers). Covers the downstream classification results (TRTR/TSTR/TSRTR
 bag-level accuracy, plus Classification-by-Reconstruction) across all five
@@ -173,9 +175,8 @@ TSTR delta is ever significant either. Full per-β numbers in §1's tables.
   α=0.05 uncorrected, 1-2 nominally "significant" cells are plausible by
   chance alone — none of the single-cell results above (β=0.25's CNN TSRTR
   gain in particular) should be read as confirmed without replication.
-- Tier 3 (attention MIL) and Tier 4 (CbR/encoder_head/latent_rf — a new
-  variant added this session) were also evaluated against `exp_607`'s CVAE;
-  results live in docs/stage6_generative_mil.md and
+- Tier 3 (attention MIL) and Tier 4 (CbR/encoder_head) were also evaluated
+  against `exp_607`'s CVAE; results live in docs/stage6_generative_mil.md and
   docs/stage6_attention_mil.md, not duplicated here. None beat Tier 0's
   RF/XGBoost baseline.
 - `exp_608`/`609` have not had Tier 3/4 run against their CVAEs yet (only

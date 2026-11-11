@@ -93,7 +93,7 @@ RF & $0.83$ & $0.81$ & $0.85$ & $0.83$ & $0.85$ & $0.85$ \\
 \midrule
 mi-SVM & $0.50$ & $1.70$ & $-1.30$ $[-2.50,-0.40]$ & $0.90$ & $5.20$ & $-4.30$ $[-6.30,-2.40]$ \\
 CVAE MIL (encoder head) & $5.60$ & $5.60$ & $0.00$ $[-2.80,+2.30]$ & $7.10$ & $6.40$ & $+0.60$* $[+0.10,+3.10]$ \\
-% Bayesian MIL & $0.134$ & $0.116$ & $+0.018$ $[-0.012,+0.047]$ & $0.226$ & $0.264$ & $-0.038$ $[-0.097,+0.020]$ \\
+% Commented-out row & $0.134$ & $0.116$ & $+0.018$ $[-0.012,+0.047]$ & $0.226$ & $0.264$ & $-0.038$ $[-0.097,+0.020]$ \\
 \bottomrule
 \end{tabular*}
 \caption{\small Fixture spatial.}
@@ -124,7 +124,7 @@ def test_convert_cells_and_values():
     assert (r'$0.00$\BootStar{sp/2.607/cbr_encoder_head/morans_i} '
             r'\BootCI{sp/2.607/cbr_encoder_head/morans_i}') in new
     assert r'0.60). \\ $\BootSupStar{pool/cnn}$ \rev{\BootText{ratio_star_note}}' in new
-    assert '% Bayesian MIL & $0.134$' in new          # commented rows untouched
+    assert '% Commented-out row & $0.134$' in new          # commented rows untouched
     assert values[('501/apollo/TSTR', 'star')] == '*'
     assert values[('501/cnn/TSTR', 'star')] == ''
     assert values[('501/apollo/TSTR', 'ci')] == '$[-0.36, -0.03]$'

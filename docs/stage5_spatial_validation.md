@@ -7,8 +7,8 @@ agreement) and `scripts/stage5_spatial_validation.py` (the real-data runner).
 > **Reproducing this.** `pytest tests/test_stage5_spatial.py` (14 tests, all
 > synthetic maps of known correlation length — no real-data dependency).
 > Real analysis: `python scripts/stage5_spatial_validation.py --config exp_501
-> --method em` or `--method misvm`. Needs Stage 4's `mil_fit` to have already
-> run for that config.
+> --method misvm`. Needs Stage 4's `mil_fit` to have already run for that
+> config.
 
 ## 1. What this stage checks, and why by lag band
 
@@ -34,8 +34,7 @@ Two complementary statistics are computed at every lag, not one:
   matters.
 - **The empirical variogram** — scale-*sensitive* ($\gamma(h) = \tfrac12
   \,\mathrm{mean}((x_i-x_j)^2)$), so a genuinely constant map reads as
-  exactly zero at every lag, unambiguously. This turned out to be the
-  statistic that mattered (§3).
+  exactly zero at every lag, unambiguously.
 
 Permutation null: shuffle the in-mask values within each slide's own mask
 (geometry held fixed), recompute the statistic, repeat (n=200) to get a
@@ -43,7 +42,7 @@ per-lag p-value/z-score.
 
 ## 2. Real-data results (exp_501)
 
-Both MIL formulations from Stage 4, run against the same 58 slides (one
+mi-SVM from Stage 4, run against 58 slides (one
 slide, `HF-1887_via-t_2_1.h5_3`, had zero covered instances and was skipped —
 consistent with it being the historically excluded slide documented in
 Stage 1).
@@ -55,7 +54,7 @@ Stage 1).
 > file (docs/stage1_data_layer.md §4); the dataset is 59 slides going
 > forward. The numbers in this section were not re-run and still reflect 58 —
 > per the reasoning at the time, one slide out of 58 was not expected to
-> change the mi-SVM/EM conclusions above, but a from-59 re-fit would now
+> change the mi-SVM conclusions below, but a from-59 re-fit would now
 > include a 59th out-of-sample posterior this report never had.
 
 ### mi-SVM
@@ -130,46 +129,14 @@ data, not evidence the model recovered the true diagnostic structure. The
 spatial claim for mi-SVM is dropped, per the plan's own contingency, on the
 strongest available evidence rather than a suggestive p-value alone.
 
-### EM
-
-| lag | Moran's I | p | z | variogram γ |
-|---|---|---|---|---|
-| 1 (contaminated) | +0.182 | 0.001 | +26.3 | 0.0000 |
-| 2 (contaminated) | +0.083 | 0.003 | +17.3 | 0.0000 |
-| **3 (headline)** | **+0.042** | **0.116** | **+11.5** | 0.0000 |
-| 4 | +0.033 | 0.154 | +10.6 | 0.0000 |
-| 10 | +0.014 | 0.269 | +6.8 | 0.0000 |
-
-**The variogram is exactly 0.0000 at every single lag.** Read this before the
-Moran's I column: a variogram of zero everywhere means the reprojected map is
-numerically constant — direct, independent confirmation of the
-`shrinkage_ratio=0` collapse Stage 4's own diagnostic already flagged in 4 of
-5 folds (docs/stage4_mil.md §6). Moran's I nonetheless reports large z-scores
-(up to +26 at lag 1) precisely *because* it is scale-free: it can detect
-"significant" pattern in what is, in absolute terms, floating-point-level
-noise around a constant. **This is exactly the scenario the two-statistic
-design exists to catch, and it did** — trust the variogram here, not Moran's
-I. EM's spatial numbers are not informative about tissue coherence; the
-model collapsed before it could express a real prediction one way or the
-other.
-
-**External agreement vs. `viable_legacy`**: ARI = 0.0000, AMI = 0.0000, hard
-"diagnostic" count = 0/288,678 — every instance falls below the 0.5 threshold,
-the direct consequence of $\pi_b \approx 0.02$-$0.03$ almost everywhere.
-
 ## 3. Honest synthesis
 
-Neither formulation shows evidence of genuine, tissue-scale spatial coherence
-surviving Stage 5's own headline criterion, on this run:
-
-- **EM** collapsed (Stage 4's own finding, independently reconfirmed here by
-  the variogram) — its result is *uninformative*, not a negative finding
-  about spatial structure specifically.
-- **mi-SVM** produced a real, non-degenerate, spatially-varying posterior,
-  but that variation lives entirely within the 1–2 px range the median filter
-  itself can produce, and shows no significant coherence at lag ≥ 3.
-  External agreement with the historical tumour selection is essentially
-  null.
+mi-SVM shows no evidence of genuine, tissue-scale spatial coherence surviving
+Stage 5's own headline criterion, on this run. It produced a real,
+non-degenerate, spatially-varying posterior, but that variation lives
+entirely within the 1–2 px range the median filter itself can produce, and
+shows no significant coherence at lag ≥ 3. External agreement with the
+historical tumour selection is essentially null.
 
 Per the plan's own Stage 5 exit criterion — "Excess coherence at lag ≥ 3
 survives the shuffled-label control. If not, §6 is rewritten and the spatial
@@ -183,24 +150,13 @@ appears with no genuine label-content relationship at all, pointing at a
 property of the formulation-on-this-data rather than of the true labels.
 **The mi-SVM spatial claim is dropped.**
 
-Two concrete leads from the original pass, one now addressed:
-
-1. ~~**mi-SVM had not converged**~~ — moot for the spatial claim specifically:
-   the shuffled control hit the same iteration cap with the same convergence
-   pattern, and still showed coherence at least as strong as the real fit, so
-   further real-fit convergence would not rescue a claim the control already
-   defeats. (Whether more iterations changes mi-SVM's *bag-classification*
-   accuracy — a separate question, docs/stage6_generative_mil.md §5 — is
-   still untested.)
-2. **EM's collapse may or may not be the "correct" answer** for real spectra
-   at this bag count — it could be a genuine finding (the discriminative
-   signal really is this weak at 58 bags) or an artifact of this specific EM
-   configuration (cold-start, shrinkage strength, fixed `pi_init`). Not yet
-   distinguished, and EM's own shuffled-label control was not run (Stage 4's
-   collapse already makes EM's real-fit result uninformative on its own
-   terms, so a shuffled version would be informative about the collapse
-   mechanism, not about a spatial claim EM never supported in the first
-   place — lower priority than mi-SVM's was).
+A lead from the original pass, now addressed: ~~**mi-SVM had not
+converged**~~ — moot for the spatial claim specifically: the shuffled control
+hit the same iteration cap with the same convergence pattern, and still
+showed coherence at least as strong as the real fit, so further real-fit
+convergence would not rescue a claim the control already defeats. (Whether
+more iterations changes mi-SVM's *bag-classification* accuracy — a separate
+question, docs/stage6_generative_mil.md §5 — is still untested.)
 
 ## 4. Verification
 
@@ -211,10 +167,10 @@ Two concrete leads from the original pass, one now addressed:
   `variogram_range` scales correctly with the smoothing scale used to
   generate the field); the permutation null correctly flags the smooth field
   as significant and does not flag white noise; and a direct, permanent
-  guard (`inspect.signature`) that neither `fit_misvm` nor `fit_em` accepts
-  any coordinate-shaped parameter at all — geometry cannot leak into the
-  model by construction, not merely by convention.
-- **Real data**: both formulations' full pipeline (merge out-of-sample
+  guard (`inspect.signature`) that `fit_misvm` accepts no coordinate-shaped
+  parameter at all — geometry cannot leak into the model by construction, not
+  merely by convention.
+- **Real data**: the full pipeline (merge out-of-sample
   posteriors across folds → reproject 58 slides → per-slide + pooled
   statistics → external agreement) ran end-to-end with no errors; results in
   §2. A new `merge_out_of_sample_posterior` (`src/mil/store.py`) — averaging
@@ -231,17 +187,9 @@ Two concrete leads from the original pass, one now addressed:
   the null components was deliberate (§3's store schema), but it means a
   genuine 3-way ARI against `hard_labels.npy` isn't computable from what's
   persisted. `viable_legacy` (a real, already-available binary reference) was
-  used instead. Getting the finer 3-way comparison would need EM specifically
-  to also persist its internal $(M{+}K)$-way `gamma` — a small, targeted
-  store extension, not implemented in this pass.
-- **NMF cluster-proportion correlation with $\pi_b$** (the plan's other named
-  external-validity check, docs/MIL_REFRAME_PLAN.md §1) — done, 2026-09-30,
-  also null (Spearman $\rho \in [-0.16,+0.14]$, all $p>0.19$, n=59 bags):
-  `scripts/stage4_pi_b_external_validity.py`, docs/stage4_mil.md §6.
+  used instead.
 - **The shuffled-bag-label control was not run in this original pass** — run
   for mi-SVM on 2026-09-29, see the new subsection in §2 and the updated §3.
-  EM's own shuffled control remains not run (lower priority — its real fit
-  was already uninformative via the collapse, independent of this control).
   Attention (Tier 3) and both Tier 4 variants have since had theirs run too
   (2026-09-29/30) — see §6.
 - **Join-count/boundary-length statistics and the qualitative RGB overlay**
@@ -275,8 +223,7 @@ mi-SVM's — it was true of the raw numbers and wrong about what they meant.
 
 **The complete, final state: four spatial-coherence claims were made across
 this project (mi-SVM, attention, `reconstruction`, `encoder_head`); all
-four were tested; all four failed.** EM never produced one to test (its
-real fit collapsed on its own terms first). There is currently no tier in
+four were tested; all four failed.** There is currently no tier in
 this project whose lag≥3 spatial coherence survives a shuffled-label
 control. The likely shared mechanism — real tissue has real spatial
 autocorrelation in its raw spectral characteristics, present in whatever

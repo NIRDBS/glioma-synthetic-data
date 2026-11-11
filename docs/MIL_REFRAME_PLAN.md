@@ -1,5 +1,7 @@
 # Reframing as weakly-supervised MIL with latent tissue composition
 
+> **Note (`review-refactor`).** Files referenced below that paper v2.3 does not use were removed from the repository; they remain in the `mil-reframe` history.
+
 > **Living document.** This is the execution plan for the MIL reframing, worked one stage at a time
 > per the workflow in §9. Update the Progress table and the affected stage's notes as each stage
 > lands — including deviations from the plan and why.
@@ -40,8 +42,8 @@ that is what the reframed paper should say.
 and revisit baseline correction while it is open (§2.1). The latent distribution is **not** inferred
 at preprocessing time but by the MIL models, with **every formulation's posterior stored** for later
 comparison (§3). Constrained latent support first, full mixture as extension; binary Mutant/WT
-first, 6-class as extension. The diagnostic fraction $\pi_b$ is **inferred hierarchically**, not
-fixed (§1). The non-diagnostic component is **multi-modal**, $M{=}3$ (§1). The **CV schema is
+first, 6-class as extension. The diagnostic fraction $\pi_b$ varies per slide and is not
+fixed globally (§1). The non-diagnostic component is **multi-modal**, $M{=}3$ (§1). The **CV schema is
 retained unchanged** and documented rather than rebuilt (§7.1). The spatial median filter **stays** —
 it is signal cleaning, and the spatial confound is handled by a lag-stratified statistic instead
 (§6). Baseline λ is selected **per spectrum and label-free**, preserving the project rule that no
@@ -74,35 +76,15 @@ effective number of components, so collapse is visible rather than silent.
 Both are the same machinery at different support, so (C) is (M) with hard zeros — implement (M)'s
 interface and constrain it, rather than writing two codebases.
 
-### Diagnostic fraction $\pi_b$ — inferred, not fixed
+### Diagnostic fraction $\pi_b$ — per slide, not global
 
 $\pi_b = \tfrac{1}{n_b}\sum_i [z_{bi} = Y_b]$ is the fraction of slide $b$ that is diagnostic
 tumour. It genuinely varies across slides — plausibly 2% to 30% — so fixing one global value would
-be the wrong model, not merely a conservative one. **Infer it, hierarchically:**
-
-$$\operatorname{logit}(\pi_b) \sim \mathcal{N}(\mu, \sigma^2), \qquad (\mu, \sigma) \text{ estimated across the 58 bags}$$
-
-The shared prior is what makes per-bag inference possible at this sample size: individual $\pi_b$
-are weakly identified, and partial pooling borrows strength across bags instead of pretending each
-one is estimable alone.
+be the wrong model, not merely a conservative one.
 
 $\pi_{\min}$ survives only as a **numerical identifiability floor** (sweep 1–5%) preventing the
 all-null collapse in §5. It is not a biological claim and should not be described as one in the
 paper. Under (C), $\pi_{bk} = 0$ for $k \notin \{0_1..0_M, Y_b\}$.
-
-**Two diagnostics decide whether inference actually worked:**
-
-1. **Shrinkage check** — compare the spread of inferred $\pi_b$ against the prior spread. If
-   shrinkage is near-total, the model is returning $\mu$ for every bag and there is no per-bag
-   signal; report this honestly rather than presenting prior means as findings.
-2. **External correlation** — regress inferred $\pi_b$ against independent proxies: the fraction of
-   the slide in the legacy manually-selected clusters (`viable_legacy`), the per-slide NMF cluster
-   proportions, and any pathology annotation available. **If inferred $\pi_b$ tracks an independent
-   proxy, that is stronger evidence than spatial coherence** — it is the one place a real external
-   quantity is available. Worth prioritising.
-
-Expect $\sigma$ to be poorly determined with 58 bags; report a profile-likelihood interval on both
-$\mu$ and $\sigma$ rather than point estimates.
 
 ---
 
@@ -270,9 +252,6 @@ for a modelling decision, and under the reframing the decision has to be explici
   unweighted mean treats them as equally reliable bag estimates; they are not.
 - **Top-$q$ pooling** changes meaning entirely with bag size — fixed-$q$ favours large bags
   (more chances at a high-scoring instance), fractional-$q$ does not. Use a **fraction**, and say so.
-- **$\pi_b$ estimation** (§1) is much better determined for large bags. The hierarchical prior
-  should shrink small bags harder — which it does automatically if the likelihood is written with
-  the correct per-bag $n_b$, and not if bags are pre-capped to equal size.
 
 Replace `cv_strategy.patient_cap` with an explicit, model-side **instances-per-bag budget** used
 only where compute demands it (mi-SVM iterations), plus sub-bagging for the neural tier. Record the
@@ -312,13 +291,6 @@ non-diagnostic mass as $1 - \max_k p_k$ (or a learned null score — see §5).
 
 Scale: with `patient_cap=500` the training set is ~29k instances for 58 slides, which an RBF SVM
 handles per iteration. Cap iterations and log the instance-label churn per round.
-
-### Tier 2 — EM / label-proportion model
-
-Explicit responsibilities $\gamma_{ik}$ with a discriminative M-step, constrained by the bag
-proportions. This is the formulation that yields **calibrated** soft labels, which is what T3 needs
-— mi-SVM's Platt scores are not calibrated across bags. Expect this to be the one that feeds the
-CVAE.
 
 ### Tier 3 — neural attention MIL (Ilse et al. 2018, gated)
 
@@ -361,7 +333,7 @@ Four consequences for the design:
 2. **Size $s$ from the floor, not by guesswork**: $s \ge \ln \varepsilon / \ln(1-\pi_{\min})$. With
    $\pi_{\min} = 2\%$ and $\varepsilon = 1\%$ this gives $s \ge 228$ — so a 256-instance sub-bag is
    calibrated to a 2% floor, not an arbitrary choice. This ties the sweep's centre to §1.
-3. **Size adaptively per bag once $\hat\pi_b$ exists.** Tier 1/2 runs before Tier 3 in the staging,
+3. **Size adaptively per bag once $\hat\pi_b$ exists.** Tier 1 runs before Tier 3 in the staging,
    so set $s_b \ge \ln\varepsilon / \ln(1-\hat\pi_b)$ — bags estimated to be mostly non-diagnostic
    get larger sub-bags. This falls out of the phase order already chosen.
 4. **Model the residual noise.** Even at $\varepsilon = 1\%$ some sub-bags are mislabelled, and
@@ -400,12 +372,11 @@ The likely reason a referee kills this. Name each failure mode and its guard exp
 | degenerate solution | guard |
 |---|---|
 | all mass on non-diagnostic ($\pi_b \to 0$) | identifiability floor $\pi_{\min}$ (1–5%, swept); this is the floor's only job |
-| collapse to the naive solution ($\pi_b \to 1$) | the hierarchical prior on $\operatorname{logit}\pi_b$ plus its shrinkage check (§1) |
 | a null component absorbs a whole tumour class | the $M$ null components are **shared across bags of all classes** — sharing is what identifies them |
 | the $M$ null components collapse into duplicates | benign, but must be visible: report pairwise cosine between component means and the effective component count |
 | mixture model (M) permutes components arbitrarily | anchor by the bag-label constraint $\arg\max_k \pi_{bk} = Y_b$ |
 
-Report the fitted $\pi_b$ per slide as a headline figure, with its external correlation (§1). If the
+Report the fitted $\pi_b$ per slide as a diagnostic. If the
 model says 95% of every slide is diagnostic tumour, it has learned nothing beyond the naive model —
 and if it returns the same $\pi_b$ for every slide, it has learned nothing at all.
 
@@ -602,7 +573,7 @@ The work is at the integer boundaries:
 - **Not already present via mixup**: `cvae_stage.py:55` draws mixup partners **within class**, so
   the blended label equals the original one-hot. The soft label is not hiding there.
 - **Self-target loop**: if the condition comes from the CVAE's own encoder head, the $\alpha$ term
-  becomes degenerate. Stop-gradient, or use an outer EM schedule.
+  becomes degenerate. Stop-gradient, or alternate condition and CVAE updates in an outer loop.
 - **Generation**: `pipeline/_cvae_gen.py:110` enumerates simplex corners and returns `int64` labels
   at `:126`. Replace the loop with a sampler over the empirical posterior simplex (or a fitted
   Dirichlet). Downstream sklearn/XGBoost consumers (`pipeline/tsrtr_stage.py:64,74-76`) need hard
@@ -645,9 +616,9 @@ the work, and updated in place as stages complete.
 | 1 | Data layer + re-export | **done** | New `data/processed/glioma_mil.h5`: 288,678 instances (was 227,344), 59 slides (was 58 — the missing slide was never in `ignore_samples`'s active path, resolved not just flagged). Mask widened to all strong-signal pixels; old selection preserved exactly as `viable_legacy` (227,344 True, matches old total exactly). `coords`/`y_bag`/`tissue_cluster` added; `y_tumor` dropped (misnomer, was constant). Producer rewritten (4 defects fixed), loader now carries `coords` through every mask, `prepare_fold` returns a tuple-compatible `FoldArrays` dataclass (zero call-site changes). **λ investigated, not re-deferred**: per-spectrum L-curve for IARPLS tested and rejected (same under-smoothing failure as GCV — median λ picks 10× low, 33% of spectra lose >30% retention); a slide-stratified 1,180-spectrum sweep across all 59 slides shows drift/retention are a genuine trade-off with no single optimum, λ=1e4 kept as the reasoned default. See [stage1_data_layer.md](stage1_data_layer.md). |
 | 2 | Evaluation reframing + Tier 0 | **done** | Three metric bugs from §7 confirmed and fixed on real data (exp_201, n_boot=1000): `precision_macro` was a constant ≈0.5, `kappa` always 0.0, `f1_macro` upward-biased (silently dropped 0%-accuracy bags — the exact `f1_macro=0.926` beside `accuracy=0.431` instance is now `bag_f1_macro=0.301` beside `bag_accuracy=0.431`, tracking the real collapse instead of masking it). `within_bag_instance_recall` (renamed from `stratified_slide_accuracy`) now visibly diverges from `bag_accuracy` for every model — previously the same float by construction. Duplicate-bag rule verified against `manual_splits.json` directly: 62 (bag,fold) test pairs → 58 unique bags. New `pipeline/mil_eval_stage.py` (Tier 0: mean/majority/lse/topq pooling) run end-to-end against real trained models. One real, unplanned finding: `bag_decisions` (via `.predict()`) and Tier 0's majority rule (via `argmax(.predict_proba())`) disagree on 2/58 bags for Apollo specifically — traced to `SVC(probability=True)`'s well-documented Platt-scaling/decision-function split, not a bug in this stage. `gen_appendix_tables.py` was writing to a file (`appendix (5).tex`) the LaTeX build never read — found and fixed independently (paper split into `appendix.tex` + `appendix_extended_results.tex`). See [stage2_evaluation.md](stage2_evaluation.md). |
 | 3 | Instance-model hygiene | **done (code+tests); real retrain running** | Confirmed the exact leak live: exp_501's pre-fix TRTR smoke test early-stopped the CNN after 6-11/30 epochs, accuracy 0.617±0.162 across folds. Fixed via a new group-aware `_inner_validation_split` (never the true test fold), single authoritative `build_1d_cnn` compile (dropout_rate/learning_rate/loss all forwarded — a bonus bug found: learning_rate was silently discarded by the old double-compile), and real augmentation (baseline wobble default-on, + intensity jitter/noise/band-dropout, all switchable). A real bug only a multi-epoch run caught: the augmented `tf.data.Dataset` ran out of data after epoch 1 (`.fit()` doesn't reliably restart a `from_generator` dataset per epoch) — fixed with `.repeat()` + `steps_per_epoch`, now pinned by a regression test. Dataset migration (`configs/exp_501.yaml`) done *before* this stage's real training, not after — see the note above. See [stage3_instance_hygiene.md](stage3_instance_hygiene.md). |
-| 4 | Latent store + Tier 1/2 | **done (code+tests); real fit running** | New `src/mil/` package: mi-SVM/MI-SVM (Tier 1, reuses Apollo unchanged) and label-proportion EM with hierarchical π_b (Tier 2, documented as Classification-EM + empirical-Bayes shrinkage, not a full Bayesian treatment). EM's cold start took three real debugging rounds to get right, each a genuine instance of a §5-named degeneracy (uniform-tie collapse → all-one-null-component; unconstrained argmax → π_b→0.98; wrong bootstrap floor → π_b→0.05 exactly) before landing on bootstrapping from mi-SVM's own validated split with the *caller's* π_init as the bootstrap floor, not EM's internal π_min. Latent-label store (`results/{exp}/latent/latent_labels.h5`) with fold-leakage assertion and alignment checksum, both tested including their negative cases. Constrained model (C) only, binary — model (M) and 6-class are still Stage 8. See [stage4_mil.md](stage4_mil.md). |
-| 5 | Spatial validation | **done — negative result** | Real exp_501 run, both formulations: neither shows tissue-scale coherence surviving the lag≥3 headline criterion. EM's variogram is exactly 0.0000 at every lag — direct confirmation of Stage 4's own `collapsed=True` finding (4/5 folds); its Moran's I still showed large z-scores (up to +26) purely because Moran's I is scale-free and can flag "significant" pattern in floating-point-level noise around a constant — exactly the failure mode the two-statistic design (variogram + Moran's I) exists to catch, and it caught it. mi-SVM produced a genuine, non-collapsed, spatially-varying posterior, but its variogram range is 2px (the plan's own criterion: 1-2px = filter, 10-20px = tissue) and lag≥3 Moran's I is not significant (p≈0.36-0.46). External agreement (ARI/AMI) vs `viable_legacy` is null for both. Two leads not yet chased: mi-SVM hadn't converged (churn still decreasing at the 10-iteration cap), and EM's collapse's root cause (genuine weak signal vs. this specific EM config) is undetermined. Shuffled-label control not run. Stopped here for review per explicit instruction — no Stage 6 work started. See [stage5_spatial_validation.md](stage5_spatial_validation.md). |
-| 6 | Tier 3/4 | **both done — mixed results** | Per the user's own reordering (Tier 4 first, cheap), Tier 4 (generative MIL from the CVAE, 'reconstruction' + 'encoder_head') was run first. Real fit: <1 minute (pure inference, zero new training). Bag-level: 'encoder_head' beats the weakest Tier 0 baseline (1D-CNN, 0.593) by +0.203, p=0.006 — but is statistically indistinguishable from the three strongest ones (Apollo/RF/XGBoost, all 0.76–0.81); 'reconstruction' beats none. Spatial: real, lag≥3-significant coherence for 'reconstruction' (p=0.028 at lag 3, unlike Tier 1/2's null/collapsed results) but range=3px, short of the plan's 10–20px tissue-scale bar. Two bugs found and documented, not hidden: the external-agreement (ARI/AMI) check is structurally degenerate for any K=2 softmax source (bounded non-diagnostic mass < 1/3, can never cross the 0.5 hard-diagnostic threshold); and a naive K-diagnostic-column bag-accuracy metric, applied retroactively to close Tier 1/2's own missing bag-accuracy number, turned out to be vacuously 1.0000 for EM specifically — Model (C)'s hard per-instance support restriction makes it recover the already-known bag label, not a genuine measurement — excluded, with a permanent code guard (`scripts/stage6_bag_eval.py`'s `diagnostic_column_competition_frac`) added so this can't silently repeat. mi-SVM's own bag accuracy (0.690, not significant vs the CNN) is genuine and reported. See [stage6_generative_mil.md](stage6_generative_mil.md). **Tier 3 (attention MIL) run second**: three real bugs found and fixed via smoke-testing before the real run (bag-identity overfitting → dropout/L2/centering; a fold-specific vanishing-gradient stall from cross-fold CVAE scale mismatch → LayerNorm; attention-free naive pooling giving chance-level accuracy despite excellent attention-weighted training loss → a dedicated `bag_posterior` method plus a separate persisted bag-level artifact). Real 5-fold fit clean, `sub_bag_null_rate=0.0000` throughout. Bag-level (n=59): 0.644 accuracy — not significantly different from the CNN (+0.051, p=0.604) but **significantly worse** than Apollo/RF/XGBoost (p=0.012/0.002/0.002) — the first tier with a significant loss, not just a non-significant tie. Spatial: lag-3 Moran's I=+0.024, between mi-SVM's null result and Tier 4's positive ones, but with a real mean-p (0.111, not significant) vs mean-z (+5.6, suggestive) tension driven by high across-slide heterogeneity — flagged, not resolved, without the shuffled-label control (not yet run for this tier). Same K=2 external-agreement degeneracy as Tier 4, confirmed directly. See [stage6_attention_mil.md](stage6_attention_mil.md). **Update 2026-09-30**: shuffled-label controls now run for every tier that can produce one (attention here; both cbr variants, via a full CVAE retrain on Modal GPU — this project's first real GPU training run), and **all have failed** — attention's shuffled coherence is 2.6× the real fit's at lag 3; `reconstruction`'s shuffled result is larger than its real one at every headline lag; `encoder_head`'s shuffled result is numerically indistinguishable from its real one. **Every spatial-coherence claim in this project is now dropped.** The K=2 external-agreement threshold bug is also fixed (not just documented) — see docs/stage5_spatial_validation.md §6 for the full cross-tier synthesis and §13 for what this reopens for Stage 7. |
+| 4 | Latent store + Tier 1 | **done (code+tests); real fit running** | New `src/mil/` package: mi-SVM/MI-SVM (Tier 1, reuses Apollo unchanged). Latent-label store (`results/{exp}/latent/latent_labels.h5`) with fold-leakage assertion and alignment checksum, both tested including their negative cases. Constrained model (C) only, binary — model (M) and 6-class are still Stage 8. See [stage4_mil.md](stage4_mil.md). |
+| 5 | Spatial validation | **done — negative result** | Real exp_501 run, mi-SVM: no tissue-scale coherence surviving the lag≥3 headline criterion. mi-SVM produced a genuine, non-collapsed, spatially-varying posterior, but its variogram range is 2px (the plan's own criterion: 1-2px = filter, 10-20px = tissue) and lag≥3 Moran's I is not significant (p≈0.36-0.46). External agreement (ARI/AMI) vs `viable_legacy` is null. Lead not yet chased: mi-SVM hadn't converged (churn still decreasing at the 10-iteration cap). Shuffled-label control not run. Stopped here for review per explicit instruction — no Stage 6 work started. See [stage5_spatial_validation.md](stage5_spatial_validation.md). |
+| 6 | Tier 3/4 | **both done — mixed results** | Per the user's own reordering (Tier 4 first, cheap), Tier 4 (generative MIL from the CVAE, 'reconstruction' + 'encoder_head') was run first. Real fit: <1 minute (pure inference, zero new training). Bag-level: 'encoder_head' beats the weakest Tier 0 baseline (1D-CNN, 0.593) by +0.203, p=0.006 — but is statistically indistinguishable from the three strongest ones (Apollo/RF/XGBoost, all 0.76–0.81); 'reconstruction' beats none. Spatial: real, lag≥3-significant coherence for 'reconstruction' (p=0.028 at lag 3, unlike Tier 1's null result) but range=3px, short of the plan's 10–20px tissue-scale bar. Two bugs found and documented, not hidden: the external-agreement (ARI/AMI) check is structurally degenerate for any K=2 softmax source (bounded non-diagnostic mass < 1/3, can never cross the 0.5 hard-diagnostic threshold); and a naive K-diagnostic-column bag-accuracy metric is vacuously 1.0000 for any formulation with Model (C)'s hard per-instance support restriction (it recovers the already-known bag label), now guarded in code (`scripts/stage6_bag_eval.py`'s `diagnostic_column_competition_frac`). mi-SVM's own bag accuracy (0.690, not significant vs the CNN) is genuine and reported. See [stage6_generative_mil.md](stage6_generative_mil.md). **Tier 3 (attention MIL) run second**: three real bugs found and fixed via smoke-testing before the real run (bag-identity overfitting → dropout/L2/centering; a fold-specific vanishing-gradient stall from cross-fold CVAE scale mismatch → LayerNorm; attention-free naive pooling giving chance-level accuracy despite excellent attention-weighted training loss → a dedicated `bag_posterior` method plus a separate persisted bag-level artifact). Real 5-fold fit clean, `sub_bag_null_rate=0.0000` throughout. Bag-level (n=59): 0.644 accuracy — not significantly different from the CNN (+0.051, p=0.604) but **significantly worse** than Apollo/RF/XGBoost (p=0.012/0.002/0.002) — the first tier with a significant loss, not just a non-significant tie. Spatial: lag-3 Moran's I=+0.024, between mi-SVM's null result and Tier 4's positive ones, but with a real mean-p (0.111, not significant) vs mean-z (+5.6, suggestive) tension driven by high across-slide heterogeneity — flagged, not resolved, without the shuffled-label control (not yet run for this tier). Same K=2 external-agreement degeneracy as Tier 4, confirmed directly. See [stage6_attention_mil.md](stage6_attention_mil.md). **Update 2026-09-30**: shuffled-label controls now run for every tier that can produce one (attention here; both cbr variants, via a full CVAE retrain on Modal GPU — this project's first real GPU training run), and **all have failed** — attention's shuffled coherence is 2.6× the real fit's at lag 3; `reconstruction`'s shuffled result is larger than its real one at every headline lag; `encoder_head`'s shuffled result is numerically indistinguishable from its real one. **Every spatial-coherence claim in this project is now dropped.** The K=2 external-agreement threshold bug is also fixed (not just documented) — see docs/stage5_spatial_validation.md §6 for the full cross-tier synthesis and §13 for what this reopens for Stage 7. |
 | 7 | CVAE soft conditioning | **not pursued (2026-09-30, deliberate)** | Every candidate conditioning posterior's spatial claim failed its shuffled-label control (Stage 6 row, above), removing the one property that would have clearly justified picking one source over the others. User decision: does not add enough to justify starting, given the results already in hand. See [mil_tiers_findings.md](mil_tiers_findings.md) §7 and backlog §13. |
 | 8 | Mixture model + 6-class | **not pursued (2026-09-30, deliberate)** | Judged not to add further evidence: the constrained model (C) already shows no tier recovering label-driven instance-level structure under 5x less demanding conditions (binary, hard support) than the full mixture (M) would require. See [mil_tiers_findings.md](mil_tiers_findings.md) §7. |
 
@@ -796,26 +767,23 @@ result about the regime (1738 correlated bands, 58 bags), not as an apology.
 
 ---
 
-### Stage 4 — Latent store and Tier 1/2, constrained binary
+### Stage 4 — Latent store and Tier 1, constrained binary
 
 **Goal.** First real latent estimates, with the leakage structure enforced.
 
-**Changes.** New `src/mil/` package: a common formulation interface, `misvm.py` (mi-SVM / MI-SVM
-one-vs-rest over Apollo from `src/models/baselines.py`), `em.py` (label-proportion EM with
-hierarchical $\pi_b$, §1), `store.py` (the §3 sidecar). New `pipeline/mil_fit_stage.py`. Retire
+**Changes.** New `src/mil/` package: `misvm.py` (mi-SVM / MI-SVM one-vs-rest over Apollo from
+`src/models/baselines.py`), `store.py` (the §3 sidecar). New `pipeline/mil_fit_stage.py`. Retire
 `patient_cap`; implement bag-size-aware pooling (§4).
 
 **Tests.**
 - **Fold-leakage assertion**: posteriors scoring a validation bag must come from that bag's fold;
   a deliberately mismatched fold must raise.
 - Alignment checksum rejects a stale posterior file after re-export.
-- Degeneracy diagnostics (§5): $\pi_b$ distribution, shrinkage check, null-component cosines.
-- $\pi_b$ external correlation against `viable_legacy` fraction and NMF proportions.
+- Degeneracy diagnostics (§5).
 
-**Docs / paper.** New methods section — the formulation itself. The $\pi_b$ figure is a headline.
+**Docs / paper.** New methods section — the formulation itself.
 
-**Exit.** Non-degenerate $\pi_b$ per §5; shrinkage check shows per-bag signal; leakage assertions
-pass.
+**Exit.** Non-degenerate posteriors per §5; leakage assertions pass.
 
 ---
 
@@ -920,12 +888,9 @@ dispatch chain at `:85-138`. Proposed: `mil_fit` (fits a formulation, writes pos
   augmentation and the patient cap inline in `pipeline/cvae_stage.py`. **Note this reverses in Stage
   3**: the module holds the better implementations, so it gets wired in and the inline duplicate at
   `cvae_stage.py:53-72` is retired. Until then, behaviour changes must go in `cvae_stage.py`.
-- `src/data/annotator.py` (`ClinicalAnnotator`) is never invoked.
 - Unread config keys: `models.cvae.num_classes` (the code uses `models.cnn.num_classes`),
   `reconstruction_loss_mode`, `validation_split`, `cap_strategy`, `use_precomputed_masks`,
   `spatial_median_filter*` (printed only). Do not add a `soft_labels` switch alongside these.
-- `src/utils/clinical_inference.py` is an unintegrated standalone, but its `:63-84` is already a
-  majority-vote bag classifier — useful as a reference implementation, not as a dependency.
 
 ---
 
@@ -945,8 +910,7 @@ Recorded so they are not lost, explicitly **not** in scope now:
 
 ## 10. Settled, and still open
 
-**Settled this round.** $\pi_b$ is inferred hierarchically, with $\pi_{\min}$ demoted to a numerical
-floor (§1). The null is multi-modal, $M{=}3$, matched to the NMF/GMM clusters, with collapse made
+**Settled this round.** $\pi_{\min}$ is a numerical floor, not a biological claim (§1). The null is multi-modal, $M{=}3$, matched to the NMF/GMM clusters, with collapse made
 observable (§1, §5). The CV schema is retained unchanged and documented, with duplicated slides
 averaged across folds to keep $n{=}58$ bags (§7.1). Bag-level CIs are presented as the headline
 uncertainty. The median filter stays; the spatial confound is handled by a lag-stratified statistic
@@ -965,24 +929,20 @@ models (Phase 3). `patient_cap` is retired in favour of explicit bag-size-aware 
 **Empirical checkpoints — cannot be answered by argument, only by running them.** Each needs a
 criterion fixed *now* so the result is reportable either way:
 
-1. **Is $\sigma$ estimable at 58 bags?** Criterion: if the profile likelihood on $\sigma$ is flat
-   within 2 log-likelihood units across an order of magnitude, declare it unidentified, fall back to
-   a fixed moderately-wide prior, and say so. Do not report an unidentified hyperparameter as an
-   estimate.
-2. **Does the mixture model (M) identify?** In scope, and **reported either way** — if it works it
+1. **Does the mixture model (M) identify?** In scope, and **reported either way** — if it works it
    is the stronger result; if it fails that is a publishable negative finding about what 58 bags can
    support, with (C) still carrying the claim. Criterion, fixed in advance: (M) succeeds if its
    components are stable across folds (mean pairwise cosine between fold-matched component means
    above a threshold set on (C)'s null components) **and** it does not reduce to (C) — i.e. some bag
    genuinely puts mass on a class other than its own label and $\arg\max_k \pi_{bk} = Y_b$ still
    holds. Anything else is a negative result; do not tune until it looks reasonable.
-3. **Sub-bag size and count** for Tier 3 — sweep, centred on the $\pi_{\min}$-derived value from
+2. **Sub-bag size and count** for Tier 3 — sweep, centred on the $\pi_{\min}$-derived value from
    §4.1 rather than guessed. No longer entangled with `patient_cap`, which is gone; the sweep now
    interacts with true bag size $n_b$ and with $\hat\pi_b$.
 
 **Still genuinely open.**
 
-4. How much of the existing notebook corpus is worth migrating versus rewriting against the new
+3. How much of the existing notebook corpus is worth migrating versus rewriting against the new
    terminology (§11).
 
 ---
@@ -1077,9 +1037,9 @@ then on.
   (`_preprocess_spectrum:141-153` is per-spectrum) and must keep holding after the λ change.
 - **1D-CNN**: assert the early-stopping monitor is fed by an inner split drawn only from training
   slides, and that no test-fold sample id appears in it. Confirm `dropout_rate` reaches the model.
-- **Degeneracy**: report fitted $\pi_b$ for every run; flag as collapsed if median $\pi_b > 0.9$, if
-  $\pi_b < \pi_{\min} + \epsilon$, or if the across-bag spread of $\pi_b$ is indistinguishable from
-  zero (the shrinkage check of §1).
+- **Degeneracy**: report the per-bag diagnostic fraction for every run; flag as collapsed if its
+  median exceeds 0.9, if it sits at $\pi_{\min}$, or if its across-bag spread is indistinguishable
+  from zero.
 - **Null components**: pairwise cosine between the $M$ null component means; report the effective
   component count so collapse is visible.
 - **Sub-bag label fidelity** (§4.1): empirical fraction of sub-bags carrying zero diagnostic mass
@@ -1120,8 +1080,7 @@ formulation in this project has a spatial-coherence claim that survives.**
 mi-SVM (2026-09-29), attention/Tier 3 (2026-09-29/30), and both Tier 4 variants
 (2026-09-30, `reconstruction` and `encoder_head`, via a full CVAE retrain on Modal GPU) all
 show comparable-or-larger lag≥3 coherence under permuted labels than under the real ones —
-`encoder_head`'s shuffled result is numerically indistinguishable from its real one. EM never
-produced a claim to test (it collapsed first). See docs/stage5_spatial_validation.md §6 for
+`encoder_head`'s shuffled result is numerically indistinguishable from its real one. See docs/stage5_spatial_validation.md §6 for
 the full cross-tier synthesis and mil_tiers_findings.md §2 for the consolidated table.
 
 **Why Stages 7–8 stop here, not just "on hold":**
@@ -1145,7 +1104,7 @@ the full cross-tier synthesis and mil_tiers_findings.md §2 for the consolidated
   significantly worse than the tree ensembles specifically).
 - **Stage 8**: relax (C) to (M) (instance state ranges over all $K{+}1$ types, not just
   $\{$nulls, own-bag-class$\}$); new 6-class MIL configs. The plan's own pre-registered
-  identifiability criterion (§10, checkpoint 2) is unchecked.
+  identifiability criterion (§10, checkpoint 1) is unchecked.
 
 ### Validation / loose ends
 - **Shuffled-bag-label control: done for every tier that can produce one; every one failed.**
@@ -1158,25 +1117,9 @@ the full cross-tier synthesis and mil_tiers_findings.md §2 for the consolidated
   first real GPU training run), then scored through the unchanged CbR code path —
   `reconstruction`'s shuffled result is *larger* than its real one at every headline lag,
   `encoder_head`'s is essentially identical to its real one (docs/stage6_generative_mil.md §4a).
-  EM's own control still not run (its collapse already made its real-fit result uninformative
-  on its own terms) — the only tier for which this remains genuinely moot rather than failed.
 - **mi-SVM had not converged** at the 10-iteration cap (churn still decreasing every fold/class,
-  Stage 4 §6) — moot for the *spatial* claim (dropped regardless, above), but still open for
+  Stage 4 §5) — moot for the *spatial* claim (dropped regardless, above), but still open for
   mi-SVM's *bag-classification* accuracy (Stage 6 §5).
-- **EM's collapse root cause: explicitly deferred (2026-09-29 user decision)**, not investigated
-  further for now — would need several more full EM refits under different cold-start/shrinkage
-  configs to actually distinguish "genuine weak signal at this bag count" from "an artifact of
-  this specific config."
-- **$\pi_b$ vs NMF cluster proportions — done (2026-09-29/30), null.** Required first fixing a
-  real gap: EM's `pi_b`/`mu`/`sigma`/diagnostics were computed every run and silently discarded
-  (`pipeline/mil_fit_stage.py`, now persisted to `results/{exp}/latent/em_diagnostics.json`), so
-  this needed a fresh full local EM refit, not a free lookup. Result
-  (`scripts/stage4_pi_b_external_validity.py`): Spearman $\rho \in [-0.16,+0.14]$ against all 3
-  NMF/GMM `tissue_cluster` proportions and against `viable_legacy` fraction, every $p>0.19$
-  (n=59 bags) — null, agreeing with Stage 5's independent ARI/AMI-based null result via a
-  completely different statistic. $\pi_b$ itself stays extremely tight to the floor across both
-  the original and the re-run fit (**[0.0200, 0.0443]**, std=0.0031), so there is very little
-  genuine across-bag variation for any proxy to track in the first place — see docs/stage4_mil.md §6.
 - **The K=2 softmax external-agreement threshold bug — fixed (2026-09-29), not just documented.**
   `hard_diagnostic_threshold()` (`scripts/stage5_spatial_validation.py`) rescales the cutoff to
   half the theoretical max for a joint-softmax source, `(K-1)/(2(2K-1))` = 1/6 at K=2, for
@@ -1195,11 +1138,6 @@ the full cross-tier synthesis and mil_tiers_findings.md §2 for the consolidated
   real Tier 3 refits under different regularization to chase down, and moot for now given §5a's
   dropped spatial claim regardless of the outcome.
 - **`cbr_temperature` (T=0.001)** — one fold's smoke test, never swept.
-- **$\sigma$ identifiability** (§10, checkpoint 1) — the EM refit above gives new *informal*
-  evidence (sigma hits the 0.000 boundary in 3/5 folds, and which specific folds collapse is
-  unstable across two same-seed re-runs — docs/stage4_mil.md §6), consistent with the plan's own
-  expectation, but a formal profile-likelihood interval (the plan's literal criterion) still isn't
-  built — would need a marginal-likelihood model this codebase doesn't currently implement.
 - **Join-count/boundary-length spatial statistics + qualitative RGB overlay** (§6) — skipped since
   Moran's I + variogram already answered the question at the time.
 
@@ -1207,15 +1145,3 @@ the full cross-tier synthesis and mil_tiers_findings.md §2 for the consolidated
 - The paper's Methodology/Experimental Design revision — analysis delivered (chat, 2026-09-28);
   drafting is the user's own.
 - Coarser 6-class grouping (post-Stage-8 idea, in memory) — still deferred, not started.
-
-### A free-standing analysis added after this backlog was written
-CVAE counterfactual probe (2026-09-30) — docs/counterfactual_probe.md. Not a Stage-N tier
-(doesn't produce a competing instance posterior, isn't subject to the bag-accuracy/spatial
-machinery above). Mixed, control-tested result: Δ spectrum magnitude/cross-fold consistency
-fail their shuffled-label control the same way every tier above did, but the counterfactual's
-independent-classifier flip rate does not (real 99.87%/91.16% vs. shuffled 41.13%/52.84%,
-RF/XGBoost) — the first statistic in this project to survive that control. A follow-up α=0
-ablation (real GPU retrain, `configs/exp_501_alpha0.yaml`, `store_suffix='alpha0'`) then showed
-every statistic unchanged, within noise, whether the auxiliary class head trains or not —
-settling the reviewer's architectural concern that motivated the whole check directly, not just
-bounding it.

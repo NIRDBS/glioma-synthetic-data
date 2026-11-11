@@ -13,10 +13,10 @@ is numerically indistinguishable from its real one; and two distinct
 methodological bugs this pass found by actually running the numbers rather
 than trusting them: the external-agreement check was structurally
 degenerate for a K=2 softmax source (§4, fixed 2026-09-29, independent of
-anything about the CVAE itself), and — more seriously — a naive
-bag-accuracy metric applied to EM (§5) turned out to be vacuously, trivially
-1.0000 by construction, not a real finding, and has been excluded rather
-than reported.
+anything about the CVAE itself), and — more seriously — the bag-accuracy
+metric is vacuously 1.0000 by construction for any formulation that
+hard-enforces the bag label during scoring (§5), now guarded against in the
+evaluation script.
 
 This tier's spatial retraction completes the pattern across the whole
 project: mi-SVM (Tier 1), attention (Tier 3), and now both Tier 4 variants
@@ -73,9 +73,7 @@ real per-class MSE values are tiny (median ≈0.003, inter-class gap median
 ≈0.0008), so at `T=1` the softmax is within floating-point noise of uniform
 (mean top-class probability ≈0.50 for K=2 — no usable signal at all, and
 every instance's non-diagnostic mass would be a near-constant ≈0.5,
-manufacturing the exact same "spatially uninformative because numerically
-constant" failure Stage 4 found in EM's collapse, but from a temperature
-choice rather than a model degeneracy).
+making the map spatially uninformative because numerically constant).
 
 | T | mean(max class prob) | reading |
 |---|---|---|
@@ -99,11 +97,10 @@ from the latent-label store, pools each fold's out-of-sample instances to a
 bag-level decision (reusing `aggregate_bag_scores_across_folds` unchanged,
 the exact machinery Tier 0's own `mil_eval_stage.py` uses), and runs a
 class-stratified bootstrap against one classifier's Tier 0 majority-vote
-pooling. **This closes a real gap**: `docs/stage4_mil.md` §6 never computed a
-bag-accuracy number for mi-SVM/EM — their story stayed at π_b/degeneracy
-diagnostics and spatial checks. Filling that gap for Tier 1/2 too (§5 below)
-is what makes this table a genuine cross-tier comparison, not just a Tier-4
-one-off.
+pooling. **This closes a real gap**: `docs/stage4_mil.md` never computed a
+bag-accuracy number for mi-SVM — its story stayed at convergence diagnostics
+and spatial checks. Filling that gap for Tier 1 too (§5 below) is what makes
+this table a genuine cross-tier comparison, not just a Tier-4 one-off.
 
 All numbers: exp_501, n=59 bags (the HF-1887 split-file fix applies to
 everything computed in this stage — see docs/stage1_data_layer.md §4), 1000-
@@ -163,7 +160,7 @@ nuance, not a red flag (the two numbers are also not on identical data:
 Both variants' posteriors were run through Stage 5's unchanged spatial
 pipeline (`scripts/stage5_spatial_validation.py`), covering **all
 288,678/288,678 instances** (59/59 slides — the HF-1887 fix applies here
-too; Stage 4's mi-SVM/EM runs, fit before that fix, covered 58).
+too; Stage 4's mi-SVM run, fit before that fix, covered 58).
 
 ### Moran's I and the variogram, by lag
 
@@ -172,9 +169,8 @@ too; Stage 4's mi-SVM/EM runs, fit before that fix, covered 58).
 | **reconstruction** | I=+0.122, p=**0.028**, z=+29.4 | I=+0.092, p=**0.041**, z=+25.8 | I=+0.076, p=0.072, z=+23.8 | median 3.0 px |
 | **encoder_head** | I=+0.049, p=0.057, z=+11.1 | I=+0.038, p=0.088, z=+10.0 | I=+0.031, p=0.104, z=+9.2 | median 3.0 px |
 | *(for comparison)* mi-SVM (Stage 5) | I=+0.006, p=0.361, z=+1.5 | — | — | median 2 px |
-| *(for comparison)* EM (Stage 5) | variogram ≡ 0 (collapsed) | — | — | n/a |
 
-**This looked like a materially different picture from Tier 1/2 — until the
+**This looked like a materially different picture from Tier 1 — until the
 shuffled-label control (§4a) showed it wasn't.** `reconstruction` clears
 p<0.05 at lag 3 *and* lag 4 — genuine excess correlation at distances the
 3×3 median filter provably cannot produce, with z-scores an order of
@@ -219,9 +215,8 @@ and Tier 3's retractions.
 
 **This closes out every control this project has run, and the pattern is
 now unanimous.** Four real spatial-coherence claims were made across this
-project's four tiers (mi-SVM, attention, `reconstruction`, `encoder_head`
-— EM's was never made, since it collapsed on its own terms before spatial
-validation could say anything). All four have now been tested against a
+project's four tiers (mi-SVM, attention, `reconstruction`, `encoder_head`).
+All four have now been tested against a
 shuffled-label control. **All four failed.** The likely mechanism,
 articulated identically at each retraction (docs/stage5_spatial_validation.md
 for mi-SVM, docs/stage6_attention_mil.md §5a for attention, here for Tier
@@ -281,7 +276,7 @@ not a comparison to `viable_legacy`, which was never fit for that purpose.
 Both variants, under the *original* flat 0.5 threshold: **ARI=0.0000,
 AMI=0.0000, "diagnostic": 288,678/288,678 — every single instance.** This
 was not the CVAE finding nothing, and not a bug in Stage 5's own code
-(unchanged, already trusted for mi-SVM/EM). It was a **structural property
+(unchanged, already trusted for mi-SVM). It was a **structural property
 of the `1 - max_k p_k` convention applied to a genuine K-way softmax,
 specific to K=2**:
 
@@ -324,14 +319,11 @@ statistics above was never affected by any of this — real per-instance
 variation exists within `[0, 1/3]` regardless of the threshold, and that is
 exactly what Moran's I and the variogram measured throughout.
 
-## 5. Closing the gap: Tier 1/2 bag-level accuracy — and a second, more serious
-   circularity bug this pass found and had to exclude
+## 5. Closing the gap: Tier 1 bag-level accuracy, and when the metric is well-posed
 
 `scripts/stage6_bag_eval.py` is generic, so it was also run against the
-already-fitted Tier 1/2 store entries — the bag-accuracy number
-docs/stage4_mil.md §6 never computed. Doing so surfaced a real methodological
-bug, this time serious enough to invalidate a result outright rather than
-just narrow a comparison (§4's K=2 convention issue).
+already-fitted Tier 1 store entries — the bag-accuracy number
+docs/stage4_mil.md never computed.
 
 **mi-SVM (`misvm/mi_svm`): bag_acc=0.6897 (F1=0.689, κ=0.385), n=58 bags**
 (pre-HF1887-fix coverage, unchanged from Stage 4's original fit — not
@@ -366,28 +358,17 @@ separately dropped** (docs/stage5_spatial_validation.md, shuffled-label
 control) — this bag-accuracy result stands on its own and is unaffected by
 that, since it was never a spatial claim to begin with.
 
-**EM (`em/constrained`): EXCLUDED — bag_acc=1.0000 is not a real result.**
-The raw number this script computed is a perfect, trivial 1.0000
-(Δ=+0.3966, "p<0.001, significant") — and it is **meaningless, not a
-finding**. Checked directly against the real store: on held-out validation
-rows, **0% of instances ever have both diagnostic columns simultaneously
-nonzero** (`k_diagnostic_columns_competition_frac=0.0000`). This is Model
-(C) working exactly as designed, not a bug in `src/mil/em.py`: `score_em`
-correctly restricts every instance's state to `{null_1..null_M, Y_b}` —
-literally never allowing mass on any diagnostic class *other than* the
-instance's own bag's already-known true label — so
-`posterior[:, 1:].argmax()` recovers the bag label the model was *given*,
-not one it *inferred*. This bag-classification metric is well-posed only
-for methods that don't hard-enforce the bag label throughout scoring
-(confirmed: mi-SVM's independent one-vs-rest scores show real competition in
-16.5% of instances; Tier 4's plain-softmax variants in ~100%) — it cannot,
-even in principle, be a meaningful evaluation of EM specifically, or of any
-future formulation that implements the same Model-(C) restriction end to end
-(a flag for Tier 3, if its attention head is ever built the same way).
-`scripts/stage6_bag_eval.py` now computes and prints this competition
-fraction on every run and warns loudly when it is near zero, so this
-mistake — mine, in this script, not in EM's own fit or in Stage 4/5's prior
-work — cannot silently repeat.
+**When this metric is well-posed.** `posterior[:, 1:].argmax()` is a valid
+bag classifier only for methods that do not hard-enforce the bag label
+throughout scoring. A Model-(C) formulation that restricts every instance's
+state to `{null_1..null_M, Y_b}` never places mass on any diagnostic class
+other than the bag's known label, so the argmax recovers the label the model
+was *given*, not one it *inferred*, and the bag accuracy is trivially 1.0000.
+Verified per method: mi-SVM's independent one-vs-rest scores show real
+competition between diagnostic columns in 16.5% of instances; Tier 4's
+plain-softmax variants in ~100%. `scripts/stage6_bag_eval.py` computes and
+prints this competition fraction (`k_diagnostic_columns_competition_frac`)
+on every run and warns when it is near zero.
 
 ## 6. Verification
 
@@ -405,26 +386,21 @@ work — cannot silently repeat.
   default `METHODS` tuple `run_suite.py` relies on; and
   `diagnostic_column_competition_frac` (§5's circularity guard) correctly
   flagging a hand-built hard-masked posterior at 0.0 and a genuinely
-  competitive one at 1.0, so this specific mistake is pinned against
-  regression, not just narrated here.
+  competitive one at 1.0.
 - **Full suite re-run**: 124 passed (114 prior + these 13, net of the 3
   added after the first 10 were already counted), same 2 pre-existing
   `test_config_manager.py` failures, unrelated to this stage.
 - **Real data, full pipeline**: fit → store → spatial validation → bag-level
-  eval ran end-to-end with no errors, for both cbr variants and (retroactively)
-  misvm/em; the em run's console output was checked directly to confirm the
-  new competition-fraction warning actually fires on the real degenerate case,
-  not just in the synthetic test.
+  eval ran end-to-end with no errors, for both cbr variants and
+  (retroactively) misvm.
 - **Leakage**: unchanged machinery (`write_posteriors`'s `in_sample` flag,
   the same train/val fold masks `_fit_one_fold` already uses) — every
   out-of-sample instance is scored by a CVAE that never trained on its bag,
   same as CbR's existing, already-trusted result.
 - **The bag-accuracy numbers were sanity-checked, not taken on faith.** Before
-  writing anything into §3/§5, every number that looked too good (an exact
-  match to a historical figure; a perfect 1.0000) was independently
-  re-derived by a different code path before being trusted or reported —
-  this is what caught §5's EM circularity bug in the first place, rather than
-  it silently entering the record as a "significant" finding.
+  writing anything into §3/§5, every number that looked too good (e.g. an
+  exact match to a historical figure) was independently re-derived by a
+  different code path before being trusted or reported.
 - **§4a's Modal GPU run was verified directly, not assumed from exit code
   0** (2026-09-30): the real, pre-existing CVAE weights' file timestamps
   were confirmed unchanged after the shuffled run completed; the shuffled
@@ -456,18 +432,15 @@ work — cannot silently repeat.
   one, and every one has failed (§4a, 2026-09-30).** No longer an open
   item — the answer is now known, and it is negative across the board.
 - **mi-SVM was re-run against Apollo/RF/XGBoost (2026-09-29)** — not
-  significant vs Apollo, significantly worse vs RF/XGBoost (docs/
-  stage6_generative_mil.md §5). EM's own bag-accuracy remains excluded
-  (circular, §5) regardless of reference model, so extending it further
-  would not be informative.
+  significant vs Apollo, significantly worse vs RF/XGBoost (§5).
 - **Tier 3 (attention MIL) is now complete** — see
   docs/stage6_attention_mil.md. Its instance head is indeed a plain K=2
   softmax (a deliberate design choice, made independently of this
   prediction), so §4's K=2 convention bound was confirmed to apply, exactly
-  as flagged here. §5's EM-specific circularity check does **not** apply to
-  it: Tier 3's instance head was deliberately built *without* Model (C)'s
-  hard support restriction (docs/mil_tiers_methodology.md §6.3), precisely
-  so its bag classification would not be circular the way EM's is.
+  as flagged here. §5's circularity condition does **not** apply to it:
+  Tier 3's instance head was deliberately built *without* Model (C)'s hard
+  support restriction (docs/mil_tiers_methodology.md §6.3), precisely so its
+  bag classification would not be circular.
 
 ## 8. What Stage 6+ inherits
 
@@ -511,26 +484,15 @@ CVAE (`--config exp_607`); both already resolve weights from
 
 ### 9.1 Bag-level accuracy (n=59 bags, TRTR references)
 
-A third variant was added this round — **`latent_rf`**: a plain
-RandomForest (Tier 0's own hyperparameters) fit on the frozen encoder's
-`z_mean`, i.e. the same classifier Tier 0 uses on raw spectra, fed the
-CVAE's 32-d latent instead. Unlike `reconstruction`/`encoder_head` it does
-train something per fold, so it is not "zero-training-cost"
-(`src/mil/generative.py::latent_rf_posteriors`,
-`pipeline/mil_fit_stage.py --methods latent_rf`).
-
 | Variant | bag_acc | vs CNN (0.712) | vs Apollo (0.763) | vs RF/XGB (0.814) |
 |---|---|---|---|---|
 | `encoder_head` | 0.763 | +0.051, n.s. | ±0.000, n.s. | −0.051, p=0.072 |
 | `reconstruction` | 0.729 | +0.017, n.s. | −0.051, n.s. | −0.085, p=0.070 |
-| `latent_rf` | 0.729 | +0.017, n.s. | −0.034, n.s. | **−0.085, p=0.008** |
 
 Same verdict as §3, now with a *correctly trained* CNN reference (exp_501's
 TRTR CNN was refit — it had been badly undertrained at 0.593, inflating
 every earlier CNN-referenced delta; it is 0.712 here). Against the two
-strongest Tier 0 classifiers, all three variants are flat-to-worse, and
-`latent_rf` is significantly worse. The CVAE's latent space does not beat
-the raw spectrum through the same classifier.
+strongest Tier 0 classifiers, both variants are flat-to-worse.
 
 ### 9.2 Spatial validation — coherence is present, and §9.3 shows it is not diagnostic
 

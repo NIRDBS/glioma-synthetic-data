@@ -187,12 +187,12 @@ statistics:
   primary_metric: "f1_macro"
 
 # ============================================================================
-# MIL (Stage 4: mi-SVM / EM fit stage; Stage 6: generative/CVAE-based tier)
+# MIL (Stage 4: mi-SVM fit stage; Stage 6: generative/CVAE-based tier)
 # ============================================================================
 mil:
   pi_floor: 0.02
   # Apollo's RBF SVM scales badly with sample count; Stage 4 retired
-  # patient_cap globally (mi-SVM/EM need every instance for scoring), so
+  # patient_cap globally (mi-SVM needs every instance for scoring), so
   # without this, the SVM's own *training* set is ~230k instances/fold --
   # confirmed impractically slow. This re-caps only the SVM fit itself, per
   # bag, at the same historical patient_cap value (500) -- scoring still runs

@@ -12,8 +12,8 @@
 
 ## 0. A prerequisite decision, made before this stage's own work started
 
-Stage 4 needs `viable_legacy` (its own §4 test list: "pi_b external correlation
-against `viable_legacy` fraction"), a field that exists only in Stage 1's
+The MIL stages need `viable_legacy` (the external-agreement check against the
+historical tumour selection), a field that exists only in Stage 1's
 `data/processed/glioma_mil.h5` — every experiment config, including exp_201,
 still pointed at the old per-experiment `glioma_dataset.h5`. Training this
 stage's CNN fix on the old dataset while Stage 4's MIL models train on the new
@@ -146,13 +146,11 @@ stale code.
   see §1.
 - **`tissue_cluster` loader wiring was not in this stage's own scope**, but
   was done here anyway (mirroring `coords`'s exact pattern, 8 touch points)
-  because Stage 4's EM formulation needs it and Stage 3 is the last hygiene
-  pass before any MIL model is built — doing it as a separate, later, ad hoc
-  addition would have meant touching the well-tested loader again outside any
-  stage's planned scope. In the event, Stage 4's actual EM cold-start did not
-  end up using `tissue_cluster` (see docs/stage4_mil.md §2) — the wiring is in
-  place and inert, a documented, available refinement rather than a load-
-  bearing dependency.
+  because Stage 3 is the last hygiene pass before any MIL model is built —
+  doing it as a separate, later, ad hoc addition would have meant touching the
+  well-tested loader again outside any stage's planned scope. No MIL tier ended
+  up using `tissue_cluster` — the wiring is in place and inert, a documented,
+  available refinement rather than a load-bearing dependency.
 
 ## 5. Real-data validation (to be filled in once the retrain completes)
 
@@ -167,7 +165,7 @@ competitive with Apollo/RF/XGBoost per §7.2's "fair fight" framing.
 - A CNN trunk that is actually trained under a leak-free protocol, ready to be
   the Tier-3 attention trunk (Stage 6) once it exists.
 - `tissue_cluster` available from the loader for any future MIL formulation
-  that wants it (not used by Stage 4's own EM — see docs/stage4_mil.md).
+  that wants it.
 - The augmentation primitives (`baseline_wobble`, `intensity_jitter`,
   `additive_noise`, `band_dropout`) are available to any future instance-level
   model, not just the CNN.

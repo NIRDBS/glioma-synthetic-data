@@ -19,8 +19,8 @@ needs one. Pooling logits keeps every instance's own K-way opinion directly
 readable (`instance_logits`), with attention only deciding how much each
 instance's opinion counts toward the bag decision.
 
-**Why the instance head is never masked to the bag's own class (unlike
-EM's Model (C) support restriction)**: Stage 6 found that a bag-classification
+**Why the instance head is never masked to the bag's own class (Model (C)'s
+support restriction)**: Stage 6 found that a bag-classification
 metric applied to a hard-masked posterior is circular -- it can only ever
 recover the label it was given, not one it inferred
 (docs/stage6_generative_mil.md §5). This tier's whole point is a genuinely

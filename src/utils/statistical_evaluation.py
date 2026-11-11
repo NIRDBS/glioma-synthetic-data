@@ -33,7 +33,7 @@ from src.models.cvae import CVAE
 # local environment's -- newer Keras serializes GlorotUniform with extra
 # input_axes/output_axes kwargs this version's __init__ doesn't accept, which
 # otherwise breaks loading ANY such .keras file here (confirmed on
-# exp_671's Modal-trained CNNs; a per-call custom_objects override does NOT
+# Modal-trained CNNs; a per-call custom_objects override does NOT
 # intercept this, since GlorotUniform is a built-in, not a custom, name --
 # only patching the class itself works). Harmless for files saved without
 # those kwargs (old-format files keep working identically).

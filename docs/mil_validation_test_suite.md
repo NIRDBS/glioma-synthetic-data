@@ -8,7 +8,7 @@ directly from `docs/stage5_spatial_validation.md` and
 `docs/mil_tiers_methodology.md` §9–10, not re-derived. This is a methods
 reference for drafting the paper from — not a findings doc (see
 `docs/stage5_spatial_validation.md`, `docs/stage6_attention_mil.md`,
-`docs/stage6_generative_mil.md`, `docs/tier5_bayesian_mil.md` for results) and
+`docs/stage6_generative_mil.md` for results) and
 not a coverage map (see `docs/experiment_inventory.md`).
 
 ---
@@ -30,9 +30,8 @@ other for principled reasons:
   project (§2).
 - **Conversely, and the reason family B is mandatory, not optional, going
   forward**: a model that spatially *regularizes* its own posterior by
-  construction — e.g. this project's Potts/MRF-coupled extension to Tier 5
-  (`src/mil/bayes_spatial.py`), which couples each instance's latent state to
-  its neighbours via an explicit pairwise term — will show lag-band
+  construction — e.g. one that couples each instance's latent state to its
+  neighbours via an explicit pairwise term — will show lag-band
   coherence *because the model enforces it*, not because it recovered real
   diagnostic structure. For such a model, spatial-coherence family A becomes
   close to circular (it is testing whether the smoothing prior worked, not
@@ -61,15 +60,12 @@ non-diagnostic-mass posterior back onto its slide's $(H,W)$ pixel grid.
 
 1. **Moran's I**, by Chebyshev lag 1–10 — scale-free (normalized by total
    variance). Good at detecting pattern; can mislead about how much it
-   matters — confirmed case (Tier 2/EM): a numerically-constant map still
-   reported Moran's I z-scores up to +26, purely because the statistic is
-   scale-free.
+   matters: a numerically-constant map can still report large Moran's I
+   z-scores, purely because the statistic is scale-free.
 2. **Empirical variogram**, same lag bands,
    $\gamma(h) = \tfrac12\,\mathrm{mean}((x_i-x_j)^2)$ — scale-*sensitive*;
-   reads exactly 0.0000 for a genuinely constant map. This is the statistic
-   that caught EM's collapse when Moran's I alone would have misread it as
-   significant. **Trust the variogram over Moran's I whenever they
-   disagree.**
+   reads exactly 0.0000 for a genuinely constant map. **Trust the variogram
+   over Moran's I whenever they disagree.**
 3. **Variogram range** (first lag reaching ~90% of the plateau value) —
    reported as a descriptive diagnostic in its own right, not just a
    byproduct of #2: ~1–2px is squarely in filter-artefact territory (the
@@ -111,9 +107,7 @@ independent second opinion.
 spatial-coherence claims were made (mi-SVM, attention, CbR `reconstruction`,
 CbR `encoder_head`); all four were tested with the shuffled-bag-label
 control; **all four failed** — permuted-label refits produced comparable-or-
-larger lag≥3 coherence in every case. EM never produced a claim to test (its
-real fit collapsed on its own terms first, confirmed independently by the
-variogram reading exactly 0.0000 at every lag). See
+larger lag≥3 coherence in every case. See
 `docs/stage5_spatial_validation.md` §6 for the full synthesis.
 
 **Extended, 2026-10-12, to the full Suite 600 β sweep (`607`/`608`/`609`,
@@ -206,9 +200,7 @@ for CbR `encoder_head` (0.8305 vs 0.7966). `encoder_head` is again the one
 result consistent at both β, agreeing with its own Family A exception
 (§A above) — the strongest combined signal in the project so far, still not
 individually significant on either family's own bootstrap. Full numbers:
-`docs/experiment_inventory.md` §4.5. **Still not run**: `exp_501`, or the
-Potts/MRF-extended Tier 5 — the last of these remains the case §0 argues is
-the most important to run it against.
+`docs/experiment_inventory.md` §4.5. **Still not run**: `exp_501`.
 
 ---
 
@@ -216,8 +208,7 @@ the most important to run it against.
 
 Per the reasoning in §0: **both families are run together for any new MIL
 formulation going forward**, not family A alone — especially for any
-spatially-regularized model (the Potts/MRF extension to Tier 5 being the
-concrete case in this project), where family A alone risks confirming the
+spatially-regularized model, where family A alone risks confirming the
 model's own smoothing prior rather than testing anything about recovered
 diagnostic structure. The random-subsample control for family B's confound
 (i) is also now standard practice, not an optional strengthening.

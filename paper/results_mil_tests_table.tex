@@ -1,22 +1,41 @@
 \begin{table}[H]
 \centering
 \scriptsize
-\setlength{\tabcolsep}{2pt}
-\caption{Status of the MIL validation tests for the $\beta=0.5$ configuration (\texttt{exp\_608}). \emph{Spatial coherence:} Moran's $I$ and the variance-standardized variogram, reported as $1-\hat\gamma_3/\hat\sigma^2$ (on the same scale as $I$; higher is more coherent), at Chebyshev lag 3, for the real fit and for a refit under shuffled bag labels. The verdict is yes only if the real fit exceeds the shuffled one on both statistics by more than 3\% of the larger value. \emph{Key-instance utility:} bag accuracy of a random forest trained on the instances a tier selects (median split on non-diagnostic mass), against (i) the na\"{\i}ve MIL benchmark, the same forest trained on all instances with all of them voting, and (ii) a forest trained on a size-matched random subset of the training instances.}
+\setlength{\tabcolsep}{1.5pt}
+\caption{Spatial coherence of the MIL posteriors for the $\beta=0.5$ configuration (\texttt{exp\_608}): Moran's $I$ and the variance-standardized variogram, reported as $1-\hat\gamma_3/\hat\sigma^2$ (same scale as $I$; higher is more coherent), at Chebyshev lag 3, per slide, for the real fit and for a refit under shuffled bag labels. Means are over the slides where both fits are defined. $\Delta$ is the mean paired per-slide difference (real $-$ shuffled) with its 95\% CI from a bootstrap over slides (10000 resamples); (*) marks a CI above zero. The verdict is yes only if both statistics are starred.}
 \label{tab:mil_tests_status}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccccccc}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccc}
 \toprule
- & \multicolumn{5}{c}{\emph{Spatial coherence (lag 3)}} & \multicolumn{5}{c}{\emph{Key-instance utility}} \\
-\cmidrule(lr){2-6} \cmidrule(lr){7-11}
- & \multicolumn{2}{c}{\emph{Moran\textquotesingle s $I$}} & \multicolumn{2}{c}{\emph{$1-\hat\gamma_3/\hat\sigma^2$}} & \multirow{2}{*}{\shortstack{\emph{Real $>$}\\\emph{shuf.?}}} & \multicolumn{3}{c}{\emph{RF accuracy}} & \multirow{2}{*}{\shortstack{\emph{Sel.\ $>$}\\\emph{naive?}}} & \multirow{2}{*}{\shortstack{\emph{Sel.\ $>$}\\\emph{rand.?}}} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){7-9}
-\emph{Model} & \emph{real} & \emph{shuf.} & \emph{real} & \emph{shuf.} & & \emph{Selected} & \emph{Naive} & \emph{Random} & & \\
+ & \multicolumn{3}{c}{\emph{Moran\textquotesingle{}s $I$}} & \multicolumn{3}{c}{\emph{$1-\hat\gamma_3/\hat\sigma^2$}} & \multirow{2}{*}{\shortstack{\emph{Real $>$}\\\emph{shuf.?}}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\emph{Model} & \emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & \emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & \\
 \midrule
-mi-SVM & $0.0046$ & $0.0173$ & $0.0105$ & $0.0524$ & no & $0.7627$ & $0.8136$ & $0.7797$ & no & no \\
-CVAE-Attention & $0.0541$ & $0.0657$ & $0.0688$ & $0.0768$ & no & $0.7966$ & $0.8136$ & $0.8136$ & no & no \\
-CVAE reconstruction & $0.1570$ & $0.1710$ & $0.2791$ & $0.2854$ & no & $0.7627$ & $0.8136$ & $0.7627$ & no & tie \\
-CVAE encoder head & $0.0594$ & $0.0565$ & $0.0759$ & $0.0658$ & yes & $0.8136$ & $0.8136$ & $0.8136$ & tie & tie \\
-Bayesian MIL & $0.1336$ & $0.1122$ & $0.2255$ & $0.2617$ & no & $0.8644$ & $0.8136$ & $0.7797$ & yes & yes \\
+mi-SVM & $0.005$ & $0.017$ & $-0.013$ $[-0.025,-0.004]$ & $0.010$ & $0.052$ & $-0.042$ $[-0.062,-0.023]$ & no \\
+CVAE-Attention & $0.054$ & $0.066$ & $-0.012$ $[-0.025,+0.001]$ & $0.069$ & $0.077$ & $-0.008$ $[-0.024,+0.008]$ & no \\
+CVAE reconstruction & $0.157$ & $0.171$ & $-0.014$ $[-0.039,+0.010]$ & $0.279$ & $0.285$ & $-0.006$ $[-0.035,+0.022]$ & no \\
+CVAE encoder head & $0.059$ & $0.057$ & $+0.003$ $[-0.026,+0.027]$ & $0.076$ & $0.066$ & $+0.010$ $[-0.021,+0.037]$ & no \\
+Bayesian MIL & $0.134$ & $0.116$ & $+0.018$ $[-0.012,+0.047]$ & $0.226$ & $0.264$ & $-0.038$ $[-0.097,+0.020]$ & no \\
+\bottomrule
+\end{tabular*}
+\note{Slides with both fits defined (of 59), where fewer: Bayesian MIL: 54.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Key-instance utility for the $\beta=0.5$ configuration (\texttt{exp\_608}): bag accuracy of a random forest trained on the instances a tier selects (median split on non-diagnostic mass), against (i) the na\"{\i}ve MIL benchmark, the same forest trained on all instances with all of them voting, and (ii) a forest trained on a size-matched random subset of the training instances.}
+\label{tab:mil_tests_keyinst}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\toprule
+ & \multicolumn{3}{c}{\emph{RF accuracy}} & \multirow{2}{*}{\shortstack{\emph{Sel.\ $>$}\\\emph{naive?}}} & \multirow{2}{*}{\shortstack{\emph{Sel.\ $>$}\\\emph{rand.?}}} \\
+\cmidrule(lr){2-4}
+\emph{Model} & \emph{Selected} & \emph{Naive} & \emph{Random} & & \\
+\midrule
+mi-SVM & $0.7627$ & $0.8136$ & $0.7797$ & no & no \\
+CVAE-Attention & $0.7966$ & $0.8136$ & $0.8136$ & no & no \\
+CVAE reconstruction & $0.7627$ & $0.8136$ & $0.7627$ & no & tie \\
+CVAE encoder head & $0.8136$ & $0.8136$ & $0.8136$ & tie & tie \\
+Bayesian MIL & $0.8644$ & $0.8136$ & $0.7797$ & yes & yes \\
 \bottomrule
 \end{tabular*}
 \end{table}

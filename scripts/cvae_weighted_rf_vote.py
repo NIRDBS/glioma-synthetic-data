@@ -73,6 +73,7 @@ Usage:
     python scripts/cvae_weighted_rf_vote.py --cvae-config exp_607
 """
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -425,6 +426,26 @@ def main():
         print(f"\n  [confound check] key_instance_train vs random_subsample: "
              f"{train_acc:.4f} vs {rs_acc:.4f}  "
              f"({'selection beats size-matched random' if train_acc > rs_acc else 'no better than random subsampling of the same size' if train_acc <= rs_acc else ''})")
+
+        # Per-slide predictions of the three arms, for the paired bootstrap test
+        # (scripts/key_instance_paired_bootstrap.py).
+        rs_pred_by_bag = dict(zip(rs_bags, rs_pred))
+        cvae_root = Path(ConfigManager.load_config(args.cvae_config).to_dict()['paths']['experiment_root'])
+        per_slide_path = (cvae_root / 'mil_eval' / 'key_instance_per_slide'
+                          / f'{args.method}_{args.variant}.json')
+        per_slide_path.parent.mkdir(parents=True, exist_ok=True)
+        per_slide_path.write_text(json.dumps({
+            'config': args.config, 'cvae_config': args.cvae_config,
+            'method': args.method, 'variant': args.variant,
+            'seed': args.seed, 'random_subsample_seed': args.random_subsample_seed,
+            'slides': [str(b) for b in train_bags],
+            'y_true': [int(v) for v in train_true],
+            'naive': [int(v) for v in aligned_baseline_pred],
+            'selected': [int(v) for v in train_pred],
+            'random': [int(rs_pred_by_bag[b]) for b in train_bags],
+            'n_slides_fell_back': int(train_n_fallback),
+        }, indent=1), encoding='utf-8')
+        print(f"  per-slide predictions -> {per_slide_path}")
 
     for label, b_pred, cand_pred, b_true, cand_acc in results:
         _, _, diffs = bag_level_bootstrap(b_pred, cand_pred, b_true,

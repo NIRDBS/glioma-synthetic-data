@@ -644,6 +644,203 @@ def stratified_slide_bootstrap(preds_A, preds_B, y_true, slide_ids, n_boot=1000,
 
 
 # ============================================================================
+# SECTION 1a: Patient-level (cluster) stratified bootstrap
+#
+# Alternative to the slide-level bootstrap above: resamples PATIENTS with
+# replacement within each class and takes every slide of each drawn patient,
+# so slides from one patient are never split across a resample. The statistic
+# stays the slide-weighted mean (ratio estimator, random denominator), i.e. the
+# same estimand as the slide-level bootstrap. Additive only -- the slide-level
+# functions above are untouched, so published results stay reproducible.
+#
+# RNG contract: per replicate, classes in np.unique(strata) order, exactly one
+# rng.choice(cands, size=n_c, replace=True) per class, cands = cluster indices
+# in order of first appearance in the unit array. With singleton clusters in
+# positional order this reproduces bag_level_bootstrap / _cbr bit-for-bit for
+# 0/1 values (tests/test_patient_bootstrap.py relies on it).
+# ============================================================================
+
+def patient_id_from_slide(slide_id):
+    """Patient id of a slide/bag id: the prefix before the first '_'
+    ('HF-1002_V2AT_1.h5_1' -> 'HF-1002'); matches the H5 ``patient_ids``
+    dataset for all 59 slides."""
+    return str(slide_id).split('_')[0]
+
+
+def patient_ids_from_slides(slide_ids):
+    return np.array([patient_id_from_slide(s) for s in slide_ids])
+
+
+def _cluster_setup(strata, clusters):
+    """Cluster bookkeeping shared by the cluster bootstraps.
+
+    Returns (unit_cluster, classes, cands): ``unit_cluster[i]`` is unit i's
+    cluster index (clusters numbered by first appearance), ``cands[cls]`` the
+    cluster indices of class ``cls`` in that same order. Raises if a cluster
+    spans two strata (a patient with two labels cannot be class-stratified)."""
+    strata = np.asarray(strata)
+    clusters = np.asarray(clusters)
+    if len(strata) != len(clusters):
+        raise ValueError("strata and clusters must have the same length")
+    index, cluster_stratum = {}, []
+    unit_cluster = np.empty(len(clusters), dtype=np.int64)
+    for i, (c, s) in enumerate(zip(clusters.tolist(), strata.tolist())):
+        if c not in index:
+            index[c] = len(index)
+            cluster_stratum.append(s)
+        elif cluster_stratum[index[c]] != s:
+            raise ValueError(f"cluster {c!r} spans strata {cluster_stratum[index[c]]!r} and {s!r}")
+        unit_cluster[i] = index[c]
+    classes = np.unique(strata)
+    cands = {cls: np.array([k for k, s in enumerate(cluster_stratum) if s == cls], dtype=np.int64)
+             for cls in classes}
+    return unit_cluster, classes, cands
+
+
+def _draw_clusters(rng, classes, cands):
+    """One stratified replicate: the drawn cluster indices (with multiplicity)."""
+    return np.concatenate([rng.choice(cands[cls], size=len(cands[cls]), replace=True)
+                           for cls in classes])
+
+
+def stratified_cluster_bootstrap(values_A, values_B, strata, clusters, n_boot=1000, seed=42):
+    """
+    Stratified cluster bootstrap of a slide-weighted mean.
+
+    Per replicate, draw n_c clusters with replacement within each stratum c,
+    take every unit of each drawn cluster, and compute
+    theta = sum(values of drawn units) / (number of drawn units).
+
+    Args:
+        values_A: (n_units,) per-unit values (e.g. bag correctness 0/1).
+        values_B: (n_units,) paired values on the same units, or None for a
+            single-arm bootstrap.
+        strata: (n_units,) stratum (class) per unit; constant within a cluster.
+        clusters: (n_units,) cluster id (e.g. patient) per unit.
+
+    Returns ``(theta_A_boot, theta_B_boot, diffs)`` with ``diffs = B - A`` on
+    the same draw (the last two are None when ``values_B`` is None).
+    """
+    values_A = np.asarray(values_A, dtype=np.float64)
+    single = values_B is None
+    values_B = values_A if single else np.asarray(values_B, dtype=np.float64)
+    if not (len(values_A) == len(values_B) == len(strata) == len(clusters)):
+        raise ValueError("values, strata and clusters must have the same length")
+
+    unit_cluster, classes, cands = _cluster_setup(strata, clusters)
+    n_clusters = int(unit_cluster.max()) + 1
+    sum_A = np.bincount(unit_cluster, weights=values_A, minlength=n_clusters)
+    sum_B = np.bincount(unit_cluster, weights=values_B, minlength=n_clusters)
+    size = np.bincount(unit_cluster, minlength=n_clusters).astype(np.float64)
+
+    rng = np.random.default_rng(seed)
+    theta_A = np.empty(n_boot)
+    theta_B = np.empty(n_boot)
+    for t in range(n_boot):
+        drawn = _draw_clusters(rng, classes, cands)
+        total = size[drawn].sum()
+        theta_A[t] = sum_A[drawn].sum() / total
+        theta_B[t] = sum_B[drawn].sum() / total
+
+    if single:
+        return theta_A, None, None
+    return theta_A, theta_B, theta_B - theta_A
+
+
+def _bag_clusters(bag_ids, cluster_unit):
+    if cluster_unit == 'patient':
+        return patient_ids_from_slides(bag_ids)
+    if cluster_unit == 'slide':
+        return np.asarray(bag_ids)
+    raise ValueError(f"cluster_unit must be 'patient' or 'slide', got {cluster_unit!r}")
+
+
+def bag_level_patient_bootstrap(bag_pred_A, bag_pred_B, bag_true, bag_ids, n_boot=1000, seed=42,
+                                cluster_unit='patient'):
+    """Patient-clustered, class-stratified counterpart of ``bag_level_bootstrap``:
+    same inputs plus ``bag_ids`` (slide ids, to derive patients), same return
+    ``(acc_A_boot, acc_B_boot, diffs)``. ``cluster_unit='slide'`` gives the
+    class-stratified slide bootstrap through the same code path."""
+    bag_true = np.asarray(bag_true)
+    return stratified_cluster_bootstrap(
+        np.asarray(bag_pred_A) == bag_true, np.asarray(bag_pred_B) == bag_true,
+        bag_true, _bag_clusters(bag_ids, cluster_unit), n_boot=n_boot, seed=seed)
+
+
+def bag_level_patient_bootstrap_cbr(bag_pred, bag_true, bag_ids, n_boot=1000, seed=42,
+                                    cluster_unit='patient'):
+    """Single-arm counterpart of ``bag_level_bootstrap_cbr``: returns the
+    (n_boot,) array of bootstrap bag accuracies."""
+    bag_true = np.asarray(bag_true)
+    theta, _, _ = stratified_cluster_bootstrap(
+        np.asarray(bag_pred) == bag_true, None, bag_true,
+        _bag_clusters(bag_ids, cluster_unit), n_boot=n_boot, seed=seed)
+    return theta
+
+
+def paired_cluster_test(d, slide_ids, y_slide, n_boot=10000, seed=42, cluster_unit='patient',
+                        stratify=True):
+    """
+    Paired per-slide test on differences ``d`` (e.g. real minus shuffled
+    spatial statistic, or selected minus naive accuracy), clustered by patient.
+
+    - Bootstrap: stratified cluster bootstrap of the slide-weighted mean of d;
+      95% percentile CI.
+    - Sign-flip permutation: one sign per cluster, T = |sum_p eps_p D_p| / N
+      with D_p the cluster's sum of d and N the number of slides (the same
+      slide-weighted estimand as delta), +1-corrected.
+    - Wilcoxon signed-rank on cluster-mean d (cluster-weighted; diagnostic).
+
+    Strata and clusters are built from the slides passed in, so callers pass
+    only the slides actually used (e.g. those finite in both fits).
+    ``stratify=False`` puts every slide in one stratum.
+
+    Returns generic fields; callers map them onto their own schema.
+    """
+    from scipy.stats import wilcoxon
+
+    d = np.asarray(d, dtype=np.float64)
+    y_slide = np.asarray(y_slide)
+    strata = y_slide if stratify else np.zeros(len(d), dtype=np.int64)
+    clusters = _bag_clusters(slide_ids, cluster_unit)
+    unit_cluster, classes, cands = _cluster_setup(strata, clusters)
+    n_clusters = int(unit_cluster.max()) + 1
+    D = np.bincount(unit_cluster, weights=d, minlength=n_clusters)
+    size = np.bincount(unit_cluster, minlength=n_clusters).astype(np.float64)
+
+    rng = np.random.default_rng(seed)
+    boot = np.empty(n_boot)
+    for t in range(n_boot):
+        drawn = _draw_clusters(rng, classes, cands)
+        boot[t] = D[drawn].sum() / size[drawn].sum()
+    signs = rng.choice([-1.0, 1.0], size=(n_boot, n_clusters))
+    perm = np.abs(signs @ D) / len(d)
+    delta = float(d.mean())
+    try:
+        w_p = float(wilcoxon(D / size).pvalue)
+    except ValueError:   # all differences zero (older scipy raises)
+        w_p = 1.0
+    if not np.isfinite(w_p):   # all differences zero (newer scipy returns nan)
+        w_p = 1.0
+    lo, hi = np.percentile(boot, [2.5, 97.5])
+
+    # patients per class: count clusters by the class of their first unit
+    first_unit = {}
+    for i, c in enumerate(unit_cluster.tolist()):
+        first_unit.setdefault(c, i)
+    per_class = {str(cls): int(sum(1 for c, i in first_unit.items() if y_slide[i] == cls))
+                 for cls in np.unique(y_slide)}
+    return {
+        'delta': delta, 'ci_lo': float(lo), 'ci_hi': float(hi),
+        'p_signflip': float((np.sum(perm >= abs(delta) - 1e-15) + 1) / (n_boot + 1)),
+        'p_wilcoxon': w_p,
+        'n_units': int(len(d)), 'n_clusters': n_clusters, 'n_clusters_per_class': per_class,
+        'cluster_unit': cluster_unit, 'stratified': bool(stratify),
+        'n_boot': int(n_boot), 'seed': int(seed),
+    }
+
+
+# ============================================================================
 # SECTION 1b: Canonical reporting helpers (single source of truth)
 #
 # Both the batch pipeline (pipeline/evaluation_stage.py) and the exploratory

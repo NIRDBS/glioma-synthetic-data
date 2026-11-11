@@ -113,7 +113,7 @@ def _tier_key_map(config, method, variant, suffix='', n_folds=5):
 
 
 def run(config_name, tiers, n_slides=10, seed=42, out_path=None, n_folds=5,
-       all_slides_mode=False, cols=10):
+       all_slides_mode=False, cols=10, min_covered=20):
     from src.utils.config_manager import ConfigManager
     config = ConfigManager.load_config(config_name).to_dict()
 
@@ -131,18 +131,19 @@ def run(config_name, tiers, n_slides=10, seed=42, out_path=None, n_folds=5,
     # Eligible slides: in the shape registry AND with >=20 covered instances
     # for EVERY requested tier (stage5_spatial_validation.py's own >=20
     # cutoff, reused here so a slide isn't shown for one tier but silently
-    # skipped for another).
+    # skipped for another). min_covered=0 keeps every slide in the registry;
+    # slides below 20 covered instances are then flagged in their panel titles.
     all_slides = sorted(set(sample_ids.tolist()))
     eligible = []
     for slide in all_slides:
         if slide not in shape_lookup:
             continue
         idx = np.where(sample_ids == slide)[0]
-        ok = all(per_tier[t]['covered'][idx].sum() >= 20 for t in per_tier)
+        ok = all(per_tier[t]['covered'][idx].sum() >= min_covered for t in per_tier)
         if ok:
             eligible.append(slide)
     print(f"\n{len(eligible)}/{len(all_slides)} slides eligible (in shape registry, "
-          f">=20 covered instances for every requested tier)")
+          f">={min_covered} covered instances for every requested tier)")
 
     if all_slides_mode:
         chosen = eligible  # already sorted
@@ -211,6 +212,9 @@ def run(config_name, tiers, n_slides=10, seed=42, out_path=None, n_folds=5,
                 image = reproject(key_vals, coords[idx], shape, fill=np.nan)
                 ax.imshow(image, cmap=cmap, vmin=0, vmax=1, interpolation='nearest')
                 ax.set_xticks([]); ax.set_yticks([])
+                n_cov = int(covered_idx.sum())
+                if n_cov < 20:
+                    ax.set_title(f"{n_cov} covered (<20)", fontsize=6, color='#b00020')
                 if col == 0:
                     ax.set_ylabel(f"{label}\n(thr={data['threshold']:.5f})", fontsize=8)
 
@@ -245,7 +249,9 @@ if __name__ == '__main__':
                         help="show every eligible slide, batched --cols per row, instead of "
                              "a random --n-slides subsample")
     parser.add_argument('--cols', type=int, default=10, help="slides per row in --all-slides mode")
+    parser.add_argument('--min-covered', type=int, default=20,
+                        help="minimum covered instances per slide for every tier (0 = every slide)")
     args = parser.parse_args()
     tiers = [tuple((t.split(':') + [''])[:3]) for t in args.tiers]  # method:variant[:suffix]
     run(args.config, tiers, n_slides=args.n_slides, seed=args.seed, out_path=args.out_path,
-       all_slides_mode=args.all_slides, cols=args.cols)
+       all_slides_mode=args.all_slides, cols=args.cols, min_covered=args.min_covered)

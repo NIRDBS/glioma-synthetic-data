@@ -601,23 +601,44 @@ MIL_TABLE_OUT = os.path.join(ROOT, 'paper', 'results_mil_table.tex')
 APPENDIX_CTRL = os.path.join(ROOT, 'paper', 'appendix_controlled_experiments.tex')
 
 
-def mil_table_latex(exp='exp_608'):
-    """Main-text MIL table for the beta=0.5 / v1 (thr=0.6) configuration: the five MIL
-    tiers' rows are taken verbatim from the hand-authored per-experiment MIL table in
-    the appendix (so the numbers cannot differ), preceded by a naive-MIL benchmark row:
-    the Tier-0 random forest trained on real data (TR/TR), one majority-vote decision
-    per bag, from the same stats-eval results as every other classifier table."""
-    src = open(APPENDIX_CTRL, encoding='utf-8').read()
-    key = rf'MIL tier bag-level results, \texttt{{{exp.replace("_", r"\_")}}}'
-    i = src.index(key)
-    body = src[src.index(r'\midrule', i) + len(r'\midrule'):src.index(r'\bottomrule', i)]
-    tier_rows = [ln.strip() for ln in body.strip().splitlines() if ln.strip()]
-    assert len(tier_rows) == 5, tier_rows
+MIL_METRIC_KEYS = ('bag_accuracy', 'bag_balanced_accuracy', 'bag_sensitivity', 'bag_specificity', 'bag_auroc')
+# Tier labels of the earlier hand-authored appendix tables, kept for the main-text table.
+MIL_LEGACY_LABEL = {'misvm_mi_svm': 'mi-SVM', 'attention_attention': 'Attention',
+                    'cbr_reconstruction': 'CbR reconstruction', 'cbr_encoder_head': r'CbR encoder\_head',
+                    'bayes_mil_gibbs': 'Bayesian MIL (blind)'}
 
+
+def mil_metric_values(exp):
+    """[(label, stem, [acc, bal_acc, sens, spec, auc])] for the five MIL tiers of one
+    experiment. Bayesian MIL is read from its blind bag classification
+    (score_bayes_mil_blind: the bag label is never given to the scorer)."""
+    out = []
+    for label, stem, _ in MIL_TESTS_TIERS:
+        if stem == 'bayes_mil_gibbs':
+            d = json.load(open(os.path.join(RESULTS, exp, 'latent', 'bayes_blind_bag_classification.json')))
+            vals = [d['merged_bag_acc']] + [d[k] for k in MIL_METRIC_KEYS[1:]]
+        else:
+            m = json.load(open(os.path.join(RESULTS, exp, 'mil_eval', f'stage6_bag_eval_{stem}.json')))['metrics']
+            vals = [m[k] for k in MIL_METRIC_KEYS]
+        out.append((label, stem, vals))
+    return out
+
+
+def _naive_mil_row(exp):
+    """Naive MIL benchmark: the Tier-0 RF trained on real data (TR/TR), one majority-vote
+    decision per bag, from the same stats-eval results as every other classifier table."""
     tstr, tsrtr = latest(exp, 'TSTR'), latest(exp, 'TSRTR')
     reg, acc, _dl, _ci, bal, sens, spec, auc = rows_for_model('RF_Standard', tstr, tsrtr)[0]
     assert reg == 'TR/TR'
-    naive = rf'Na\"{{\i}}ve MIL (RF) & {acc} & {bal} & {sens} & {spec} & {auc} \\'
+    return rf'Na\"{{\i}}ve MIL (RF) & {acc} & {bal} & {sens} & {spec} & {auc} \\'
+
+
+def mil_table_latex(exp='exp_608'):
+    """Main-text MIL table for the beta=0.5 / v1 (thr=0.6) configuration: the five MIL
+    tiers' rows (mil_metric_values) preceded by the naive-MIL benchmark row."""
+    tier_rows = [f'{MIL_LEGACY_LABEL[stem]} & ' + ' & '.join(f'${v:.3f}$' for v in vals) + r' \\'
+                 for _label, stem, vals in mil_metric_values(exp)]
+    naive = _naive_mil_row(exp)
 
     L = [r'\begin{table}[H]', r'\centering', r'\small',
          r'\caption{Bag-level results ($n=59$ slides) of the multiple-instance learning (MIL) '
@@ -647,57 +668,49 @@ MIL_TESTS_TIERS = [
     ('Bayesian MIL',        'bayes_mil_gibbs',      'bayes_mil'),
 ]
 PENDING = r'\emph{pending}'
-TIE_REL = 0.03   # same relative-difference tie rule as the appendix's spatial tables
 
 
-def _stage5_moran_lag3(exp, stem, shuffled):
-    """Pooled Moran's I at lag 3, or None if that fit's stage-5 file is missing."""
-    path = os.path.join(RESULTS, exp, 'spatial_validation',
-                        f'stage5_{stem}{"_shuffled" if shuffled else ""}.json')
-    if not os.path.exists(path):
-        return None
-    return json.load(open(path))['pooled_morans_i_by_lag']['3']['mean']
+def _paired_spatial(exp):
+    """Per-fit paired real-vs-shuffled spatial tests (scripts/spatial_paired_real_vs_shuffled.py)."""
+    path = os.path.join(RESULTS, exp, 'spatial_validation', 'spatial_paired_real_vs_shuffled.json')
+    return json.load(open(path))['fits'] if os.path.exists(path) else {}
 
 
-def _std_variogram_lag3(std, stem, fit):
-    """Variance-standardized lag-3 variogram gamma/sigma^2 (scripts/standardized_variogram.py)."""
-    return (std.get(stem) or {}).get(fit, {}).get('gamma3_over_var')
-
-
-def _more_coherent(real, shuf):
-    """True when the real fit is more coherent than the shuffled one by more than the 3%
-    tie tolerance, relative to the larger coherence. Coherence is Moran's I, or
-    1 - gamma/sigma^2 for the standardized variogram (same scale, ~ lag-3 autocorrelation)."""
-    return real - shuf > TIE_REL * max(abs(real), abs(shuf))
+def _paired_cells(t):
+    """real, shuffled, delta [95% CI] cells of one paired test (None -> pending)."""
+    if t is None:
+        return ' & '.join([PENDING] * 3)
+    star = '*' if t['significant_95_real_higher'] else ''
+    return (f'${t["mean_real"]:.3f}$ & ${t["mean_shuffled"]:.3f}$ & '
+            f'${t["delta"]:+.3f}${star} $[{t["ci_lo"]:+.3f},{t["ci_hi"]:+.3f}]$')
 
 
 def mil_tests_table_latex(exp='exp_608'):
     """Status table of the MIL validation tests for one configuration. Every cell is
-    read from result files (stage-5 JSONs, standardized_variogram_lag3.json,
+    read from result files (spatial_paired_real_vs_shuffled.json,
     key_instance_utility_summary.json); a test whose result does not exist yet is shown
     as 'pending', so re-running this generator after the missing jobs finish fills the
     table in with no manual edits.
 
-    Spatial verdict: yes only if the real fit is more coherent than the shuffled-label
-    fit on BOTH Moran's I and the standardized variogram. Key-instance verdict: the
+    Spatial verdict: yes only if the paired per-slide difference (real - shuffled) has a
+    95% bootstrap CI above zero on BOTH Moran's I and the standardized variogram. Key-instance verdict: the
     RF trained on the selected instances vs. the naive MIL benchmark (the same RF
     trained on all instances, all of them voting), compared exactly."""
     ki = json.load(open(os.path.join(RESULTS, exp, 'mil_eval', 'key_instance_utility_summary.json')))
-    std = json.load(open(os.path.join(RESULTS, exp, 'spatial_validation',
-                                      'standardized_variogram_lag3.json')))
+    paired = _paired_spatial(exp)
     naive = ki['baseline_bag_acc']
 
-    rows = []
+    sp_rows, ki_rows = [], []
+    paired_boot = (json.load(open(os.path.join(RESULTS, exp, 'spatial_validation', 'spatial_paired_real_vs_shuffled.json')))['n_boot']
+                   if paired else 0)
     for label, stem, ki_key in MIL_TESTS_TIERS:
-        i_real, i_shuf = _stage5_moran_lag3(exp, stem, False), _stage5_moran_lag3(exp, stem, True)
-        v_real, v_shuf = _std_variogram_lag3(std, stem, 'real'), _std_variogram_lag3(std, stem, 'shuffled')
-        fi = lambda v: PENDING if v is None else f'${v:.4f}$'
-        fv = lambda v: PENDING if v is None else f'${1 - v:.4f}$'   # 1 - gamma/sigma^2
-        if None in (i_real, i_shuf, v_real, v_shuf):
+        t = paired.get(stem) or {}
+        t_i, t_v = t.get('morans_i'), t.get('one_minus_gamma_over_var')
+        if t_i is None or t_v is None:
             spatial_verdict = PENDING
         else:
-            passes = _more_coherent(i_real, i_shuf) and _more_coherent(1 - v_real, 1 - v_shuf)
-            spatial_verdict = 'yes' if passes else 'no'
+            spatial_verdict = 'yes' if (t_i['significant_95_real_higher']
+                                        and t_v['significant_95_real_higher']) else 'no'
         k = ki.get(ki_key)
         if k:
             sel, rnd = k['key_instance_train'], k['random_subsample']
@@ -706,41 +719,313 @@ def mil_tests_table_latex(exp='exp_608'):
                         f'{verdict(sel, naive)} & {verdict(sel, rnd)}')
         else:
             ki_cells = ' & '.join([PENDING] * 5)
-        rows.append(f'{label} & {fi(i_real)} & {fi(i_shuf)} & {fv(v_real)} & {fv(v_shuf)} & '
-                    f'{spatial_verdict} & {ki_cells} \\\\')
+        sp_rows.append(f'{label} & {_paired_cells(t_i)} & {_paired_cells(t_v)} & {spatial_verdict} ' + r'\\')
+        ki_rows.append(f'{label} & {ki_cells} ' + r'\\')
 
-    L = [r'\begin{table}[H]', r'\centering', r'\scriptsize', r'\setlength{\tabcolsep}{2pt}',
-         r'\caption{Status of the MIL validation tests for the $\beta=0.5$ configuration '
-         r"(\texttt{exp\_608}). \emph{Spatial coherence:} Moran's $I$ and the "
-         r'variance-standardized variogram, reported as $1-\hat\gamma_3/\hat\sigma^2$ (on the same scale '
-         r'as $I$; higher is more coherent), at Chebyshev lag 3, for the real fit and for a refit under '
-         r'shuffled bag labels. The verdict is yes only if the real fit exceeds the shuffled one on both '
-         r'statistics by more than 3\% of the larger value. '
-         r'\emph{Key-instance utility:} bag accuracy of a random forest trained on the instances a tier '
-         r'selects (median split on non-diagnostic mass), against (i) the na\"{\i}ve MIL benchmark, the '
-         r'same forest trained on all instances with all of them voting, and (ii) a forest trained on a '
-         r'size-matched random subset of the training instances.}',
-         r'\label{tab:mil_tests_status}',
-         r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccccccc}',
+    n_notes = '; '.join(f"{lab}: {paired[stem]['morans_i']['n_matched']}"
+                        for lab, stem, _ in MIL_TESTS_TIERS
+                        if stem in paired and paired[stem]['morans_i']['n_matched'] != 59)
+    sp = [r'\begin{table}[H]', r'\centering', r'\scriptsize', r'\setlength{\tabcolsep}{1.5pt}',
+          r'\caption{Spatial coherence of the MIL posteriors for the $\beta=0.5$ configuration '
+          r"(\texttt{exp\_608}): Moran's $I$ and the variance-standardized variogram, reported as "
+          r'$1-\hat\gamma_3/\hat\sigma^2$ (same scale as $I$; higher is more coherent), at Chebyshev lag 3, '
+          r'per slide, for the real fit and for a refit under shuffled bag labels. Means are over the '
+          r'slides where both fits are defined. $\Delta$ is the mean paired per-slide difference '
+          r'(real $-$ shuffled) with its 95\% CI from a bootstrap over slides '
+          r'(' + str(paired_boot) + r' resamples); (*) marks a CI above zero. '
+          r'The verdict is yes only if both statistics are starred.}',
+          r'\label{tab:mil_tests_status}',
+          r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccc}',
+          r'\toprule',
+          r' & \multicolumn{3}{c}{\emph{Moran' + r"\textquotesingle{}" + r's $I$}} & '
+          r'\multicolumn{3}{c}{\emph{$1-\hat\gamma_3/\hat\sigma^2$}} & '
+          r'\multirow{2}{*}{\shortstack{\emph{Real $>$}\\\emph{shuf.?}}} \\',
+          r'\cmidrule(lr){2-4} \cmidrule(lr){5-7}',
+          r'\emph{Model} & \emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & '
+          r'\emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & \\',
+          r'\midrule'] + sp_rows + [r'\bottomrule', r'\end{tabular*}']
+    if n_notes:
+        sp.append(r'\note{Slides with both fits defined (of 59), where fewer: ' + n_notes + r'.}')
+    sp += [r'\end{table}', '']
+
+    ki_t = [r'\begin{table}[H]', r'\centering', r'\scriptsize',
+            r'\caption{Key-instance utility for the $\beta=0.5$ configuration (\texttt{exp\_608}): bag accuracy '
+            r'of a random forest trained on the instances a tier selects (median split on non-diagnostic '
+            r'mass), against (i) the na\"{\i}ve MIL benchmark, the same forest trained on all instances with '
+            r'all of them voting, and (ii) a forest trained on a size-matched random subset of the training '
+            r'instances.}',
+            r'\label{tab:mil_tests_keyinst}',
+            r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}',
+            r'\toprule',
+            r' & \multicolumn{3}{c}{\emph{RF accuracy}} & '
+            r'\multirow{2}{*}{\shortstack{\emph{Sel.\ $>$}\\\emph{naive?}}} & '
+            r'\multirow{2}{*}{\shortstack{\emph{Sel.\ $>$}\\\emph{rand.?}}} \\',
+            r'\cmidrule(lr){2-4}',
+            r'\emph{Model} & \emph{Selected} & \emph{Naive} & \emph{Random} & & \\',
+            r'\midrule'] + ki_rows + [r'\bottomrule', r'\end{tabular*}', r'\end{table}', '']
+    return '\n'.join(sp + ki_t)
+
+
+SPATIAL_PAIRED_OUT = os.path.join(ROOT, 'paper', 'results_spatial_paired_table.tex')
+COMPLETENESS_OUT = os.path.join(ROOT, 'paper', 'results_mil_completeness_table.tex')
+MIL_APPENDIX_EXPS = ['exp_607', 'exp_608', 'exp_609', 'exp_2.607', 'exp_2.608', 'exp_4.608']
+EXP_SHORT = {'exp_607': '607', 'exp_608': '608', 'exp_609': '609',
+             'exp_2.607': '2.607', 'exp_2.608': '2.608', 'exp_4.608': '4.608'}
+# Key-instance utility (selected vs. size-matched random subsample) for the tiers with a
+# binarizable key posterior, as reported in the appendix key-instance table (the logs behind
+# the six-experiment run are in docs/, not in results/<exp>/); exp_608 additionally has
+# key_instance_utility_summary.json, which also covers mi-SVM and Bayesian MIL.
+KI_RANDOM_TIERS = {'attention_attention', 'cbr_reconstruction', 'cbr_encoder_head'}
+
+
+def spatial_paired_table_latex(exps=MIL_APPENDIX_EXPS):
+    """Paired per-slide real-vs-shuffled spatial coherence test for every appendix experiment
+    (results/<exp>/spatial_validation/spatial_paired_real_vs_shuffled.json)."""
+    L = [r'\begin{table}[H]', r'\centering', r'\scriptsize', r'\setlength{\tabcolsep}{1.5pt}',
+         r'\caption{Paired per-slide spatial-coherence test, real fit vs.\ shuffled-bag-label refit, at '
+         r'Chebyshev lag 3: Moran' + r"'s $I$ and $1-\hat\gamma_3/\hat\sigma^2$ " +
+         r'(higher is more coherent). Means are over the slides where both fits are defined; $\Delta$ is '
+         r'the mean per-slide difference (real $-$ shuffled) with its 95\% CI from a bootstrap over slides '
+         r'(10,000 resamples). (*) marks a CI above zero; the verdict is yes only if both statistics are '
+         r'starred.}',
+         r'\label{tab:spatial_paired}',
+         r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccc}',
          r'\toprule',
-         r' & \multicolumn{5}{c}{\emph{Spatial coherence (lag 3)}} & '
-         r'\multicolumn{5}{c}{\emph{Key-instance utility}} \\',
-         r'\cmidrule(lr){2-6} \cmidrule(lr){7-11}',
-         r' & \multicolumn{2}{c}{\emph{Moran\textquotesingle s $I$}} & '
-         r'\multicolumn{2}{c}{\emph{$1-\hat\gamma_3/\hat\sigma^2$}} & '
-         r'\multirow{2}{*}{\shortstack{\emph{Real $>$}\\\emph{shuf.?}}} & '
-         r'\multicolumn{3}{c}{\emph{RF accuracy}} & '
-         r'\multirow{2}{*}{\shortstack{\emph{Sel.\ $>$}\\\emph{naive?}}} & '
-         r'\multirow{2}{*}{\shortstack{\emph{Sel.\ $>$}\\\emph{rand.?}}} \\',
-         r'\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){7-9}',
-         r'\emph{Model} & \emph{real} & \emph{shuf.} & \emph{real} & \emph{shuf.} & & '
-         r'\emph{Selected} & \emph{Naive} & \emph{Random} & & \\',
-         r'\midrule'] + rows + [r'\bottomrule', r'\end{tabular*}', r'\end{table}', '']
+         r' & \multicolumn{3}{c}{\emph{Moran\textquotesingle{}s $I$}} & '
+         r'\multicolumn{3}{c}{\emph{$1-\hat\gamma_3/\hat\sigma^2$}} & '
+         r'\multirow{2}{*}{\shortstack{\emph{Real $>$}\\\emph{shuf.?}}} \\',
+         r'\cmidrule(lr){2-4} \cmidrule(lr){5-7}',
+         r'\emph{Tier} & \emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & '
+         r'\emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & \\']
+    short_n = []
+    for exp in exps:
+        paired = _paired_spatial(exp)
+        cfg = EXP_PARAMS.get(exp, {})
+        L += [r'\midrule',
+              rf'\multicolumn{{8}}{{l}}{{\texttt{{{exp.replace("_", r"\_")}}}}} \\']
+        for label, stem, _ in MIL_TESTS_TIERS:
+            t = paired.get(stem) or {}
+            t_i, t_v = t.get('morans_i'), t.get('one_minus_gamma_over_var')
+            if t_i is None or t_v is None:
+                L.append(rf'{label} & \multicolumn{{6}}{{c}}{{\emph{{no shuffled-label control}}}} & -- \\')
+                continue
+            verdict = 'yes' if (t_i['significant_95_real_higher'] and t_v['significant_95_real_higher']) else 'no'
+            L.append(f'{label} & {_paired_cells(t_i)} & {_paired_cells(t_v)} & {verdict} ' + r'\\')
+            if t_i['n_matched'] != 59:
+                short_n.append(f'{label}, \\texttt{{{exp.replace("_", chr(92) + "_")}}}: {t_i["n_matched"]}')
+    L += [r'\bottomrule', r'\end{tabular*}']
+    if short_n:
+        L.append(r'\note{Slides with both fits defined (of 59), where fewer: ' + '; '.join(short_n) + r'.}')
+    L += [r'\end{table}', '']
+    return '\n'.join(L)
+
+
+MIL_APPENDIX_OUT = os.path.join(ROOT, 'paper', 'results_mil_appendix_tables.tex')
+MIL_EXP_TITLE = {
+    'exp_607': r'$\beta=0.25$, v1', 'exp_608': r'$\beta=0.5$, v1', 'exp_609': r'$\beta=0.75$, v1',
+    'exp_2.607': r'$\beta=0.25$, v2', 'exp_2.608': r'$\beta=0.5$, v2',
+    'exp_4.608': r'$\beta=0.5$, v3, $\text{thr}=0.4$',
+}
+# Tiers whose stored validation-fold posterior is conditioned on the bag's true label
+# (pipeline/mil_fit_stage.py: score_bayes_mil(..., fd.y_val, ...)), so their key-instance
+# selection and posterior maps are not label-blind on held-out slides.
+LABEL_CONDITIONED_STEMS = {'bayes_mil_gibbs'}
+DAGGER = r'$^\dagger$'
+# Prose added or changed in the MIL appendix is wrapped in red until the author accepts it.
+MARK_MODIFIED = True
+# Key-instance results are read from the label-free Bayesian MIL posterior, not the stored one.
+KI_STEM = {'bayes_mil_gibbs': 'bayes_mil_gibbs_blind'}
+
+
+def _red(s):
+    return rf'\textcolor{{red}}{{{s}}}' if MARK_MODIFIED else s
+
+
+def _tex_exp(exp):
+    return rf'\texttt{{{exp.replace("_", r"\_")}}}'
+
+
+def _bottom_caption_table(body, caption, label, notes=(), pre=()):
+    """A [H] table with its caption in small font below the body and the notes."""
+    L = [r'\begin{table}[H]', r'\centering', r'\scriptsize',
+         r'\captionsetup{position=bottom,font=small}', *pre] + body
+    if notes:
+        L.append(r'\note{' + ' '.join(notes) + '}')
+    return L + [r'\caption{' + caption + '}', rf'\label{{{label}}}', r'\end{table}', '']
+
+
+def mil_experiment_tables_latex(exp):
+    """The three MIL tables of one appendix experiment: bag-level classification metrics
+    against the naive MIL benchmark, paired real-vs-shuffled spatial coherence, and the
+    key-instance utility test."""
+    short = EXP_SHORT[exp].replace('.', '')
+    where = f'{_tex_exp(exp)} ({MIL_EXP_TITLE[exp]})'
+    dagger_note = _red(DAGGER + r' The stored validation-fold posterior of Bayesian MIL is computed given the '
+                       r"slide's bag label (\texttt{score\_bayes\_mil}); this row is therefore not label-blind "
+                       r'on held-out slides, and is pending a rerun with a label-free posterior.')
+
+    def tier(label, stem):
+        return label + (DAGGER if stem in LABEL_CONDITIONED_STEMS else '')
+
+    # 1. classification metrics
+    cls_rows = [_naive_mil_row(exp), r'\midrule']
+    cls_rows += [f'{label} & ' + ' & '.join(f'${v:.3f}$' for v in vals) + r' \\'
+                 for label, _stem, vals in mil_metric_values(exp)]
+    cls = _bottom_caption_table(
+        [r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}', r'\toprule',
+         r'\emph{Model} & \emph{Accuracy} & \emph{Bal.\ Acc} & \emph{Sensitivity} & '
+         r'\emph{Specificity} & \emph{AUC} \\',
+         r'\midrule'] + cls_rows + [r'\bottomrule', r'\end{tabular*}'],
+        r'MIL tier bag-level results, ' + where + '. ' + _red(
+            r'Binary IDH classification, $n=59$ slides, against the na\"{\i}ve MIL benchmark (a random '
+            r"forest trained on real data, every instance inheriting its bag's label, one majority-vote "
+            r'decision per bag). Bayesian MIL is scored blind: the bag label is never given to the scorer.'),
+        f'tab:ctrl_mil_{short}')
+
+    # 2. spatial coherence (paired real vs. shuffled-label refit)
+    paired = _paired_spatial(exp)
+    sp_rows, short_n = [], []
+    for label, stem, _ in MIL_TESTS_TIERS:
+        t = paired.get(stem) or {}
+        t_i, t_v = t.get('morans_i'), t.get('one_minus_gamma_over_var')
+        if t_i is None or t_v is None:
+            sp_rows.append(rf'{tier(label, stem)} & \multicolumn{{6}}{{c}}{{\emph{{no shuffled-label control}}}} \\')
+            continue
+        sp_rows.append(f'{tier(label, stem)} & {_paired_cells(t_i)} & {_paired_cells(t_v)} ' + r'\\')
+        if t_i['n_matched'] != 59:
+            short_n.append(f'{label}: {t_i["n_matched"]}')
+    sp_note = ([_red(r'Slides with both fits defined (of 59), where fewer: ' + '; '.join(short_n) + '.')]
+               if short_n else []) + [dagger_note]
+    sp = _bottom_caption_table(
+        [r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc}', r'\toprule',
+         r' & \multicolumn{3}{c}{\emph{Moran\textquotesingle{}s $I$}} & '
+         r'\multicolumn{3}{c}{\emph{Variogram range}} \\',
+         r'\cmidrule(lr){2-4} \cmidrule(lr){5-7}',
+         r'\emph{Model} & \emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & '
+         r'\emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} \\',
+         r'\midrule'] + sp_rows + [r'\bottomrule', r'\end{tabular*}'],
+        _red(r'Spatial coherence of the MIL posterior maps, ' + where + r": Moran's $I$ and the "
+             r'variogram range at Chebyshev lag 3 (higher is more coherent), real fit vs.\ '
+             r'shuffled-bag-label refit, averaged over the slides where both are defined. $\Delta$ is the '
+             r'mean per-slide difference (real $-$ shuffled) with its 95\% bootstrap CI over slides; (*) '
+             r'marks a CI above zero. The real fit is more coherent than its control only if both '
+             r'statistics are starred.'),
+        f'tab:ctrl_spatial_{short}', notes=sp_note, pre=[r'\setlength{\tabcolsep}{1.5pt}'])
+
+    # 3. key-instance utility (paired per-slide bootstrap, scripts/key_instance_paired_bootstrap.py)
+    p = os.path.join(RESULTS, exp, 'mil_eval', 'key_instance_paired.json')
+    paired_ki = json.load(open(p))['tiers'] if os.path.exists(p) else {}
+    ki_rows, fell_back, n_boot, naive_acc = [], [], 10000, set()
+    for label, stem, _ in MIL_TESTS_TIERS:
+        r = paired_ki.get(KI_STEM.get(stem, stem))
+        if r is None:
+            ki_rows.append(f'{label} & ' + ' & '.join([PENDING] * 2) + r' \\')
+            continue
+        vn = r['vs_naive']
+        naive_acc.add(round(vn['acc_other'], 6))
+        star = '*' if vn['significant_95_selected_higher'] else ''
+        ki_rows.append(f'{label} & ${vn["acc_selected"]:.3f}$ & '
+                       f'${vn["delta"]:+.3f}${star} $[{vn["ci_lo"]:+.3f},{vn["ci_hi"]:+.3f}]$ ' + r'\\')
+        src = json.load(open(os.path.join(RESULTS, exp, 'mil_eval', 'key_instance_per_slide', r['source'])))
+        if src.get('n_slides_fell_back'):
+            fell_back.append(f'{label}: {src["n_slides_fell_back"]}')
+    ki_note = []
+    if fell_back:
+        ki_note.append(_red(r'Slides with no selected validation instance, scored on all their instances '
+                            r'instead: ' + '; '.join(fell_back) + '.'))
+    assert len(naive_acc) <= 1, f'{exp}: tiers disagree on the naive MIL accuracy {naive_acc}'
+    naive_cell = f'${naive_acc.pop():.3f}$' if naive_acc else PENDING
+    ki_t = _bottom_caption_table(
+        [r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcc}', r'\toprule',
+         r'\emph{Model} & \emph{Accuracy} & \emph{$\Delta$ [95\% CI]} \\',
+         r'\midrule',
+         rf'Na\"{{\i}}ve MIL (RF) & {naive_cell} & \\',
+         r'\midrule'] + ki_rows + [r'\bottomrule', r'\end{tabular*}'],
+        _red(r'Key-instance utility, ' + where + r': bag accuracy of a random forest trained only on the '
+             r'instances a tier selects (median split on non-diagnostic mass) and voting with the selected '
+             r'validation instances, against the na\"{\i}ve MIL benchmark. $\Delta$ is the paired per-slide '
+             r'accuracy difference (tier $-$ na\"{\i}ve) with its 95\% CI from a bootstrap over slides '
+             r'(' + f'{n_boot:,}' + r' resamples); (*) marks a CI above zero, i.e.\ the tier is better than the na\"{\i}ve benchmark.'),
+        f'tab:ctrl_keyinst_{short}', notes=ki_note)
+
+    head = [rf'\subsubsection*{{{where}}}', '']
+    return '\n'.join(head + cls + sp + ki_t)
+
+
+def mil_appendix_tables_latex(exps=MIL_APPENDIX_EXPS):
+    return '\n'.join(mil_experiment_tables_latex(e) for e in exps)
+
+
+def mil_completeness_rows(exps=MIL_APPENDIX_EXPS):
+    """[(tier label, test label, {exp: done?})] derived from the files on disk (and the
+    KI_RANDOM_TIERS record for the earlier key-instance run)."""
+    def has(*parts):
+        return os.path.exists(os.path.join(RESULTS, *parts))
+
+    tests = []
+    for label, stem, ki_key in MIL_TESTS_TIERS:
+        bayes = stem == 'bayes_mil_gibbs'
+        paired = {e: _paired_spatial(e) for e in exps}
+        ki = {}
+        for e in exps:
+            p = os.path.join(RESULTS, e, 'mil_eval', 'key_instance_paired.json')
+            ki[e] = json.load(open(p))['tiers'] if os.path.exists(p) else {}
+        ki_key = KI_STEM.get(stem, stem)
+        tests += [
+            (label, 'Bag-level metrics',
+             {e: has(e, 'latent', 'bayes_blind_bag_classification.json') if bayes
+              else has(e, 'mil_eval', f'stage6_bag_eval_{stem}.json') for e in exps}),
+            (label, 'Spatial, real fit',
+             {e: has(e, 'spatial_validation', f'stage5_{stem}.json') for e in exps}),
+            (label, 'Spatial, shuffled control',
+             {e: has(e, 'spatial_validation', f'stage5_{stem}_shuffled.json') for e in exps}),
+            (label, 'Paired bootstrap test',
+             {e: stem in paired[e] for e in exps}),
+            (label, 'Key inst.\\ vs.\\ na\\"{\\i}ve',
+             {e: ki_key in ki[e] for e in exps}),
+        ]
+        if bayes:
+            tests.append((label, 'Posterior diagnostics ($\\hat R$)',
+                          {e: has(e, 'latent', 'bayes_diagnostics.json') for e in exps}))
+    return tests
+
+
+LABEL_CONDITIONED_TESTS = {('Bayesian MIL', t) for t in (
+    'Spatial, real fit', 'Spatial, shuffled control', 'Paired bootstrap test')}
+
+
+def mil_completeness_table_latex(exps=MIL_APPENDIX_EXPS):
+    rows = mil_completeness_rows(exps)
+    L = [r'\begin{table}[H]', r'\centering', r'\scriptsize', r'\setlength{\tabcolsep}{3pt}',
+         r'\caption{Completeness of the MIL evaluation tests over the experiments of this appendix. '
+         r'$\bullet$: result available; $\circ$: not run. Spatial coherence and the paired bootstrap '
+         r'need both a real fit and a shuffled-label refit of the same tier. ' + _red(
+             DAGGER + r' Available, but computed from a validation-fold posterior conditioned on the '
+             r'bag label; pending a rerun with a label-free posterior.') + '}',
+         r'\label{tab:mil_completeness}',
+         r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ll' + 'c' * len(exps) + '}',
+         r'\toprule',
+         r'\emph{Tier} & \emph{Test} & ' + ' & '.join(rf'\texttt{{{EXP_SHORT[e]}}}' for e in exps) + r' \\']
+    prev = None
+    for tier, test, d in rows:
+        if tier != prev:
+            L.append(r'\midrule')
+        first = rf'\multirow{{{sum(1 for r in rows if r[0] == tier)}}}{{*}}{{{tier}}}' if tier != prev else ''
+        prev = tier
+        mark = r'$\bullet^\dagger$' if (tier, test) in LABEL_CONDITIONED_TESTS else r'$\bullet$'
+        L.append(f'{first} & {test} & ' + ' & '.join(mark if d[e] else r'$\circ$' for e in exps) + r' \\')
+    n_done = sum(v for _, _, d in rows for v in d.values())
+    n_all = sum(len(d) for _, _, d in rows)
+    L += [r'\bottomrule', r'\end{tabular*}',
+          rf'\note{{{n_done} of {n_all} tier--test--experiment cells are available.}}', r'\end{table}', '']
     return '\n'.join(L)
 
 
 def _results_tables():
-    return ((BETA_TABLE_OUT, beta_table_latex()),
+    return ((MIL_APPENDIX_OUT, mil_appendix_tables_latex()),
+            (SPATIAL_PAIRED_OUT, spatial_paired_table_latex()),
+            (COMPLETENESS_OUT, mil_completeness_table_latex()),
+            (BETA_TABLE_OUT, beta_table_latex()),
             (LATENT_TABLE_OUT, latent_dim_table_latex()),
             (RECON_TABLE_OUT, recon_loss_table_latex()),
             (RATIO_TABLE_OUT, synth_ratio_table_latex()),

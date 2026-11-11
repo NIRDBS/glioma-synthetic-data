@@ -1,8 +1,6 @@
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Pairwise bag-level bootstrap between CVAE latent dimensions ($\beta=0.5$, \texttt{latent\_dim} $d\in\{16,32,64\}$). $\Delta$ is the bag accuracy at the larger $d$ minus at the smaller $d$, with its 95\% CI from the class-stratified bootstrap over the $n=59$ bag decisions (1000 iterations, paired); (*) marks a CI excluding zero.}
-\label{tab:ctrl_boot_latent}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc}
 \toprule
 \multirow{2}{*}{\emph{Model}} & \multirow{2}{*}{\emph{$d$}} & \multicolumn{2}{c}{\emph{TS/TR}} & \multicolumn{2}{c}{\emph{TSR/TR}} \\
@@ -22,14 +20,15 @@
  & $32 \to 64$ & $+0.068$ & $[+0.000, +0.153]$ & $+0.051$ & $[-0.034, +0.136]$ \\
 \bottomrule
 \end{tabular*}
-\note{16 tests (4 models $\times$ 2 comparisons $\times$ 2 regimens), no multiplicity correction. A zero-width interval ($\Delta=0$, $[+0.000,+0.000]$) means the two models make identical decisions on every bag, so the resampled difference is exactly zero; it is not a degenerate bootstrap.}
+\caption{\small Pairwise bag-level bootstrap between CVAE latent dimensions ($\beta=0.5$, $d\in\{16,32,64\}$). $\Delta$ is the bag accuracy at the larger $d$ minus at the smaller $d$, with its 95\% CI from the class-stratified bootstrap over the $n=59$ bag decisions (1000 iterations, paired); (*) marks a CI excluding zero.}
+\label{tab:ctrl_boot_latent}
+\note{16 tests (4 models $\times$ 2 comparisons $\times$ 2 regimens), no multiplicity correction. A zero-width interval ($\Delta=0$, $[+0.000,+0.000]$) means the two models make identical decisions on every bag, thus the resampled difference is exactly zero; it is not a degenerate bootstrap.}
 \end{table}
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Pairwise bag-level bootstrap between synthetic pools of 40,000 (\texttt{exp\_608}) and 80,000 (\texttt{exp\_708}) spectra per fold, TS/TR ($\beta=0.5$; same CVAE decoders, models and validation folds). $\Delta$ is the bag accuracy with the 80k pool minus with the 40k pool; 95\% CI as in Table~\ref{tab:ctrl_boot_latent}; (*) marks a CI excluding zero.}
-\label{tab:ctrl_boot_pool}
+
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
 \toprule
 \emph{Model} & \emph{40k} & \emph{80k} & \emph{$\Delta$} & \emph{95\% CI} & \emph{$p$} \\
@@ -40,5 +39,6 @@ XGBoost & $0.831$ & $0.831$ & $+0.000$ & $[-0.051, +0.051]$ & $1.000$ \\
 1D-CNN & $0.678$ & $0.780$ & $+0.102$* & $[+0.033, +0.186]$ & $0.014$ \\
 \bottomrule
 \end{tabular*}
-\note{4 tests, no multiplicity correction.}
+\caption{\small Pairwise bag-level bootstrap between synthetic pools of 40,000 (\texttt{exp\_608}) and 80,000 (\texttt{exp\_708}) spectra per fold, TS/TR ($\beta=0.5$; same CVAE decoders, models and validation folds). $\Delta$ is the bag accuracy with the 80k pool minus with the 40k pool; 95\% CI as in Table~\ref{tab:ctrl_boot_latent}; (*) marks a CI excluding zero.}
+\label{tab:ctrl_boot_pool}
 \end{table}

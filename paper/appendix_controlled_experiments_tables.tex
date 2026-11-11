@@ -65,7 +65,7 @@ CbR & -- & $0.729$ & -- & $[+0.610, +0.831]$ & $0.733$ & $0.697$ & $0.769$ & $0.
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_607}: IDH binary classification, $\beta$ = 0.25, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_607}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -90,12 +90,12 @@ CbR & -- & $0.729$ & -- & $[+0.610, +0.831]$ & $0.733$ & $0.697$ & $0.769$ & $0.
 CbR & -- & $0.746$ & -- & $[+0.644, +0.847]$ & $0.736$ & $0.818$ & $0.654$ & $0.824$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_607}: IDH binary classification, $\beta$ = 0.25, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \end{table}
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \label{tab:ctrl_exp_608}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -120,12 +120,13 @@ CbR & -- & $0.746$ & -- & $[+0.644, +0.847]$ & $0.736$ & $0.818$ & $0.654$ & $0.
 CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \end{table}
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_609}: IDH binary classification, $\beta$ = 0.75, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_609}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -150,6 +151,7 @@ CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.
 CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.779$ & $0.788$ & $0.769$ & $0.688$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_609}: IDH binary classification, $\beta$ = 0.75, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \end{table}
 
 \subsection*{Latent dimension}
@@ -157,7 +159,7 @@ The effect of the CVAE's latent vector size on the classifiers. The number of ac
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_701}: IDH binary classification, $\beta$ = 0.5, $d$=16, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_701}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -182,14 +184,15 @@ The effect of the CVAE's latent vector size on the classifiers. The number of ac
 CbR & -- & $0.797$ & -- & $[+0.695, +0.898]$ & $0.798$ & $0.788$ & $0.808$ & $0.761$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_701}: IDH binary classification, $\beta$ = 0.5, $d$=16, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \end{table}
 
-\texttt{exp\_608}: shared anchor, see its table above.
+\texttt{exp\_608}: shared configuration, see its table above.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_702}: IDH binary classification, $\beta$ = 0.5, $d$=64, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_702}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -214,36 +217,15 @@ CbR & -- & $0.797$ & -- & $[+0.695, +0.898]$ & $0.798$ & $0.788$ & $0.808$ & $0.
 CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.779$ & $0.788$ & $0.769$ & $0.772$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_702}: IDH binary classification, $\beta$ = 0.5, $d$=64, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \end{table}
 
-\subsection*{Pairwise bootstrap comparisons}
+% \subsection*{Pairwise bootstrap comparisons}
 
-Paired bag-level bootstrap tests between experiments that differ in one factor: the CVAE latent dimension (Table~\ref{tab:ctrl_boot_latent}) and the size of the synthetic pool used for TS/TR (Table~\ref{tab:ctrl_boot_pool}). The procedure is the one used for the downstream-classifier tables above: one majority-vote decision per bag from each experiment's own fold models, class-stratified resampling of the $n=59$ paired bag decisions, 1000 iterations, percentile 95\% CI.
+Paired bag-level bootstrap tests between experiments that differ in one factor: the CVAE latent dimension (Table~\ref{tab:ctrl_boot_latent}) and the size of the synthetic pool used for TS/TR (Table~\ref{tab:ctrl_boot_pool}). The procedure is the one used for the classifier tables above: one majority-vote decision per bag from each experiment's own fold models, class-stratified resampling of the $n=59$ paired bag decisions, 1000 iterations, percentile 95\% CI.
 
 \input{appendix_bootstrap_tables}
 
-\subsection*{Per-fold class composition: \texttt{exp\_608}}
-
-Computed directly from the CV split assignment (Appendix~\ref{app:cv_schema}) and each bag's binary label, at both the bag level (one count per biopsy slide) and the instance level (one count per retained spectrum) -- the two can diverge sharply when bag sizes are uneven, since a handful of large bags of one class can dominate a fold's instance count while leaving its bag count roughly balanced.
-
-\begin{table}[H]
-\centering
-\scriptsize
-\caption{Per-fold bag-level and instance-level class balance, \texttt{exp\_608}.}
-\label{tab:ctrl_fold_balance}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc|cccc}
-\toprule
-& \multicolumn{4}{c}{Train (bag-level)} & \multicolumn{1}{c|}{} & \multicolumn{4}{c}{Test (bag-level)} \\
-Fold & Class 0 & Class 1 & Total & \% minority & & Class 0 & Class 1 & Total & \% minority \\
-\midrule
-0 & 20 & 25 & 45 & $44.4\%$ & & 6 & 8 & 14 & $42.9\%$ \\
-1 & 22 & 25 & 47 & $46.8\%$ & & 4 & 8 & 12 & $33.3\%$ \\
-2 & 18 & 27 & 45 & $40.0\%$ & & 8 & 6 & 14 & $42.9\%$ \\
-3 & 21 & 27 & 48 & $43.8\%$ & & 5 & 6 & 11 & $45.5\%$ \\
-4 & 20 & 27 & 47 & $42.6\%$ & & 6 & 6 & 12 & $50.0\%$ \\
-\bottomrule
-\end{tabular*}
-\end{table}
 
 \subsection*{Reconstruction-loss}
 \label{app:recon-loss}
@@ -251,7 +233,7 @@ We experiment with reconstruction loss as MSE, cosine, or 0.5 MSE + 0.5 cosine.
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_703}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE + Cosine (0.5/0.5), synthetic ratio: 1, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_703}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -276,12 +258,13 @@ We experiment with reconstruction loss as MSE, cosine, or 0.5 MSE + 0.5 cosine.
 CbR & -- & $0.746$ & -- & $[+0.627, +0.847]$ & $0.748$ & $0.727$ & $0.769$ & $0.679$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_703}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE + Cosine (0.5/0.5), synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \end{table}
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_704}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = Cosine, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_704}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -306,16 +289,17 @@ CbR & -- & $0.746$ & -- & $[+0.627, +0.847]$ & $0.748$ & $0.727$ & $0.769$ & $0.
 CbR & -- & $0.576$ & -- & $[+0.458, +0.695]$ & $0.564$ & $0.667$ & $0.462$ & $0.706$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_704}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = Cosine, synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \end{table}
 
 \subsection*{Synthetic/real ratio for TSR/TR}
 \label{app:synth-ratio}
-We change the ratio of syhthetic/real data. For all other experiments, this ratio is fixed at 1.
+We change the ratio of synthetic/real data. For all other experiments, this ratio is fixed at 1.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_705}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 0.5, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_705}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -340,12 +324,13 @@ We change the ratio of syhthetic/real data. For all other experiments, this rati
 CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_705}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 0.5, maximum intensity threshold = 0.6.}
 \end{table}
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_706}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 2, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_706}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -370,6 +355,7 @@ CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.
 CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_706}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 2, maximum intensity threshold = 0.6.}
 \end{table}
 
 \subsection*{Maximum Intensity Threshold}\label{subsec:max_int}
@@ -377,7 +363,7 @@ We test the spectra selection criteria with thresholds $\text{thr} \in \{0.4, 0.
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_4.608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.4.}
+
 \label{tab:ctrl_exp_4.608}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -402,12 +388,13 @@ We test the spectra selection criteria with thresholds $\text{thr} \in \{0.4, 0.
 CbR & -- & $0.797$ & -- & $[+0.678, +0.881]$ & $0.794$ & $0.818$ & $0.769$ & $0.776$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_4.608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.4.}
 \end{table}
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
+
 \label{tab:ctrl_exp_608_thr}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -432,12 +419,13 @@ CbR & -- & $0.797$ & -- & $[+0.678, +0.881]$ & $0.794$ & $0.818$ & $0.769$ & $0.
 CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.760$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = 0.6.}
 \end{table}
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_2.608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing; see note below).}
+
 \label{tab:ctrl_exp_2.608}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -462,16 +450,17 @@ CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.774$ & $0.818$ & $0.731$ & $0.
 CbR & -- & $0.763$ & -- & $[+0.661, +0.864]$ & $0.759$ & $0.788$ & $0.731$ & $0.755$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_2.608}: IDH binary classification, $\beta$ = 0.5, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing; see note below).}
 \end{table}
 
-\emph{Note.} \texttt{exp\_2.608}'s preprocessing is not a pure fixed threshold despite the $0.8$ figure above: it keeps each slide's own top-90\% of pixels by max-intensity rank (a per-slide 10th-percentile cutoff), with $\text{thr}>0.8$ applied only as an absolute floor within that selection (rarely binding). \texttt{exp\_608} and \texttt{exp\_4.608} use a single fixed threshold directly on max-intensity, with no rank-based component.
+We note that the preprocessing in \texttt{exp\_2.608} is not a pure fixed threshold despite the $0.8$ figure above: it keeps each slide's own top-90\% of pixels by max-intensity rank (a per-slide 10th-percentile cutoff), with $\texttt{thr}>0.8$ applied only as an absolute floor within that selection. Configurations \texttt{exp\_608} and \texttt{exp\_4.608} use a single fixed threshold directly on max-intensity, with no rank-based component.
 
-\subsection*{Analysis of $\beta$ at 0.8 threshold}
+\subsection*{Results for $\beta \in \{0.25, 0.75\}$ at 0.8 threshold}
 We test two more values for beta for the 0.8 spectra selection threshold.
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_2.607}: IDH binary classification, $\beta$ = 0.25, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing).}
+
 \label{tab:ctrl_exp_2.607}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -496,14 +485,15 @@ We test two more values for beta for the 0.8 spectra selection threshold.
 CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.770$ & $0.848$ & $0.692$ & $0.809$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_2.607}: IDH binary classification, $\beta$ = 0.25, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing).}
 \end{table}
 
-\texttt{exp\_2.608}: shared anchor, see its table above.
+\texttt{exp\_2.608}: shared configuration, see its table above.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{\texttt{exp\_2.609}: IDH binary classification, $\beta$ = 0.75, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing).}
+
 \label{tab:ctrl_exp_2.609}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc}
 \toprule
@@ -528,4 +518,8 @@ CbR & -- & $0.780$ & -- & $[+0.678, +0.881]$ & $0.770$ & $0.848$ & $0.692$ & $0.
 CbR & -- & $0.746$ & -- & $[+0.627, +0.847]$ & $0.748$ & $0.727$ & $0.769$ & $0.669$\\
 \bottomrule
 \end{tabular*}
+\caption{\small \texttt{exp\_2.609}: IDH binary classification, $\beta$ = 0.75, $d$=32, reconstruction = MSE, synthetic ratio: 1, maximum intensity threshold = adaptive, top-90\%-by-rank per slide floored at $0.8$ (v2 preprocessing).}
 \end{table}
+
+
+

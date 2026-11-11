@@ -22,7 +22,6 @@ from src.evaluation.spatial import (
     variogram_by_lag,
     variogram_range,
 )
-from src.mil.em import fit_em
 from src.mil.misvm import fit_misvm
 
 
@@ -171,7 +170,6 @@ def test_hard_diagnostic_threshold_misvm_is_untouched_at_flat_half():
     this fix must not silently change its already-reported result."""
     from scripts.stage5_spatial_validation import hard_diagnostic_threshold
     assert hard_diagnostic_threshold('misvm', K=2) == pytest.approx(0.5)
-    assert hard_diagnostic_threshold('em', K=2) == pytest.approx(0.5)
 
 
 def test_hard_diagnostic_threshold_joint_softmax_k2_matches_the_derived_bound():
@@ -198,10 +196,10 @@ def test_hard_diagnostic_threshold_joint_softmax_scales_with_k():
 # ---------------------------------------------------------------------------
 
 def test_no_mil_formulation_accepts_coords():
-    """A direct, permanent guard: neither Tier 1 (mi-SVM) nor Tier 2 (EM)'s
-    fit function has any coordinate-shaped parameter at all -- geometry
-    cannot leak into the model by construction, not merely by convention."""
-    for fn in (fit_misvm, fit_em):
+    """A direct, permanent guard: Tier 1 (mi-SVM)'s fit function has no
+    coordinate-shaped parameter at all -- geometry cannot leak into the model
+    by construction, not merely by convention."""
+    for fn in (fit_misvm,):
         params = set(inspect.signature(fn).parameters.keys())
         coord_like = {p for p in params if 'coord' in p.lower()}
         assert not coord_like, f"{fn.__name__} unexpectedly accepts {coord_like}"

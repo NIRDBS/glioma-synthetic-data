@@ -116,7 +116,7 @@ class GliomaDataLoader:
         
         Example:
             from src.utils.config_manager import ConfigManager
-            config = ConfigManager.load_config('exp_103')
+            config = ConfigManager.load_config('exp_608')
             loader = GliomaDataLoader.from_config('data/processed/glioma_dataset.h5', config)
             # Loader will automatically apply crop_region and patient_cap if in config
         """

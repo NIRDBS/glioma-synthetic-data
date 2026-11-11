@@ -10,7 +10,7 @@ survives this, the real result cannot be attributed to the true label.
 Reuses each formulation's own per-fold fitting code UNCHANGED (the
 permutation happens once, in the loader's own y_class array, before any
 fold splitting -- everything downstream of that is identical to a real
-fit): pipeline/mil_fit_stage.py's _fit_one_formulation for misvm/em,
+fit): pipeline/mil_fit_stage.py's _fit_one_formulation for misvm,
 pipeline/mil_attention_stage.py's mil_attention_stage for attention (its
 frozen CVAE trunk is untouched by this -- only the attention head refits,
 same as any other real attention fit), pipeline/modal_cvae.py's
@@ -58,7 +58,7 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
        attn_dim=32, dropout_rate=0.3, l2=1e-3, center_by_bag=True,
        sub_bag_size=None, n_per_bag_per_epoch=50, max_epochs=200, patience=15,
        fold_names=None, cvae_epochs=None, backend='local'):
-    """``backend='modal'`` (misvm/em only): fold-parallel on Modal instead
+    """``backend='modal'`` (misvm only): fold-parallel on Modal instead
     of ~4h sequential locally -- pipeline/modal_mil_fit.py::run_mil_fit_parallel's
     label_map/store_path override, the shuffled-control analogue of the real
     fit's own --backend modal path (pipeline/mil_fit_stage.py). attention's
@@ -69,7 +69,7 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
     config = ConfigManager.load_config(config_name)
 
     if method == 'cvae':
-        # Unlike misvm/em/attention, the permutation happens INSIDE the
+        # Unlike misvm/attention, the permutation happens INSIDE the
         # remote container (cvae_stage.run_local, given just the seed) --
         # there is no local loader to substitute and hand off, since Modal
         # containers build their own loader from the config alone. See
@@ -123,7 +123,7 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
 
     cbr_kwargs = {}
     if method == 'cbr':
-        # Unlike misvm/em, CbR's own posterior computation
+        # Unlike misvm, CbR's own posterior computation
         # (_score_one_fold_cbr) never reads fd.y_train/y_val at all -- it is
         # a pure function of which CVAE weights it loads and which features
         # it scores (docs/mil_tiers_methodology.md §7). So the label
@@ -139,7 +139,7 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
         print(f"  cvae_weights_dir -> {cvae_weights_dir}  "
               f"cbr_temperature={cbr_kwargs['cbr_temperature']}")
 
-    if backend == 'modal' and method in ('misvm', 'em'):
+    if backend == 'modal' and method == 'misvm':
         from pipeline.modal_mil_fit import run_mil_fit_parallel
         run_mil_fit_parallel(
             config, methods=(method,), pi_min=pi_min, max_iters=max_iters, seed=seed,
@@ -148,18 +148,9 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
         print(f"\n  Shuffled-label control fit complete (modal) -> {store_path}")
         return {'store_path': str(store_path), 'label_map': label_map}
 
-    bayes_kwargs = {}
-    if method == 'bayes_mil':
-        # Same sourcing as the real (non-shuffled) fit stage
-        # (pipeline/mil_fit_stage.py's own `bayes_cfg = mil_cfg.get('bayes', {})`)
-        # -- _fit_one_formulation already dispatches 'bayes_mil' to
-        # _fit_one_fold_bayes_mil (Gibbs refit + score_bayes_mil); this was
-        # simply never threaded through here, not a missing capability.
-        bayes_kwargs = {'bayes_cfg': config.get('mil', {}).get('bayes', {})}
-
     _fit_one_formulation(
         method, loader, config, n_classes, store_path, pi_min, max_iters, seed,
-        svm_subsample_per_bag=svm_subsample_per_bag, **cbr_kwargs, **bayes_kwargs,
+        svm_subsample_per_bag=svm_subsample_per_bag, **cbr_kwargs,
     )
     print(f"\n  Shuffled-label control fit complete -> {store_path}")
     return {'store_path': str(store_path), 'label_map': label_map}
@@ -169,7 +160,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Shuffled-bag-label control")
     parser.add_argument('--config', required=True)
     parser.add_argument('--method', required=True,
-                        choices=['misvm', 'em', 'attention', 'cvae', 'cbr', 'bayes_mil'])
+                        choices=['misvm', 'attention', 'cvae', 'cbr'])
     parser.add_argument('--epochs', type=int, default=None,
                         help="cvae only: override epoch count (smoke-test use)")
     parser.add_argument('--pi-min', type=float, default=None)
@@ -192,7 +183,7 @@ if __name__ == '__main__':
     parser.add_argument('--folds', nargs='+', default=None,
                         help="attention only: subset of fold names, e.g. fold_0 (smoke-test use)")
     parser.add_argument('--backend', default='local', choices=['local', 'modal'],
-                        help="misvm/em only: 'modal' fits every fold in its own parallel "
+                        help="misvm only: 'modal' fits every fold in its own parallel "
                              "CPU container instead of ~4h sequential locally (mirrors the "
                              "real fit's own --backend modal). No effect on attention/cvae/cbr.")
     args = parser.parse_args()

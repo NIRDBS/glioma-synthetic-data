@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Key-instance utility with per-slide predictions for every non-Bayesian MIL tier of the
+# Key-instance utility with per-slide predictions for every MIL tier of the
 # appendix experiments, then the paired per-slide bootstrap and the paper tables.
 # Resumable: a cell whose per-slide file exists is skipped.
 set -u

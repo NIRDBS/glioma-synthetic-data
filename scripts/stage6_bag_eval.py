@@ -3,12 +3,12 @@ Stage 6: bag-level classification accuracy for a stored MIL posterior, vs the
 Tier 0 reference (docs/MIL_REFRAME_PLAN.md Stage 6 exit criterion: "Beats
 Tier 0 at bag level").
 
-Generic over (method, variant) -- works for Tier 4's 'cbr' variants today,
-and equally for Tier 1 ('misvm') / Tier 2 ('em') on request, since it reads
-directly from the latent-label store rather than any tier-specific code.
-This closes a real gap: docs/stage4_mil.md §6 never computed a bag-accuracy
-number for mi-SVM/EM -- their story stayed at pi_b/degeneracy diagnostics and
-Stage 5's spatial checks. This script is what "beats Tier 0" actually needs.
+Generic over (method, variant) -- works for Tier 4's 'cbr' variants and
+Tier 1 ('misvm') alike, since it reads directly from the latent-label store
+rather than any tier-specific code. This closes a real gap: docs/stage4_mil.md
+§6 never computed a bag-accuracy number for mi-SVM -- its story stayed at
+degeneracy diagnostics and Stage 5's spatial checks. This script is what
+"beats Tier 0" actually needs.
 
 The store's posterior is (n, K+1): column 0 is non-diagnostic mass (Stage 5's
 own concern, mapped spatially), columns 1..K are the K diagnostic classes.
@@ -72,7 +72,7 @@ def diagnostic_column_competition_frac(fold_data):
     unit-testable against hand-built posteriors.
 
     Near 0.0: this method hard-restricts every instance to its own bag's
-    known class throughout scoring (Model (C), e.g. EM's score_em) -- the
+    known class throughout scoring (Model (C)) -- the
     bag_accuracy this script computes is then trivially 1.0 and
     UNINFORMATIVE, not a genuine result. Near 1.0 (mi-SVM, Tier 4's cbr
     variants): genuine per-instance competition between classes; the

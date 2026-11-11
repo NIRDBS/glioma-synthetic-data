@@ -224,25 +224,37 @@ class TestConfigManager:
 
 class TestConfigValidation:
     """Test configuration validation logic."""
-    
+
+    @staticmethod
+    def _valid_config():
+        """A config that passes every check, so each test can break exactly one
+        field (the required-fields check runs first and would otherwise mask
+        the check under test)."""
+        return {
+            'name': 'test_exp',
+            'description': 'validation test',
+            'preprocessing': {'airpls_lambda': 1e5, 'signal_length': 1738,
+                              'crop_region': [700, 1800]},
+            'cv_strategy': {'split_source': 'data/splits/manual_splits.json'},
+            'output': {'output_base': 'results'},
+        }
+
+    def test_valid_config_passes(self):
+        ConfigManager._validate_config(self._valid_config(), Path('dummy.yaml'))
+
     def test_crop_region_must_have_two_elements(self):
         """Test that crop_region validation works."""
-        invalid_config = {
-            'preprocessing': {
-                'crop_region': [700],  # Only one element!
-            }
-        }
-        
+        invalid_config = self._valid_config()
+        invalid_config['preprocessing']['crop_region'] = [700]  # Only one element!
+
         with pytest.raises(ValueError, match="exactly 2 elements"):
             ConfigManager._validate_config(invalid_config, Path('dummy.yaml'))
-    
+
     def test_name_must_be_string(self):
         """Test that name must be a string."""
-        invalid_config = {
-            'name': 123,  # Should be string
-            'preprocessing': {'crop_region': [700, 1800]},
-        }
-        
+        invalid_config = self._valid_config()
+        invalid_config['name'] = 123  # Should be string
+
         with pytest.raises(ValueError, match="must be a string"):
             ConfigManager._validate_config(invalid_config, Path('dummy.yaml'))
 
@@ -252,14 +264,9 @@ class TestGetExperimentConfig:
     
     def test_get_experiment_config_convenience_function(self):
         """Test that get_experiment_config() works as convenience wrapper."""
-        # This will fail in test env without actual config, but validates the interface
-        try:
-            config = get_experiment_config('baseline_exp_001')
-            assert hasattr(config, 'get_nested')
-            assert hasattr(config, 'to_dict')
-        except FileNotFoundError:
-            # Expected if baseline_exp_001.yaml doesn't exist in test env
-            pass
+        config = get_experiment_config('exp_608')
+        assert hasattr(config, 'get_nested')
+        assert hasattr(config, 'to_dict')
 
 
 if __name__ == '__main__':

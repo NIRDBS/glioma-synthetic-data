@@ -18,7 +18,7 @@ non-diagnostic mass onto its pixel grid, and reports:
     row-aligned to the loader's own order; no loader change needed).
 
 Usage:
-    python scripts/stage5_spatial_validation.py --config exp_501 --method em
+    python scripts/stage5_spatial_validation.py --config exp_608 --method misvm
 """
 import argparse
 import json
@@ -217,12 +217,12 @@ def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Stage 5 spatial validation")
     parser.add_argument('--config', required=True)
-    parser.add_argument('--method', default='em',
-                        choices=['em', 'misvm', 'cbr', 'attention', 'bayes_mil'])
+    parser.add_argument('--method', required=True,
+                        choices=['misvm', 'cbr', 'attention'])
     parser.add_argument('--variant', default=None,
-                        help="defaults to 'constrained' for em, 'mi_svm' for misvm, "
+                        help="defaults to 'mi_svm' for misvm, "
                              "'reconstruction' for cbr (its other variant is 'encoder_head'), "
-                             "'attention' for attention, 'gibbs' for bayes_mil")
+                             "'attention' for attention")
     parser.add_argument('--max-lag', type=int, default=10)
     parser.add_argument('--n-perm', type=int, default=200)
     parser.add_argument('--seed', type=int, default=42)
@@ -232,8 +232,7 @@ if __name__ == '__main__':
     parser.add_argument('--out-path', default=None)
     args = parser.parse_args()
 
-    _DEFAULT_VARIANT = {'em': 'constrained', 'misvm': 'mi_svm', 'cbr': 'reconstruction',
-                        'attention': 'attention', 'bayes_mil': 'gibbs'}
+    _DEFAULT_VARIANT = {'misvm': 'mi_svm', 'cbr': 'reconstruction', 'attention': 'attention'}
     variant = args.variant or _DEFAULT_VARIANT[args.method]
     run(args.config, args.method, variant, max_lag=args.max_lag, n_perm=args.n_perm,
        seed=args.seed, store_path=args.store_path, out_path=args.out_path)

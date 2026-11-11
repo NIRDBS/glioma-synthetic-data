@@ -1,10 +1,10 @@
 """
-Modal offload for the MIL fit stage (mi-SVM / EM) -- parallel across FOLDS,
+Modal offload for the MIL fit stage (mi-SVM) -- parallel across FOLDS,
 not across configs.
 
 Unlike modal_classifiers.py (which parallelizes the SAME stage across several
 experiment configs), each (method, fold) pair here is an independent unit of
-work for ONE config: mi-SVM/EM fit fold f's training bags only and never share
+work for ONE config: mi-SVM fits fold f's training bags only and never shares
 state across folds. This machine's free RAM does not cover 5 folds' worth of
 independent data copies running at once locally (see docs/stage4_mil.md /
 the RAM check that motivated this file) -- Modal gives each fold its own
@@ -12,7 +12,7 @@ isolated container instead, at the same CPU-only cost profile as
 modal_classifiers.py (this is sklearn/RF/SVM work throughout; no GPU need).
 
 Primary entry point used by mil_fit_stage(backend='modal'):
-  run_mil_fit_parallel(config, methods=('misvm', 'em'), ...)
+  run_mil_fit_parallel(config, methods=('misvm',), ...)
     -> uploads the H5 once, spawns one container per (method, fold) pair,
        waits for all, writes every result into the LOCAL latent-label store
        (never written to remotely -- HDF5 concurrent writes across
@@ -86,7 +86,7 @@ def _upload_h5(config) -> str:
 
 
 # Each fold's fit is CPU-only sklearn/RF/SVM work (Apollo's RF+SVM inside
-# mi-SVM's iterations, RandomForest inside EM's) -- 3 cores per container
+# mi-SVM's iterations) -- 3 cores per container
 # leaves headroom to run several folds concurrently without the containers
 # fighting each other for a shared pool the way local multiprocessing would
 # on this machine's 16 logical processors.
@@ -95,9 +95,8 @@ def fit_fold_remote(config_name: str, method: str, fold_name: str, h5_name: str,
                     pi_min: float, max_iters: int, seed: int,
                     svm_subsample_per_bag: int = 500, label_map: dict | None = None):
     """Fit one MIL formulation on one fold, remotely. Returns
-    (fold_name, variant, posterior_full, in_sample_full, em_diagnostics) --
-    em_diagnostics is None except for method='em' -- no store writes happen
-    here; the local driver collects every result and writes them.
+    (fold_name, variant, posterior_full, in_sample_full) -- no store writes
+    happen here; the local driver collects every result and writes them.
 
     ``label_map`` (optional): {bag_id: permuted_label}, computed ONCE by the
     caller (src/mil/shuffle_control.py::permuted_bag_label_map) and passed
@@ -153,7 +152,7 @@ def fit_fold_remote(config_name: str, method: str, fold_name: str, h5_name: str,
     return result
 
 
-def run_mil_fit_parallel(config, methods=('misvm', 'em'), pi_min=None, max_iters=10, seed=None,
+def run_mil_fit_parallel(config, methods=('misvm',), pi_min=None, max_iters=10, seed=None,
                          svm_subsample_per_bag=None, label_map=None, store_path=None):
     """
     Fit every (method, fold) pair for one config in parallel on Modal, then
@@ -162,18 +161,15 @@ def run_mil_fit_parallel(config, methods=('misvm', 'em'), pi_min=None, max_iters
     ``label_map`` / ``store_path`` (optional, both or neither): the same
     shuffled-label-control override scripts/stage6_shuffled_label_control.py
     uses locally (see fit_fold_remote's docstring) -- lets the shuffled
-    misvm/em control run fold-parallel on Modal instead of ~4h sequential
+    mi-SVM control run fold-parallel on Modal instead of ~4h sequential
     locally. ``store_path`` defaults to the real store
     (results/<name>/latent/latent_labels.h5) when not given; pass
     results/<name>/latent/latent_labels_<suffix>.h5 together with a
     label_map to write a shuffled run to its own separate store, never the
     real one.
     """
-    import json
-
-    from pipeline._common import num_classes_of, set_seeds
-    from src.mil.store import write_posteriors
-    from pipeline._common import make_loader
+    from pipeline._common import make_loader, set_seeds
+    from src.mil.store import config_hash, write_posteriors
 
     seed = seed if seed is not None else set_seeds(config)
     mil_cfg = config.get('mil', {})
@@ -196,10 +192,7 @@ def run_mil_fit_parallel(config, methods=('misvm', 'em'), pi_min=None, max_iters
     print(f"  store -> {store_path}")
 
     h5_name = _upload_h5(config)
-    try:
-        config_hash = str(hash(json.dumps(config, sort_keys=True, default=str)))
-    except Exception:
-        config_hash = ''
+    cfg_hash = config_hash(config)
 
     # sample_ids/coords for write_posteriors' alignment checksum -- built
     # locally once (data loading only, no fitting) rather than returned by
@@ -218,22 +211,15 @@ def run_mil_fit_parallel(config, methods=('misvm', 'em'), pi_min=None, max_iters
                 svm_subsample_per_bag=svm_subsample_per_bag, label_map=label_map)
             for method, fold_name in jobs
         }
-        em_diagnostics_by_fold = {}
-        em_diagnostics_path = store_path.parent / 'em_diagnostics.json'
         for (method, fold_name), handle in handles.items():
             print(f"  [modal] waiting for {method}:{fold_name}...")
-            result_fold_name, variant, posterior_full, in_sample_full, em_diagnostics = handle.get()
+            result_fold_name, variant, posterior_full, in_sample_full = handle.get()
             write_posteriors(
                 store_path, method=method, variant=variant, fold_name=result_fold_name,
                 posterior=posterior_full, in_sample=in_sample_full,
-                sample_ids=full_bag_ids, coords=full_coords, config_hash=config_hash,
+                sample_ids=full_bag_ids, coords=full_coords, config_hash=cfg_hash,
             )
             print(f"  [modal] {method}:{fold_name} complete -> written to store")
-            if em_diagnostics is not None:
-                em_diagnostics_by_fold[result_fold_name] = em_diagnostics
-                em_diagnostics_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(em_diagnostics_path, 'w') as f:
-                    json.dump(em_diagnostics_by_fold, f, indent=2)
 
     print(f"\n  MIL fit stage complete (modal) -> {store_path}")
     return {'store_path': str(store_path), 'methods': list(methods)}

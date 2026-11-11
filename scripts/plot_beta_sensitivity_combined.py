@@ -1,9 +1,8 @@
-"""
+r"""
 Combined 2x2 figure for the paper's beta-sensitivity appendix: row 1 is the
 flat-beta sweep (reconstruction | KL), row 2 is the windowed beta-schedule
-continuation (reconstruction+beta-trace | KL) -- the same four analyses as
-plot_beta_sweep_all_flat.py / plot_beta_window_continuation[_kl].py, laid
-out as one matplotlib figure instead of four separate images.
+continuation (reconstruction+beta-trace | KL), laid out as one matplotlib
+figure instead of four separate images.
 
 Why one native figure rather than four images placed side by side in LaTeX:
 cramming two full-size images into half-width each via `\includegraphics`

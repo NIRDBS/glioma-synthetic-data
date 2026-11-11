@@ -14,6 +14,7 @@ an assertion at read time (assert_no_fold_leakage), not left as a convention
 callers might forget.
 """
 import hashlib
+import json
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -31,6 +32,17 @@ def alignment_checksum(sample_ids, coords):
     if coords is not None:
         h.update(np.ascontiguousarray(coords).tobytes())
     return h.hexdigest()
+
+
+def config_hash(config):
+    """SHA-256 of the experiment config (sorted-key JSON), stored as provenance
+    next to each fit. Python's built-in hash() is salted per process, so it
+    cannot identify a config across runs."""
+    try:
+        payload = json.dumps(config, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        return ''
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 
 def _git_sha():

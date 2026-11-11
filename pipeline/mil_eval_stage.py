@@ -6,7 +6,7 @@ already emit (no new training) under four aggregation rules -- mean-posterior,
 majority vote, log-sum-exp, top-q -- and reports genuine bag-level metrics for
 each (model, rule) pair, for one regimen at a time.
 
-This is the reference table every later MIL tier (mi-SVM, EM, attention,
+This is the reference table every later MIL tier (mi-SVM, attention,
 generative) must beat. Majority vote is also what
 ``pipeline/evaluation_stage.py``'s bag-level headline already uses (via
 ``bag_decisions``); this stage's distinct value is showing how sensitive that

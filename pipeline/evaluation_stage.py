@@ -111,7 +111,7 @@ def _cbr_predictions(folds, config, n_features, cvae_weights_dir, return_scores=
     Returns (preds, y_true, slide_ids) concatenated across folds, or None if any
     fold's CVAE weights are missing. This is the single source of truth for CbR
     predictions, shared by the bootstrap evaluation (``_compute_cbr``) and the
-    offline metric-patching script (``patch_cbr_metrics.py``).
+    offline AUROC-patching script (``scripts/patch_cbr_auroc.py``).
 
     ``return_scores=True`` (binary tasks only) appends a fourth array: the per-
     spectrum normalised MSE margin ``(mse_0 - mse_1) / (mse_0 + mse_1)``. It is
@@ -220,7 +220,7 @@ def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
         'cbr_ci_hi': float(np.percentile(wbir_boot, 97.5)),
         'full_metrics': full,
     }
-    # Flat metric keys read by paper/gen_appendix_tables.py (CbR row). _slide_
+    # Flat metric keys read by paper/gen_appendix_controlled_experiments.py (CbR row). _slide_
     # level_metrics no longer returns bare accuracy/f1_macro/precision_macro/
     # recall_macro/balanced_accuracy/kappa at all (Stage 2 retired the
     # degenerate within-bag-instance versions of these); only the bag_* and

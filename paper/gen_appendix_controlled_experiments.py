@@ -2,19 +2,15 @@ r"""
 Generate the per-experiment downstream-classifier results tables for the
 "Controlled Experiments" appendix (paper/appendix_controlled_experiments.tex).
 
-Sibling of gen_appendix_tables.py, not a modification of it: that script owns
-EXPERIMENTS = exp_2xx/3xx/4xx (the pre-MIL-reframe suite) and
-paper/appendix_extended_results.tex; this one owns the current paper's
-controlled-experiment family (the CVAE beta sweep, latent-dim/reconstruction-
-loss/synthetic-ratio axes, and the preprocessing-variant axis -- what
-docs/experiment_inventory.md section 8a had called "ablation studies": not
-accurate, since nothing is removed -- each axis varies one factor against a
-shared anchor, exp_608) and writes to its own output file,
-paper/appendix_controlled_experiments_tables.tex. Neither script touches the
-other's EXPERIMENTS list or output file.
+Covers the current paper's controlled-experiment family (the CVAE beta sweep,
+latent-dim/reconstruction-loss/synthetic-ratio axes, and the preprocessing-
+variant axis -- what docs/experiment_inventory.md section 8a had called
+"ablation studies": not accurate, since nothing is removed -- each axis varies
+one factor against a shared anchor, exp_608) and writes to
+paper/appendix_controlled_experiments_tables.tex, plus the main-text Results
+tables and the MIL appendix tables (see ``_results_tables``).
 
-Column design, deliberately different from gen_appendix_tables.py's extra
-columns: the primary Accuracy/Delta/95% CI columns are UNCHANGED (raw bag
+Column design: the primary Accuracy/Delta/95% CI columns are UNCHANGED (raw bag
 accuracy, exactly the bootstrap this project's pipeline already computes --
 see statistical_evaluation.py). Balanced accuracy, sensitivity, specificity
 and AUROC are added as four EXTRA point-estimate columns, not a replacement
@@ -134,8 +130,8 @@ NA = '--'
 
 
 def _derive_bag_sens_spec(fm):
-    """See gen_appendix_tables.py's identical helper -- duplicated rather than
-    imported so this script has no dependency on the sibling's internals."""
+    """Fill bag_sensitivity/bag_specificity (averaged over classes) from the stored
+    confusion matrix when a stats-eval JSON lacks them; existing values are kept."""
     cm = fm.get('confusion_matrix')
     if not cm:
         return
@@ -604,23 +600,16 @@ APPENDIX_CTRL = os.path.join(ROOT, 'paper', 'appendix_controlled_experiments.tex
 MIL_METRIC_KEYS = ('bag_accuracy', 'bag_balanced_accuracy', 'bag_sensitivity', 'bag_specificity', 'bag_auroc')
 # Tier labels of the earlier hand-authored appendix tables, kept for the main-text table.
 MIL_LEGACY_LABEL = {'misvm_mi_svm': 'mi-SVM', 'attention_attention': 'Attention',
-                    'cbr_reconstruction': 'CbR reconstruction', 'cbr_encoder_head': r'CbR encoder\_head',
-                    'bayes_mil_gibbs': 'Bayesian MIL (blind)'}
+                    'cbr_reconstruction': 'CbR reconstruction', 'cbr_encoder_head': r'CbR encoder\_head'}
 
 
 def mil_metric_values(exp):
-    """[(label, stem, [acc, bal_acc, sens, spec, auc])] for the five MIL tiers of one
-    experiment. Bayesian MIL is read from its blind bag classification
-    (score_bayes_mil_blind: the bag label is never given to the scorer)."""
+    """[(label, stem, [acc, bal_acc, sens, spec, auc])] for the four MIL tiers of one
+    experiment, from scripts/stage6_bag_eval.py's per-tier output."""
     out = []
     for label, stem, _ in MIL_TESTS_TIERS:
-        if stem == 'bayes_mil_gibbs':
-            d = json.load(open(os.path.join(RESULTS, exp, 'latent', 'bayes_blind_bag_classification.json')))
-            vals = [d['merged_bag_acc']] + [d[k] for k in MIL_METRIC_KEYS[1:]]
-        else:
-            m = json.load(open(os.path.join(RESULTS, exp, 'mil_eval', f'stage6_bag_eval_{stem}.json')))['metrics']
-            vals = [m[k] for k in MIL_METRIC_KEYS]
-        out.append((label, stem, vals))
+        m = json.load(open(os.path.join(RESULTS, exp, 'mil_eval', f'stage6_bag_eval_{stem}.json')))['metrics']
+        out.append((label, stem, [m[k] for k in MIL_METRIC_KEYS]))
     return out
 
 
@@ -634,7 +623,7 @@ def _naive_mil_row(exp):
 
 
 def mil_table_latex(exp='exp_608'):
-    """Main-text MIL table for the beta=0.5 / v1 (thr=0.6) configuration: the five MIL
+    """Main-text MIL table for the beta=0.5 / v1 (thr=0.6) configuration: the four MIL
     tiers' rows (mil_metric_values) preceded by the naive-MIL benchmark row."""
     tier_rows = [f'{MIL_LEGACY_LABEL[stem]} & ' + ' & '.join(f'${v:.3f}$' for v in vals) + r' \\'
                  for _label, stem, vals in mil_metric_values(exp)]
@@ -646,8 +635,7 @@ def mil_table_latex(exp='exp_608'):
          r"data in which every instance inherits its bag's label, with one majority-vote decision "
          r'per bag (\texttt{exp\_608}: $\beta=0.5$, \texttt{latent\_dim}=32, reconstruction = MSE, '
          r'maximum intensity threshold = 0.6). CVAE-Attention, CVAE reconstruction and CVAE encoder '
-         r'head use the $\beta=0.5$ CVAE; mi-SVM and Bayesian MIL do not. Bayesian MIL is scored '
-         r'blind: the bag label is never given to the scorer.}',
+         r'head use the $\beta=0.5$ CVAE; mi-SVM does not.}',
          r'\label{tab:mil_results}',
          r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}',
          r'\toprule',
@@ -665,7 +653,6 @@ MIL_TESTS_TIERS = [
     ('CVAE-Attention',      'attention_attention',  'attention'),
     ('CVAE reconstruction', 'cbr_reconstruction',   'cbr_reconstruction'),
     ('CVAE encoder head',   'cbr_encoder_head',     'cbr_encoder_head'),
-    ('Bayesian MIL',        'bayes_mil_gibbs',      'bayes_mil'),
 ]
 PENDING = r'\emph{pending}'
 
@@ -767,15 +754,9 @@ def mil_tests_table_latex(exp='exp_608'):
 
 
 SPATIAL_PAIRED_OUT = os.path.join(ROOT, 'paper', 'results_spatial_paired_table.tex')
-COMPLETENESS_OUT = os.path.join(ROOT, 'paper', 'results_mil_completeness_table.tex')
 MIL_APPENDIX_EXPS = ['exp_607', 'exp_608', 'exp_609', 'exp_2.607', 'exp_2.608', 'exp_4.608']
 EXP_SHORT = {'exp_607': '607', 'exp_608': '608', 'exp_609': '609',
              'exp_2.607': '2.607', 'exp_2.608': '2.608', 'exp_4.608': '4.608'}
-# Key-instance utility (selected vs. size-matched random subsample) for the tiers with a
-# binarizable key posterior, as reported in the appendix key-instance table (the logs behind
-# the six-experiment run are in docs/, not in results/<exp>/); exp_608 additionally has
-# key_instance_utility_summary.json, which also covers mi-SVM and Bayesian MIL.
-KI_RANDOM_TIERS = {'attention_attention', 'cbr_reconstruction', 'cbr_encoder_head'}
 
 
 def spatial_paired_table_latex(exps=MIL_APPENDIX_EXPS):
@@ -826,15 +807,8 @@ MIL_EXP_TITLE = {
     'exp_2.607': r'$\beta=0.25$, v2', 'exp_2.608': r'$\beta=0.5$, v2',
     'exp_4.608': r'$\beta=0.5$, v3, $\text{thr}=0.4$',
 }
-# Tiers whose stored validation-fold posterior is conditioned on the bag's true label
-# (pipeline/mil_fit_stage.py: score_bayes_mil(..., fd.y_val, ...)), so their key-instance
-# selection and posterior maps are not label-blind on held-out slides.
-LABEL_CONDITIONED_STEMS = {'bayes_mil_gibbs'}
-DAGGER = r'$^\dagger$'
 # Prose added or changed in the MIL appendix is wrapped in red until the author accepts it.
 MARK_MODIFIED = True
-# Key-instance results are read from the label-free Bayesian MIL posterior, not the stored one.
-KI_STEM = {'bayes_mil_gibbs': 'bayes_mil_gibbs_blind'}
 
 
 def _red(s):
@@ -860,12 +834,6 @@ def mil_experiment_tables_latex(exp):
     key-instance utility test."""
     short = EXP_SHORT[exp].replace('.', '')
     where = f'{_tex_exp(exp)} ({MIL_EXP_TITLE[exp]})'
-    dagger_note = _red(DAGGER + r' The stored validation-fold posterior of Bayesian MIL is computed given the '
-                       r"slide's bag label (\texttt{score\_bayes\_mil}); this row is therefore not label-blind "
-                       r'on held-out slides, and is pending a rerun with a label-free posterior.')
-
-    def tier(label, stem):
-        return label + (DAGGER if stem in LABEL_CONDITIONED_STEMS else '')
 
     # 1. classification metrics
     cls_rows = [_naive_mil_row(exp), r'\midrule']
@@ -879,7 +847,7 @@ def mil_experiment_tables_latex(exp):
         r'MIL tier bag-level results, ' + where + '. ' + _red(
             r'Binary IDH classification, $n=59$ slides, against the na\"{\i}ve MIL benchmark (a random '
             r"forest trained on real data, every instance inheriting its bag's label, one majority-vote "
-            r'decision per bag). Bayesian MIL is scored blind: the bag label is never given to the scorer.'),
+            r'decision per bag).'),
         f'tab:ctrl_mil_{short}')
 
     # 2. spatial coherence (paired real vs. shuffled-label refit)
@@ -889,13 +857,13 @@ def mil_experiment_tables_latex(exp):
         t = paired.get(stem) or {}
         t_i, t_v = t.get('morans_i'), t.get('one_minus_gamma_over_var')
         if t_i is None or t_v is None:
-            sp_rows.append(rf'{tier(label, stem)} & \multicolumn{{6}}{{c}}{{\emph{{no shuffled-label control}}}} \\')
+            sp_rows.append(rf'{label} & \multicolumn{{6}}{{c}}{{\emph{{no shuffled-label control}}}} \\')
             continue
-        sp_rows.append(f'{tier(label, stem)} & {_paired_cells(t_i)} & {_paired_cells(t_v)} ' + r'\\')
+        sp_rows.append(f'{label} & {_paired_cells(t_i)} & {_paired_cells(t_v)} ' + r'\\')
         if t_i['n_matched'] != 59:
             short_n.append(f'{label}: {t_i["n_matched"]}')
     sp_note = ([_red(r'Slides with both fits defined (of 59), where fewer: ' + '; '.join(short_n) + '.')]
-               if short_n else []) + [dagger_note]
+               if short_n else [])
     sp = _bottom_caption_table(
         [r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc}', r'\toprule',
          r' & \multicolumn{3}{c}{\emph{Moran\textquotesingle{}s $I$}} & '
@@ -917,7 +885,7 @@ def mil_experiment_tables_latex(exp):
     paired_ki = json.load(open(p))['tiers'] if os.path.exists(p) else {}
     ki_rows, fell_back, n_boot, naive_acc = [], [], 10000, set()
     for label, stem, _ in MIL_TESTS_TIERS:
-        r = paired_ki.get(KI_STEM.get(stem, stem))
+        r = paired_ki.get(stem)
         if r is None:
             ki_rows.append(f'{label} & ' + ' & '.join([PENDING] * 2) + r' \\')
             continue
@@ -956,75 +924,9 @@ def mil_appendix_tables_latex(exps=MIL_APPENDIX_EXPS):
     return '\n'.join(mil_experiment_tables_latex(e) for e in exps)
 
 
-def mil_completeness_rows(exps=MIL_APPENDIX_EXPS):
-    """[(tier label, test label, {exp: done?})] derived from the files on disk (and the
-    KI_RANDOM_TIERS record for the earlier key-instance run)."""
-    def has(*parts):
-        return os.path.exists(os.path.join(RESULTS, *parts))
-
-    tests = []
-    for label, stem, ki_key in MIL_TESTS_TIERS:
-        bayes = stem == 'bayes_mil_gibbs'
-        paired = {e: _paired_spatial(e) for e in exps}
-        ki = {}
-        for e in exps:
-            p = os.path.join(RESULTS, e, 'mil_eval', 'key_instance_paired.json')
-            ki[e] = json.load(open(p))['tiers'] if os.path.exists(p) else {}
-        ki_key = KI_STEM.get(stem, stem)
-        tests += [
-            (label, 'Bag-level metrics',
-             {e: has(e, 'latent', 'bayes_blind_bag_classification.json') if bayes
-              else has(e, 'mil_eval', f'stage6_bag_eval_{stem}.json') for e in exps}),
-            (label, 'Spatial, real fit',
-             {e: has(e, 'spatial_validation', f'stage5_{stem}.json') for e in exps}),
-            (label, 'Spatial, shuffled control',
-             {e: has(e, 'spatial_validation', f'stage5_{stem}_shuffled.json') for e in exps}),
-            (label, 'Paired bootstrap test',
-             {e: stem in paired[e] for e in exps}),
-            (label, 'Key inst.\\ vs.\\ na\\"{\\i}ve',
-             {e: ki_key in ki[e] for e in exps}),
-        ]
-        if bayes:
-            tests.append((label, 'Posterior diagnostics ($\\hat R$)',
-                          {e: has(e, 'latent', 'bayes_diagnostics.json') for e in exps}))
-    return tests
-
-
-LABEL_CONDITIONED_TESTS = {('Bayesian MIL', t) for t in (
-    'Spatial, real fit', 'Spatial, shuffled control', 'Paired bootstrap test')}
-
-
-def mil_completeness_table_latex(exps=MIL_APPENDIX_EXPS):
-    rows = mil_completeness_rows(exps)
-    L = [r'\begin{table}[H]', r'\centering', r'\scriptsize', r'\setlength{\tabcolsep}{3pt}',
-         r'\caption{Completeness of the MIL evaluation tests over the experiments of this appendix. '
-         r'$\bullet$: result available; $\circ$: not run. Spatial coherence and the paired bootstrap '
-         r'need both a real fit and a shuffled-label refit of the same tier. ' + _red(
-             DAGGER + r' Available, but computed from a validation-fold posterior conditioned on the '
-             r'bag label; pending a rerun with a label-free posterior.') + '}',
-         r'\label{tab:mil_completeness}',
-         r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ll' + 'c' * len(exps) + '}',
-         r'\toprule',
-         r'\emph{Tier} & \emph{Test} & ' + ' & '.join(rf'\texttt{{{EXP_SHORT[e]}}}' for e in exps) + r' \\']
-    prev = None
-    for tier, test, d in rows:
-        if tier != prev:
-            L.append(r'\midrule')
-        first = rf'\multirow{{{sum(1 for r in rows if r[0] == tier)}}}{{*}}{{{tier}}}' if tier != prev else ''
-        prev = tier
-        mark = r'$\bullet^\dagger$' if (tier, test) in LABEL_CONDITIONED_TESTS else r'$\bullet$'
-        L.append(f'{first} & {test} & ' + ' & '.join(mark if d[e] else r'$\circ$' for e in exps) + r' \\')
-    n_done = sum(v for _, _, d in rows for v in d.values())
-    n_all = sum(len(d) for _, _, d in rows)
-    L += [r'\bottomrule', r'\end{tabular*}',
-          rf'\note{{{n_done} of {n_all} tier--test--experiment cells are available.}}', r'\end{table}', '']
-    return '\n'.join(L)
-
-
 def _results_tables():
     return ((MIL_APPENDIX_OUT, mil_appendix_tables_latex()),
             (SPATIAL_PAIRED_OUT, spatial_paired_table_latex()),
-            (COMPLETENESS_OUT, mil_completeness_table_latex()),
             (BETA_TABLE_OUT, beta_table_latex()),
             (LATENT_TABLE_OUT, latent_dim_table_latex()),
             (RECON_TABLE_OUT, recon_loss_table_latex()),

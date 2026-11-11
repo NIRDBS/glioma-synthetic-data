@@ -27,7 +27,7 @@ import tensorflow as tf
 from pipeline._common import _inner_validation_split, make_loader, num_classes_of, prepare_fold, set_seeds
 from pipeline._cvae_gen import build_cvae_config, load_encoder_decoder
 from src.mil.attention import AttentionMIL, required_sub_bag_size, sample_sub_bags, sub_bag_null_rate
-from src.mil.store import write_posteriors
+from src.mil.store import config_hash, write_posteriors
 
 VARIANT = 'attention'
 
@@ -54,13 +54,6 @@ def _bag_accuracy(model, X, bag_ids, y_true):
     preds = posterior[:, 1:].argmax(axis=1)
     trues = np.array([bag_id_to_true[b] for b in bags_sorted])
     return float((preds == trues).mean())
-
-
-def _config_hash(config):
-    try:
-        return str(hash(json.dumps(config, sort_keys=True, default=str)))
-    except Exception:
-        return ''
 
 
 def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coords,
@@ -251,7 +244,7 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
         loader = make_loader(config)
     full_bag_ids = loader.groups
     full_coords = loader.coords
-    config_hash = _config_hash(config)
+    cfg_hash = config_hash(config)
 
     if bag_level_path is None:
         bag_level_path = Path(config['paths'].get('experiment_root', f"results/{config['name']}")) \
@@ -273,7 +266,7 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
         write_posteriors(
             store_path, method='attention', variant=VARIANT, fold_name=fold_name,
             posterior=posterior_full, in_sample=in_sample_full,
-            sample_ids=full_bag_ids, coords=full_coords, config_hash=config_hash,
+            sample_ids=full_bag_ids, coords=full_coords, config_hash=cfg_hash,
         )
         print(f"    -> wrote attention/{VARIANT}/{fold_name} to {store_path}")
         results[fold_name] = diagnostics

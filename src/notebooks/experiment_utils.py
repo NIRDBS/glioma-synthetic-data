@@ -20,7 +20,7 @@ def setup_experiment(config_name: str, verbose: bool = True) -> Tuple[Dict[str, 
     This ensures all notebooks in a pipeline use the same configuration and output the same way.
     
     Args:
-        config_name: Name of the experiment (e.g., 'baseline_exp_001')
+        config_name: Name of the experiment (e.g., 'exp_608')
                     Looks for configs/{config_name}.yaml
         verbose: Whether to print setup information
     
@@ -37,7 +37,7 @@ def setup_experiment(config_name: str, verbose: bool = True) -> Tuple[Dict[str, 
         # At the top of notebook, after imports
         from src.notebooks.experiment_utils import setup_experiment
         
-        config_name = 'baseline_exp_001'  # <-- User edits this line
+        config_name = 'exp_608'  # <-- User edits this line
         config, output_dir = setup_experiment(config_name)
         
         # Now use throughout notebook:

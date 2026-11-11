@@ -38,7 +38,7 @@ STAGE_ALIASES = {
     'trtr': 'trtr', 'cvae': 'cvae', 'synth_gen': 'synth_gen', 'tstr': 'tstr', 'tsrtr': 'tsrtr',
     'eval': 'stats_eval', 'evaluation': 'stats_eval', 'stats_eval': 'stats_eval',
     'mil_eval': 'mil_eval', 'mil': 'mil_eval', 'tier0': 'mil_eval',
-    'mil_fit': 'mil_fit', 'misvm': 'mil_fit', 'em': 'mil_fit',
+    'mil_fit': 'mil_fit', 'misvm': 'mil_fit',
 }
 
 
@@ -96,7 +96,7 @@ def _stage_outputs_exist(stage, config):
                 return False
             import h5py
             with h5py.File(store_path, 'r') as f:
-                return 'misvm' in f and 'em' in f
+                return 'misvm' in f
     except Exception:
         return False
     return False

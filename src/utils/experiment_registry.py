@@ -277,7 +277,7 @@ def register_experiment(
     
     Usage in notebooks:
         from src.utils.experiment_registry import register_experiment
-        register_experiment("baseline_exp_001", "RF+SVM baseline on real data")
+        register_experiment("exp_608", "Flat beta=0.5, 120 epochs, full suite")
     
     Args:
         experiment_name: Unique experiment identifier

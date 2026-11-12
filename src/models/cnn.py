@@ -1,10 +1,16 @@
 import tensorflow as tf
 from tensorflow.keras import layers, models, optimizers
 
-def build_1d_cnn(input_shape=(1738, 1), num_classes=6, learning_rate=0.001, dropout_rate=0.4):
+def build_1d_cnn(input_shape=(1738, 1), num_classes=6, learning_rate=0.001, dropout_rate=0.4,
+                  loss='sparse_categorical_crossentropy'):
     """
     1D-CNN Baseline for Raman Spectra.
     Detects spectral shapes rather than just peak heights.
+
+    Compiles exactly once, here, with every setting the caller actually wants
+    (docs/MIL_REFRAME_PLAN.md §7.2) -- callers must not compile() again
+    afterward, or dropout_rate/learning_rate/loss silently stop being the ones
+    this model actually trains with.
     """
     inputs = layers.Input(shape=input_shape)
     
@@ -43,7 +49,7 @@ def build_1d_cnn(input_shape=(1738, 1), num_classes=6, learning_rate=0.001, drop
     model = models.Model(inputs=inputs, outputs=outputs, name="Raman_CNN")
     model.compile(
         optimizer=optimizers.Adam(learning_rate=learning_rate),
-        loss='sparse_categorical_crossentropy',
+        loss=loss,
         metrics=['accuracy']
     )
     return model

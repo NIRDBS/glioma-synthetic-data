@@ -1,0 +1,162 @@
+# Suite 600 follow-up: extending the beta sweep BELOW 1.0 (exp_601-604 covered
+# 1.0-1.75; the windowed-schedule experiments (exp_605/606) showed lower beta
+# consistently wins on reconstruction loss, KL, and synth/real std ratio --
+# this set tests flat/constant beta at 0.25, 0.5, 0.75 directly, trained from
+# scratch for 120 epochs (not resumed from any existing checkpoint).
+#
+# Unlike exp_601-606 (cvae-only), this runs the FULL suite (trtr, cvae, tstr,
+# tsrtr, stats_eval) -- reconstruction-side diagnostics alone can't resolve
+# the beta tradeoff (lower beta helps reconstruction but the decoder relies
+# on z less meaningfully as beta->0, per the earlier KL-collapse discussion
+# in the other direction), so the actual downstream TSTR/TSRTR classifier
+# accuracy is needed before picking a winner. mil_eval/mil_fit are
+# deliberately EXCLUDED from stages below -- those belong to the separate,
+# already-concluded MIL-tiers investigation (docs/mil_tiers_findings.md),
+# not this CVAE-tuning/TSTR-TSRTR comparison.
+#
+# TRTR is REUSED, not retrained: models_baseline_dir points directly at
+# exp_501's existing results/exp_501/models/trtr/ (real-data classifiers,
+# which don't depend on beta or any CVAE at all -- every Suite 600 config's
+# models.random_forest/xgboost/cnn/apollo blocks and cv_strategy are
+# byte-identical to exp_501's, so this is the SAME artifact a fresh retrain
+# would produce, not an approximation). run_suite.py's existing
+# skip-if-outputs-exist check will see this path already has every fold's
+# apollo_fold_N.joblib and skip the trtr stage automatically -- 'trtr' is
+# kept in pipeline.stages below so this mechanism engages rather than
+# requiring a separate code path.
+name: exp_607
+description: "Suite 600 follow-up: flat beta=0.25, 120 epochs, full suite (TRTR reused from exp_501)"
+version: "1.0"
+
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  results_root: "results"
+  experiment_root: "results/exp_607"
+  data_output_dir: "results/exp_607/data"
+  processed_file: "data/processed/glioma_mil.h5"
+
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED -- see note above
+  models_tstr_dir: "results/exp_607/models/tstr"
+  models_tsrtr_dir: "results/exp_607/models/tsrtr"
+  models_cvae_dir: "results/exp_607/models/cvae"
+  synthetic_dir: "results/exp_607/synthetic"
+  quality_dir: "results/exp_607/data_quality"
+  statistical_dir: "results/exp_607/statistical_eval"
+
+tsrtr:
+  synth_ratio: 1.0
+  cvae_weights_dir: "results/exp_607/models/cvae"
+
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]
+
+preprocessing:
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+  airpls_lambda: 10000
+  airpls_porder: 1
+  normalization: "minmax"
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: false
+  ignore_samples: []
+
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+training:
+  random_seed: 42
+  verbose: 1
+
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # CNN only -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 120
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 0.25   # <-- THE SWEPT VALUE, flat/constant for all 120 epochs
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+mil:
+  pi_floor: 0.02
+  svm_subsample_per_bag: 500
+  cbr_temperature: 0.001
+
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+notes: |
+  - Flat beta=0.25, trained from scratch (NOT resumed from any checkpoint),
+    120 epochs. Part of the low-beta extension of Suite 600's original
+    1.0-1.75 sweep, motivated by exp_605/606's windowed-schedule finding that
+    lower beta consistently wins on reconstruction loss, KL, and synth/real
+    std ratio (see results/suite600_beta_sweep/).
+  - Launched alongside exp_608 (beta=0.5) and exp_609 (beta=0.75), all 3
+    full-suite runs in parallel on Modal (CVAE) + local (classifiers).
+  - TRTR reused from exp_501 (see note above) -- not retrained.

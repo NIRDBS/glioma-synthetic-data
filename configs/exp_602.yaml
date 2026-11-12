@@ -1,0 +1,143 @@
+# Suite 600: CVAE beta tuning, to fix the decoder-collapse failure mode found while
+# building a CVAE counterfactual analysis -- at beta=2.0,
+# the decoder reconstructs almost a constant per-class mean spectrum regardless of z
+# (reconstruction std measured at 0.1%-16% of real data's own within-class std; the
+# SAME collapse was confirmed in the TSTR/TSRTR synthetic pools too). This config is
+# IDENTICAL to exp_501.yaml except models.cvae.loss_weights.beta (2.0 -> 1.0) and the
+# paths/pipeline.stages needed to make it a standalone experiment that only runs the
+# cvae stage (no baseline classifiers needed for this sweep's diversity metric).
+name: exp_602
+description: "Suite 600 CVAE beta tuning: beta=1.25 (exp_501's baseline is beta=2.0)"
+version: "1.0"
+
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  results_root: "results"
+  experiment_root: "results/exp_602"
+  data_output_dir: "results/exp_602/data"
+  processed_file: "data/processed/glioma_mil.h5"
+
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED, zero retrain cost -- see exp_607.yaml
+  models_tstr_dir: "results/exp_602/models/tstr"
+  models_tsrtr_dir: "results/exp_602/models/tsrtr"
+  models_cvae_dir: "results/exp_602/models/cvae"
+  synthetic_dir: "results/exp_602/synthetic"
+  quality_dir: "results/exp_602/data_quality"
+  statistical_dir: "results/exp_602/statistical_eval"
+
+tsrtr:
+  synth_ratio: 1.0
+  cvae_weights_dir: "results/exp_602/models/cvae"
+
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]   # trtr reuses exp_501's (see models_baseline_dir)
+
+preprocessing:
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+  airpls_lambda: 10000
+  airpls_porder: 1
+  normalization: "minmax"
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: false
+  ignore_samples: []
+
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+training:
+  random_seed: 42
+  verbose: 1
+
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # CNN only -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 100
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 1.25    # <-- THE SWEPT VALUE (exp_501's production value is 2.0)
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+mil:
+  pi_floor: 0.02
+  svm_subsample_per_bag: 500
+  cbr_temperature: 0.001
+
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+notes: |
+  - Suite 600: CVAE beta tuning, to address decoder/posterior collapse found at
+    exp_501's beta=2.0. Every key here is identical
+    to configs/exp_501.yaml except beta, name/description, and the paths/pipeline
+    keys needed to make this a standalone experiment with its own output tree.
+  - Evaluate with a pairwise-distance synthetic/real diversity ratio plus a
+    direct reconstruction-std-vs-real-std ratio -- the same two checks that
+    confirmed exp_501's collapse.

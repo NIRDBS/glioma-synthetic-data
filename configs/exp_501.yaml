@@ -1,0 +1,233 @@
+# MIL reframe: binary classification on the Stage 1 dataset (data/processed/glioma_mil.h5)
+# Suite 500: direct data-source counterpart to exp_201 -- every model hyperparameter is
+# identical to exp_201; the ONLY thing that changes is which dataset is read. This isolates
+# the dataset-change effect (IARPLS baseline correction, wider strong-signal mask, all
+# 288,678 instances vs the old 227,344) from any model/formulation change, before Stage 3's
+# CNN hygiene fixes or Stage 4's MIL package land on top of it.
+# See docs/MIL_REFRAME_PLAN.md Stage 3/4 and docs/stage1_data_layer.md.
+name: exp_501
+description: "MIL reframe: binary classification (gamma=1, delta=0) on glioma_mil.h5 -- exp_201's dataset-migrated counterpart"
+version: "1.0"
+
+# ============================================================================
+# DATA PATHS
+# ============================================================================
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  # Stage 1's shared, pre-built export -- not experiment-specific, read directly
+  # (no 'preprocessing' stage in pipeline.stages below, same as exp_201's relationship
+  # to its own pre-built results/exp_201/data/glioma_dataset.h5).
+  results_root: "results"
+  experiment_root: "results/exp_501"
+  data_output_dir: "results/exp_501/data"
+  processed_file: "data/processed/glioma_mil.h5"
+
+# Model outputs
+  models_baseline_dir: "results/exp_501/models/trtr"
+  models_tstr_dir: "results/exp_501/models/tstr"
+  models_tsrtr_dir: "results/exp_501/models/tsrtr"
+  models_cvae_dir: "results/exp_501/models/cvae"
+  synthetic_dir: "results/exp_501/synthetic"
+  quality_dir: "results/exp_501/data_quality"
+  statistical_dir: "results/exp_501/statistical_eval"
+
+# ============================================================================
+# REAL+SYNTH (TSRTR) MIXING
+# ============================================================================
+tsrtr:
+  synth_ratio: 1.0
+  cvae_weights_dir: "results/exp_501/models/cvae"
+
+# ============================================================================
+# SUITE PIPELINE
+# ============================================================================
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval, mil_eval, mil_fit]
+
+# ============================================================================
+# PREPROCESSING CONFIGURATION
+# ============================================================================
+preprocessing:
+  # Spatial smoothing -- already baked into glioma_mil.h5 at export time; kept here
+  # only for ConfigManager/documentation continuity, not re-applied at load time.
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+
+  # Baseline correction actually used to build glioma_mil.h5 was IARPLS (Stage 0/1),
+  # not airPLS -- this key is kept (ConfigManager.REQUIRED_FIELDS needs it present)
+  # but the value now documents the real method/lambda (HDF5 attrs:
+  # baseline_method="iarpls", baseline_lambda=10000.0, status "provisional" --
+  # docs/stage1_data_layer.md §3).
+  airpls_lambda: 10000  # actually IARPLS lambda; provisional, see stage1_data_layer.md §3
+  airpls_porder: 1
+
+  normalization: "minmax"
+
+  signal_length: 1738
+  crop_region: [700, 1800]
+
+  # No y_tumor field in glioma_mil.h5 (dropped -- Stage 1, was a constant misnomer).
+  # Explicit false rather than relying on the loader's not-found fallback: use every
+  # strong-signal instance in the export, which is the whole point of the wider mask.
+  y_tumor: false
+  # ignore_samples is dead config (never read by loader/pipeline code, see
+  # docs/stage1_data_layer.md §4); the real gate was data/splits/manual_splits.json,
+  # which excluded HF-1887_via-t_2_1.h5_3 from every fold's train/test list --
+  # fixed 2026-09-28 (now test in fold_3, train in the other four; 59 slides
+  # total, all 5 folds). This experiment (exp_501) was already fully run before
+  # that fix, so its stored results reflect 58 slides; a re-run would pick up 59.
+  ignore_samples: []
+
+# ============================================================================
+# DYNAMIC AUGMENTATION
+# ============================================================================
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+# ============================================================================
+# CROSS-VALIDATION STRATEGY
+# ============================================================================
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+# ============================================================================
+# TRAINING EXECUTION PARAMETERS
+# ============================================================================
+training:
+  random_seed: 42
+  verbose: 1
+
+# ============================================================================
+# MODEL HYPERPARAMETERS -- identical to exp_201, deliberately unchanged
+# ============================================================================
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    # Stage 3 (docs/MIL_REFRAME_PLAN.md §7.2): early stopping now watches an
+    # inner split carved from training slides only, never the true test fold
+    # (see pipeline/_common.py::_inner_validation_split). exp_501's own
+    # pre-fix smoke test early-stopped after 6-11/30 epochs on the leaky
+    # signal; epochs/patience raised so the corrected signal has room to
+    # actually converge rather than being capped at the old leak-tuned values.
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # CNN only -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    # Bumped from exp_201's 70, matching the CNN's raised budget -- but this
+    # is an open, exploratory question, not a tuned value: whether the CVAE
+    # actually benefits from more epochs (as opposed to just the CNN, which
+    # Stage 3 specifically fixed a leak for) hasn't been investigated. Revisit
+    # once real convergence curves exist to look at, rather than treating 100
+    # as settled.
+    epochs: 100
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 2.0
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+# ============================================================================
+# MIL (Stage 4: mi-SVM fit stage; Stage 6: generative/CVAE-based tier)
+# ============================================================================
+mil:
+  pi_floor: 0.02
+  # Apollo's RBF SVM scales badly with sample count; Stage 4 retired
+  # patient_cap globally (mi-SVM needs every instance for scoring), so
+  # without this, the SVM's own *training* set is ~230k instances/fold --
+  # confirmed impractically slow. This re-caps only the SVM fit itself, per
+  # bag, at the same historical patient_cap value (500) -- scoring still runs
+  # on every instance regardless. See src/mil/misvm.py::_subsample_for_svm.
+  svm_subsample_per_bag: 500
+
+  # Tier 4 (Stage 6, docs/MIL_REFRAME_PLAN.md): softmax(-mse/T) temperature
+  # for the 'reconstruction' (CbR-promoted) posterior. Picked from a real
+  # smoke test on exp_501 fold_0's validation MSE (2026-09-28): T=1 (a naive
+  # default) makes the posterior nearly uniform at this data's real MSE scale
+  # (mean top-class probability ~0.50 for K=2 -- no usable signal); the
+  # median inter-class MSE gap on that sample was ~0.0008. T=0.001 gives a
+  # genuinely graded posterior (mean top-class probability ~0.67) without
+  # collapsing toward the hard argmin. Provisional and untested for
+  # sensitivity, same treatment as IARPLS lambda / CVAE epochs elsewhere in
+  # this config -- see src/mil/generative.py::mse_to_posterior.
+  cbr_temperature: 0.001
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+# ============================================================================
+# Notes
+# ============================================================================
+notes: |
+  - Suite 500: MIL reframe dataset migration -- exp_201's exact model/training
+    configuration, re-pointed at data/processed/glioma_mil.h5 (Stage 1).
+  - Every models.*/training/cv_strategy/augmentation key is identical to exp_201's,
+    on purpose: this run isolates the dataset-change effect (IARPLS correction,
+    wider strong-signal mask, 288,678 vs 227,344 instances) before Stage 3's CNN
+    fixes or Stage 4's MIL package change anything else.
+  - Binary classification: Mutant vs Wildtype glioma spectra.
+  - This experiment's TRTR/CVAE become the new-data equivalent of what 401-403
+    reuse from exp_201, if/when those ratio-ablation configs are migrated too.

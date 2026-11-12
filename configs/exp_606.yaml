@@ -1,0 +1,155 @@
+# Suite 600 follow-up: windowed beta-annealing schedule B, branching off the
+# exp_601 (beta=1.0, 100 epochs) checkpoint for 100 MORE epochs (-> epochs
+# 101-200 in the written history, via epoch_offset=100 at launch time).
+#
+# 10 windows of 10 epochs each (epochs 1-10, 11-20, ..., 91-100 of THIS run --
+# window indexing restarts at 0 for this run, independent of epoch_offset):
+#   beta_per_window = [0.75, 1, 0.75, 1, 0.75, 1, 0.75, 1, 1, 1]
+# (mirror of exp_605's schedule, below 1 instead of above -- the user's
+# request had a typo here, "0.75,1,0.75,1.0.75,1,0.75,1,1,1"; read as the
+# mirror of exp_605's alternating pattern per the flagged-and-unconfirmed
+# interpretation in chat.)
+#
+# Everything else is identical to exp_601.yaml except name/description, the
+# paths/experiment_root (own output tree, since this is a divergent branch,
+# not a continuation of exp_601 itself), and the beta_window_schedule block
+# replacing a plain loss_weights.beta.
+name: exp_606
+description: "Suite 600 follow-up: windowed beta schedule B (0.75/1/0.75/1/0.75/1/0.75/1/1/1), 100 more epochs from exp_601's beta=1.0 checkpoint"
+version: "1.0"
+
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  results_root: "results"
+  experiment_root: "results/exp_606"
+  data_output_dir: "results/exp_606/data"
+  processed_file: "data/processed/glioma_mil.h5"
+
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED, zero retrain cost -- see exp_607.yaml
+  models_tstr_dir: "results/exp_606/models/tstr"
+  models_tsrtr_dir: "results/exp_606/models/tsrtr"
+  models_cvae_dir: "results/exp_606/models/cvae"
+  synthetic_dir: "results/exp_606/synthetic"
+  quality_dir: "results/exp_606/data_quality"
+  statistical_dir: "results/exp_606/statistical_eval"
+
+tsrtr:
+  synth_ratio: 1.0
+  cvae_weights_dir: "results/exp_606/models/cvae"
+
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]   # trtr reuses exp_501's (see models_baseline_dir)
+
+preprocessing:
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+  airpls_lambda: 10000
+  airpls_porder: 1
+  normalization: "minmax"
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: false
+  ignore_samples: []
+
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+training:
+  random_seed: 42
+  verbose: 1
+
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # CNN only -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 100   # 100 MORE epochs on top of the resumed 100-epoch checkpoint
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 1.0    # fallback only -- beta_window_schedule below takes precedence
+      gamma: 1.0
+      delta: 0.0
+
+    beta_window_schedule:
+      window_size: 10
+      values: [0.75, 1.0, 0.75, 1.0, 0.75, 1.0, 0.75, 1.0, 1.0, 1.0]
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+mil:
+  pi_floor: 0.02
+  svm_subsample_per_bag: 500
+  cbr_temperature: 0.001
+
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+notes: |
+  - Diverges from exp_601's 100-epoch (beta=1.0) checkpoint via resume_tag=
+    'exp601_100ep', epoch_offset=100 -- so this run's own history CSVs read as
+    epochs 101-200, continuing the same model, not a separate 1-100 run.
+  - Launched alongside exp_605 (mirror schedule, mostly-above-1 instead of
+    mostly-below-1) and a plain constant-beta=1.0 continuation (exp_601's own
+    cvae_extended/ sibling dir) -- all 3 branch from the SAME exp_601 checkpoint
+    in parallel on Modal GPU.

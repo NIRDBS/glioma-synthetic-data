@@ -5,68 +5,140 @@
     "created": "2026-03-29",
     "notes": "Tracks all experiments with metadata for reproducibility"
   },
-  "exp_101": {
-    "created_date": "2026-03-29T14:04:24.637477",
-    "description": "Complete pipeline: Real data (TRTR) + synthetic (CVAE) + test on synthetic (TSTR) + statistical evaluation",
+  "exp_501": {
+    "created_date": "2026-09-27T00:19:25.800292",
+    "description": "MIL reframe: binary classification (gamma=1, delta=0) on glioma_mil.h5 -- exp_201's dataset-migrated counterpart",
     "status": "running",
-    "last_run_date": "2026-04-08T10:49:03.703500",
+    "last_run_date": "2026-10-27T10:30:13.134980",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Notebook initialization on 2026-03-29 14:04:24"
+    "notes": "Notebook initialization on 2026-09-27 00:19:25"
   },
-  "exp_102": {
-    "created_date": "2026-04-07T22:44:57.062657",
-    "description": "Enhanced preprocessing: 3x3 spatial median filter + pre-computed patient tumor_masks",
+  "exp_607": {
+    "created_date": "2026-10-01T17:09:06.496635",
+    "description": "Suite 600 follow-up: flat beta=0.25, 120 epochs, full suite (TRTR reused from exp_501)",
     "status": "running",
-    "last_run_date": "2026-04-15T18:42:07.884444",
+    "last_run_date": "2026-10-27T10:33:14.563477",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Notebook initialization on 2026-04-07 22:44:57"
+    "notes": "Notebook initialization on 2026-10-01 17:09:06"
   },
-  "exp_103": {
-    "created_date": "2026-04-15T12:27:55.741864",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+  "exp_608": {
+    "created_date": "2026-10-01T17:09:17.025668",
+    "description": "Suite 600 follow-up: flat beta=0.5, 120 epochs, full suite (TRTR reused from exp_501)",
     "status": "running",
-    "last_run_date": "2026-04-16T10:51:55.480511",
+    "last_run_date": "2026-10-27T10:34:45.927016",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Notebook initialization on 2026-04-15 12:27:55"
+    "notes": "Notebook initialization on 2026-10-01 17:09:17"
   },
-  "exp_104": {
-    "created_date": "2026-04-16T12:03:20.426041",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+  "exp_609": {
+    "created_date": "2026-10-01T17:09:21.333213",
+    "description": "Suite 600 follow-up: flat beta=0.75, 120 epochs, full suite (TRTR reused from exp_501)",
     "status": "running",
-    "last_run_date": "2026-05-05T13:31:45.948703",
+    "last_run_date": "2026-10-27T10:36:20.301543",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Notebook initialization on 2026-04-16 12:03:20"
+    "notes": "Notebook initialization on 2026-10-01 17:09:21"
   },
-  "exp_105": {
-    "created_date": "2026-04-20T13:55:36.136632",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+  "exp_601": {
+    "created_date": "2026-10-02T13:35:11.980259",
+    "description": "Suite 600 CVAE beta tuning: beta=1.0 (exp_501's baseline is beta=2.0)",
     "status": "running",
-    "last_run_date": "2026-06-02T16:45:17.693404",
+    "last_run_date": "2026-10-27T10:31:41.283653",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Notebook initialization on 2026-04-20 13:55:36"
+    "notes": "Notebook initialization on 2026-10-02 13:35:11"
   },
-  "exp_106": {
-    "created_date": "2026-04-24T13:53:56.158395",
-    "description": "Classical TATR: Binary classification using classical ML models trained on augmented data (MixUp/SMOTE)",
+  "exp_2.608": {
+    "created_date": "2026-10-07T13:17:24.888301",
+    "description": "v2-preprocessing replication of exp_608: same settings (beta=0.5, 120 epochs), new dataset (glioma-preproc-2.h5), full retrain -- nothing transferred",
     "status": "running",
-    "last_run_date": "2026-04-28T13:42:48.108920",
+    "last_run_date": "2026-10-27T10:47:32.211993",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Notebook initialization on 2026-04-24 13:53:56"
+    "notes": "Notebook initialization on 2026-10-07 13:17:24"
   },
-  "exp_107": {
-    "created_date": "2026-04-29T19:52:47.905555",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+  "exp_2.607": {
+    "created_date": "2026-10-12T00:28:24.737633",
+    "description": "v2-preprocessing replication of exp_607: same settings (beta=0.25, 120 epochs), new dataset (glioma-preproc-2.h5), full retrain -- nothing transferred",
     "status": "running",
-    "last_run_date": "2026-04-30T22:57:13.090650",
+    "last_run_date": "2026-10-27T10:45:56.238733",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Notebook initialization on 2026-04-29 19:52:47"
+    "notes": "Notebook initialization on 2026-10-12 00:28:24"
   },
-  "exp_108": {
-    "created_date": "2026-04-30T22:58:34.342272",
-    "description": "TSAR Regimen: Fingerprint crop (700-1800), patient cap (500), and dynamic Raman augmentation",
+  "exp_2.609": {
+    "created_date": "2026-10-12T00:00:00.000000",
+    "description": "v2-preprocessing replication of exp_609: same settings (beta=0.75, 120 epochs), new dataset (glioma-preproc-2.h5), full retrain -- nothing transferred",
     "status": "running",
-    "last_run_date": "2026-05-02T17:14:19.126502",
+    "last_run_date": "2026-10-27T10:49:12.301851",
     "last_run_status": "running (notebook-execution)",
-    "notes": "Notebook initialization on 2026-04-30 22:58:34"
+    "notes": "Completes the v2 beta sweep alongside exp_2.607/exp_2.608."
+  },
+  "exp_4.608": {
+    "created_date": "2026-10-13T00:00:00.000000",
+    "description": "v3-preprocessing (fixed threshold=0.4) replication of exp_608: same settings (beta=0.5, 120 epochs), new dataset (glioma-preproc-3.h5), full retrain -- nothing transferred",
+    "status": "running",
+    "last_run_date": "2026-10-27T10:50:53.220988",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "New preprocessing pipeline (v3): fixed max-intensity threshold (0.4) replacing v2's adaptive mask, same automated spirit. Confirmed v1's current default dataset already corresponds to threshold=0.6 (strong_signal_mask.npy provenance). Policy: GPU-only Modal jobs (CVAE/CNN); CPU-parallel MIL work (mi-SVM, etc.) stays local for this experiment family."
+  },
+  "exp_701": {
+    "created_date": "2026-10-13T00:00:00.000000",
+    "description": "Latent-dim ablation (article S8.III): latent_dim=16, otherwise identical to exp_608 (beta=0.5, 120 epochs, TRTR reused from exp_501)",
+    "status": "running",
+    "last_run_date": "2026-10-27T10:37:56.966558",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Article S8.III ablation, latent_dim in {16,32,64} -- exp_608 is the 32 point. Only cvae.latent_dim differs from exp_608. GPU-only Modal policy (CVAE/CNN); TRTR reused from exp_501."
+  },
+  "exp_702": {
+    "created_date": "2026-10-13T00:00:00.000000",
+    "description": "Latent-dim ablation (article S8.III): latent_dim=64, otherwise identical to exp_608 (beta=0.5, 120 epochs, TRTR reused from exp_501)",
+    "status": "running",
+    "last_run_date": "2026-10-27T10:39:43.203809",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Article S8.III ablation, latent_dim in {16,32,64} -- exp_608 is the 32 point. Only cvae.latent_dim differs from exp_608. GPU-only Modal policy (CVAE/CNN); TRTR reused from exp_501."
+  },
+  "exp_703": {
+    "created_date": "2026-10-14T00:00:00.000000",
+    "description": "Reconstruction-loss ablation (article S8.III): gamma=0.5/delta=0.5, otherwise identical to exp_608 (beta=0.5, 120 epochs, TRTR reused from exp_501)",
+    "status": "running",
+    "last_run_date": "2026-10-27T10:41:56.683309",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Article S8.III ablation, recon loss in {pure MSE, 0.5/0.5, pure cos} -- exp_608 is the pure-MSE point. GPU-only Modal policy; TRTR reused from exp_501. Queued behind exp_701/702 remediation."
+  },
+  "exp_704": {
+    "created_date": "2026-10-14T00:00:00.000000",
+    "description": "Reconstruction-loss ablation (article S8.III): gamma=0.0/delta=1.0 (pure cosine), otherwise identical to exp_608 (beta=0.5, 120 epochs, TRTR reused from exp_501)",
+    "status": "running",
+    "last_run_date": "2026-10-27T10:44:06.774179",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Article S8.III ablation, recon loss in {pure MSE, 0.5/0.5, pure cos} -- exp_608 is the pure-MSE point. GPU-only Modal policy; TRTR reused from exp_501. Queued behind exp_703."
+  },
+  "exp_705": {
+    "created_date": "2026-10-14T00:00:00.000000",
+    "description": "Synth/real ratio ablation (article S8.III): ratio=0.5, otherwise identical to exp_608 (CVAE/TRTR/TSTR reused unchanged, only TSRTR+stats_eval run fresh)",
+    "status": "completed",
+    "last_run_date": "2026-10-15T02:42:57.959341",
+    "last_run_status": "success (stats_eval)",
+    "notes": "Article S8.III ablation, synth/real ratio in {0.5, 1.0, 2.0} -- exp_608 is the 1.0 point. Cheapest ablation here: no CVAE/TSTR retrain. Queued behind exp_704."
+  },
+  "exp_706": {
+    "created_date": "2026-10-14T00:00:00.000000",
+    "description": "Synth/real ratio ablation (article S8.III): ratio=2.0, otherwise identical to exp_608 (CVAE/TRTR/TSTR reused unchanged, only TSRTR+stats_eval run fresh)",
+    "status": "completed",
+    "last_run_date": "2026-10-15T06:34:45.674649",
+    "last_run_status": "success (stats_eval)",
+    "notes": "Article S8.III ablation, synth/real ratio in {0.5, 1.0, 2.0} -- exp_608 is the 1.0 point. Queued behind exp_705."
+  },
+  "exp_708": {
+    "created_date": "2026-10-23T13:31:51.340513",
+    "description": "TSTR with 2x synthetic data: pool 40000/class (exp_608 has 20000/class), generated from exp_608 decoders, otherwise identical to exp_608 TSTR (beta=0.5; only synth_gen+TSTR+stats_eval run fresh)",
+    "status": "completed",
+    "last_run_date": "2026-10-26T12:05:20.325168",
+    "last_run_status": "success (tstr)",
+    "notes": "Notebook initialization on 2026-10-23 13:31:51"
+  },
+  "exp_707": {
+    "created_date": "2026-10-23T13:33:40.462562",
+    "description": "Synth/real ratio ablation (article S8.III): ratio=3.0, otherwise identical to exp_608 (beta=0.5, same CVAE/TRTR/TSTR reused, only TSRTR+stats_eval run fresh)",
+    "status": "running",
+    "last_run_date": "2026-10-26T13:04:28.494892",
+    "last_run_status": "running (notebook-execution)",
+    "notes": "Notebook initialization on 2026-10-23 13:33:40"
   }
 }

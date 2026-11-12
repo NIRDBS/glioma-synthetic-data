@@ -1,137 +1,69 @@
 """
-Stage 4: TSTR (Train on Synthetic, Test on Real)
-Trains baseline models using synthetic data and tests on real data
+Stage: TSTR (Train Synthetic, Test Real).
+
+Trains the 4 benchmark models on the CVAE-generated synthetic pool for each fold
+(``{synthetic_dir}/{fold}_X_synth.npy`` / ``_y_synth.npy``) and evaluates on the
+real validation set of that fold. Models are written to
+``config['paths']['models_tstr_dir']``.
 """
 
-import numpy as np
-import joblib
 from pathlib import Path
-from sklearn.model_selection import StratifiedGroupKFold
-from src.data.loader import GliomaDataLoader
-from src.models.baselines import ApolloPipeline
+
+import numpy as np
+
+from pipeline._common import (
+    make_loader, prepare_fold, train_four_models, set_seeds, print_benchmark_summary,
+)
 
 
-def tstr_stage(config, output_dir, cvae_results=None):
-    """
-    Train baseline models on synthetic data, test on real (TSTR).
-    
-    Args:
-        config: Configuration dict
-        output_dir: Output directory for model results
-        cvae_results: Output from cvae_stage (contains synthetic_path)
-    
-    Returns:
-        Dict with fold predictions and model paths
-    """
-    
-    print(f"\n{'='*80}")
-    print(f"TSTR STAGE: Train Baselines on Synthetic, Test on Real")
-    print(f"{'='*80}")
-    
-    # Load synthetic data
-    synthetic_path = Path(cvae_results['synthetic_path'])
-    print(f"\nLoading synthetic data from: {synthetic_path}")
-    
-    synthetic_data = np.load(synthetic_path, allow_pickle=True)
-    
-    # Prepare synthetic X and y
-    X_synthetic_list = []
-    y_synthetic_list = []
-    
-    for key in sorted(synthetic_data.files):
-        class_id = int(key.split('_')[-1])
-        spectra = synthetic_data[key]
-        X_synthetic_list.append(spectra)
-        y_synthetic_list.extend([class_id] * len(spectra))
-    
-    X_synthetic = np.vstack(X_synthetic_list)
-    y_synthetic = np.array(y_synthetic_list)
-    
-    print(f"Synthetic dataset: {X_synthetic.shape[0]} spectra, {X_synthetic.shape[1]} features")
-    print(f"Classes: {np.unique(y_synthetic)}")
-    
-    # Load real test data (for testing across CV folds)
-    data_path = Path(config['paths']['processed_file'])
-    print(f"\nLoading real data from: {data_path}")
-    
-    loader = GliomaDataLoader(
-        data_path=data_path,
-        split_file=config['cv_strategy'].get('split_source'),
-        memory_mapped=False,
-        tumor_only=config['preprocessing'].get('y_tumor', False),
-        config=config
-    )
-    
-    X_real = loader.X
-    y_real = loader.y_class
-    groups = loader.groups
-    
-    print(f"Real dataset: {X_real.shape[0]} spectra, {X_real.shape[1]} features")
-    
-    # CV splits (same as TRTR for fair comparison)
-    n_splits = config['cv_strategy'].get('n_folds', 5)
-    cv_splitter = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=42)
-    
-    # Model output directory
-    models_dir = Path(output_dir) / 'models' / 'tstr'
-    models_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Storage for results
-    tstr_results = {
-        'fold_preds': [],
-        'fold_models': [],
-        'fold_indices': [],
-        'config': config
-    }
-    
-    print(f"\nTraining Apollo Pipeline on synthetic data across {n_splits} folds...\n")
-    
-    fold_num = 0
-    for train_idx, test_idx in cv_splitter.split(X_real, y_real, groups):
-        fold_num += 1
-        
-        print(f"  Fold {fold_num}/{n_splits}")
-        
-        # Use ALL synthetic data for training
-        X_train = X_synthetic
-        y_train = y_synthetic
-        
-        # Use real data for testing
-        X_test = X_real[test_idx]
-        y_test = y_real[test_idx]
-        
-        print(f"    Train (synthetic): {X_train.shape[0]} spectra")
-        print(f"    Test (real): {X_test.shape[0]} spectra")
-        
-        # Train Apollo Pipeline
-        apollo = ApolloPipeline(config=config)
-        apollo.fit(X_train, y_train)
-        
-        # Predict on real test data
-        y_pred = apollo.predict(X_test)
-        y_pred_proba = apollo.predict_proba(X_test)
-        
-        # Save model
-        model_path = models_dir / f"apollo_fold_{fold_num-1}.joblib"
-        joblib.dump(apollo, model_path)
-        print(f"    Saved: {model_path.name}")
-        
-        # Store results
-        tstr_results['fold_preds'].append({
-            'y_test': y_test,
-            'y_pred': y_pred,
-            'y_pred_proba': y_pred_proba,
-            'test_idx': test_idx
-        })
-        tstr_results['fold_models'].append(str(model_path))
-        tstr_results['fold_indices'].append((None, test_idx))  # No train_idx for synthetic
-    
-    # Save summary
-    summary_path = models_dir / 'tstr_summary.joblib'
-    joblib.dump(tstr_results, summary_path)
-    
-    print(f"\n✓ TSTR training complete")
-    print(f"  Models saved to: {models_dir}")
-    print(f"  Summary: {summary_path}")
-    
-    return tstr_results
+def _load_synth_pool(synth_dir, fold_name):
+    X = np.load(Path(synth_dir) / f"{fold_name}_X_synth.npy").astype(np.float32)
+    y = np.load(Path(synth_dir) / f"{fold_name}_y_synth.npy")
+    if X.ndim == 3:
+        X = X.reshape(X.shape[0], -1)
+    valid = ~np.isnan(X).any(axis=1)
+    n_removed = int((~valid).sum())
+    if n_removed:
+        print(f"  Removed {n_removed} synthetic samples with NaNs")
+    return X[valid], y[valid]
+
+
+def tstr_stage(config, output_dir=None):
+    seed = set_seeds(config)
+    model_dir = config['paths']['models_tstr_dir']
+    synth_dir = config['paths']['synthetic_dir']
+
+    print(f"\n{'='*80}\nTSTR STAGE (train synthetic / test real): {config['name']}\n{'='*80}")
+    loader = make_loader(config)
+    print(f"Synthetic pool: {synth_dir} | models -> {model_dir}")
+
+    per_fold = []
+    for fold_data in loader:
+        fold_name = fold_data['fold_name']
+        print(f"\n--- {fold_name} ---")
+        # Real fold only needed for the (binary-mapped) validation set.
+        _, _, X_val, y_val = prepare_fold(fold_data, config, cap_train=False)
+        X_train, y_train = _load_synth_pool(synth_dir, fold_name)
+        print(f"  Synthetic train: {X_train.shape}")
+        accs = train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_name, seed)
+        per_fold.append(accs)
+
+    print_benchmark_summary(per_fold, title="TSTR BENCHMARK COMPLETE")
+    return {'model_dir': str(model_dir), 'per_fold_accuracies': per_fold}
+
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="TSTR training (train on synthetic)")
+    parser.add_argument('--config', required=True, help="experiment config name, e.g. exp_201")
+    args = parser.parse_args()
+
+    project_root = Path(__file__).resolve().parents[1]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from src.notebooks.experiment_utils import setup_experiment
+
+    cfg, out_dir = setup_experiment(args.config)
+    tstr_stage(cfg, out_dir)

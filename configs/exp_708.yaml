@@ -1,0 +1,141 @@
+# TSTR with a 2x synthetic pool. exp_608's TSTR trains the four classifiers on a
+# fixed 20000/class (40000 total) pool per fold; this trains them on 40000/class
+# (80000 total) generated from the SAME exp_608 decoders -- same models, same
+# hyperparameters, same real validation folds, only more synthetic training data.
+# No CVAE training: pipeline/synth_gen_stage.py loads exp_608's saved
+# decoder_{fold}.weights.h5 and only generates. The `cvae` stage is deliberately
+# NOT in this config's stages: with synthetic_dir pointing at a new directory its
+# skip-check would fail and it would retrain, overwriting exp_608's decoders.
+# TRTR is exp_501's (reused); only synth_gen + tstr + stats_eval run fresh.
+name: exp_708
+description: "TSTR with 2x synthetic data: pool 40000/class (exp_608 has 20000/class), generated from exp_608 decoders, otherwise identical to exp_608 TSTR (beta=0.5; only synth_gen+TSTR+stats_eval run fresh)"
+version: "1.0"
+
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  results_root: "results"
+  experiment_root: "results/exp_708"
+  data_output_dir: "results/exp_708/data"
+  processed_file: "data/processed/glioma_mil.h5"
+
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED
+  models_tstr_dir: "results/exp_708/models/tstr"       # OWN -- TSTR on the 2x pool lives here
+  models_tsrtr_dir: "results/exp_708/models/tsrtr"     # unused (no tsrtr stage); stats_eval skips it
+  models_cvae_dir: "results/exp_608/models/cvae"       # REUSED -- decoders only; never trained here
+  synthetic_dir: "results/exp_708/synthetic"           # OWN -- the 2x pool (synth_gen stage output)
+  quality_dir: "results/exp_708/data_quality"
+  statistical_dir: "results/exp_708/statistical_eval"
+
+pipeline:
+  stages: [trtr, synth_gen, tstr, stats_eval]   # no cvae: see header
+
+preprocessing:
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+  airpls_lambda: 10000
+  airpls_porder: 1
+  normalization: "minmax"
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: false
+  ignore_samples: []
+
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+training:
+  random_seed: 42
+  verbose: 1
+
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # GPU job -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 120
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 0.5
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 40000   # <-- THE CHANGED SETTING (exp_608 has 20000); read by synth_gen only
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+mil:
+  pi_floor: 0.02
+  svm_subsample_per_bag: 500
+  cbr_temperature: 0.001
+
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+notes: |
+  - TSTR data-scaling probe: exp_608 TSTR uses a 20000/class synthetic pool;
+    this doubles it to 40000/class (80000 per fold) from the same decoders.
+  - No CVAE training. synth_gen (generate-only) -> tstr -> stats_eval.
+    Do not add the `cvae` stage here (it would retrain and overwrite exp_608's
+    decoder weights).
+  - TRTR reused from exp_501 as the stats_eval baseline.
+  - GPU-only Modal policy: CNN (within tstr) dispatches to Modal;
+    Apollo/RF/XGBoost stay local. Run after exp_707.

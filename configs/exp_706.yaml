@@ -1,0 +1,138 @@
+# Article S8.III ablation: synthetic/real ratio for TSRTR, 3 points.
+# exp_608 IS the ratio=1.0 point (already exists); this is ratio=2.0
+# (n_synth = round(2.0 * n_real)). Same reuse pattern as exp_705 -- CVAE,
+# TRTR, and TSTR all reused unchanged; only tsrtr + stats_eval run fresh.
+name: exp_706
+description: "Synth/real ratio ablation (article S8.III): ratio=2.0, otherwise identical to exp_608 (beta=0.5, same CVAE/TRTR/TSTR reused, only TSRTR+stats_eval run fresh)"
+version: "1.0"
+
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  results_root: "results"
+  experiment_root: "results/exp_706"
+  data_output_dir: "results/exp_706/data"
+  processed_file: "data/processed/glioma_mil.h5"
+
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED
+  models_tstr_dir: "results/exp_608/models/tstr"       # REUSED -- ratio-independent, architecturally identical
+  models_tsrtr_dir: "results/exp_706/models/tsrtr"     # OWN -- the ablated setting lives here
+  models_cvae_dir: "results/exp_608/models/cvae"       # REUSED -- ratio never touches the CVAE
+  synthetic_dir: "results/exp_608/synthetic"           # REUSED
+  quality_dir: "results/exp_706/data_quality"
+  statistical_dir: "results/exp_706/statistical_eval"
+
+tsrtr:
+  synth_ratio: 2.0   # <-- THE ABLATED SETTING (exp_608 has 1.0)
+  cvae_weights_dir: "results/exp_608/models/cvae"      # REUSED
+
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]
+
+preprocessing:
+  spatial_median_filter: true
+  spatial_median_filter_size: 3
+  airpls_lambda: 10000
+  airpls_porder: 1
+  normalization: "minmax"
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: false
+  ignore_samples: []
+
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  use_group_aware_cv: true
+  holdout_test_set: true
+  n_folds: 5
+  patient_cap: 500
+  cap_strategy: "dynamic_per_epoch"
+
+training:
+  random_seed: 42
+  verbose: 1
+
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # GPU job -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 120
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 0.5
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+  primary_metric: "f1_macro"
+
+mil:
+  pi_floor: 0.02
+  svm_subsample_per_bag: 500
+  cbr_temperature: 0.001
+
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+notes: |
+  - Article S8.III ablation: "synthetic/real data ratio" -- exp_608 is the
+    1/1 point; exp_705 is 0.5/1; this is 2/1.
+  - Cheapest of the S8.III ablations: no CVAE retrain, no TSTR retrain --
+    only tsrtr + stats_eval run fresh.
+  - GPU-only Modal policy: CNN (within tsrtr) dispatches to Modal;
+    Apollo/RF/XGBoost stay local. Run sequentially with exp_703/704/705.

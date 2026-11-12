@@ -20,7 +20,7 @@ class ConfigManager:
     Each experiment has a single config file that drives all pipeline components.
     
     Example:
-        config = ConfigManager.load_config("baseline_exp_001")
+        config = ConfigManager.load_config("exp_608")
         lambda_param = config['preprocessing']['airpls_lambda']
     """
     
@@ -128,7 +128,7 @@ class ConfigManager:
                 f"Available configs should be in: {project_root / 'configs'}/"
             )
         
-        with open(config_path, 'r') as f:
+        with open(config_path, 'r', encoding='utf-8') as f:
             raw_config = yaml.safe_load(f)
         
         if raw_config is None:
@@ -339,7 +339,7 @@ def get_experiment_config(experiment_name: str) -> ConfigManager:
         ConfigManager instance with loaded configuration
     
     Example:
-        config = get_experiment_config('baseline_exp_001')
+        config = get_experiment_config('exp_608')
         rf_params = config['models']['random_forest']
     """
     return ConfigManager.load_config(experiment_name)

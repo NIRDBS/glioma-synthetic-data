@@ -56,9 +56,9 @@ CACHE = OUT_ROOT / 'cache'
 
 # Experiments whose stats-eval tables carry a CI or star in the paper: the
 # per-experiment appendix tables (AXIS_GROUPS) incl. the beta table (607-609).
-# exp_707/708 only feed the CI-free ratio table / the pool pairwise test.
 REGIMEN_EXPS = ['exp_501', 'exp_601', 'exp_607', 'exp_608', 'exp_609',
                 'exp_701', 'exp_702', 'exp_703', 'exp_704', 'exp_705', 'exp_706',
+                'exp_707', 'exp_708',
                 'exp_4.608', 'exp_2.607', 'exp_2.608', 'exp_2.609']
 CANDIDATES = ('TSTR', 'TSRTR')
 MIL_EXPS = ['exp_607', 'exp_608', 'exp_609', 'exp_2.607', 'exp_2.608', 'exp_4.608']

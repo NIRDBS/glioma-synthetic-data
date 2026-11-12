@@ -1,16 +1,23 @@
-# Generative Augmentation of Raman Spectra for Glioma Classification
+# Glioma IDH Classification via CVAE: Synthetic Augmentation, Generative Classification, and MIL for Raman Biopsies
 
-Code and experiments for the paper *Generative Augmentation of Raman Spectra for
-Glioma Classification* (see [`paper/main.tex`](paper/main.tex)).
+Code and experiments for the paper of the same title (v2.4). The manuscript sources are
+not tracked in this repository; `paper/` keeps only the table generators.
 
-We study whether a conditional variational autoencoder (β-CVAE) can generate
-useful synthetic Raman spectra in a small-cohort glioma setting. Synthetic data
-is evaluated under **TS/TR** (train on synthetic, test on real), **TSR/TR**
-(train on synthetic + real, test on real), and a reconstruction-based inference
-strategy, **Classification by Reconstruction (CbR)** — all under strict
-**slide-isolated** cross-validation to prevent leakage. Task: binary IDH status
-(mutant vs wildtype). The code also covers multiple-instance learning (MIL)
-formulations evaluated at slide level.
+A β-regularized conditional variational autoencoder (β-CVAE) is used in three
+roles on a small Raman cohort, for binary IDH status (mutant vs wildtype):
+
+1. **Generator** of synthetic spectra, evaluated under **TS/TR** (train on
+   synthetic, test on real) and **TSR/TR** (train on synthetic + real, test on
+   real) against the **TR/TR** baseline.
+2. **Generative classifier**: **Classification by Reconstruction (CbR)**.
+3. **Multiple-instance learning (MIL)** classifier of slides. CbR is compared with
+   naive MIL (majority vote over spectra), mi-SVM and attention MIL, and each MIL
+   posterior is tested for spatial coherence (real vs shuffled-label refit) and
+   key-instance utility.
+
+Cross-validation is patient-grouped (every slide of a patient lies in one
+partition), and confidence intervals come from a class-stratified bootstrap over
+patients.
 
 ## Repository layout
 
@@ -22,7 +29,7 @@ pipeline/       Headless, config-driven experiment runner — see pipeline/READM
 scripts/        Dataset builders, MIL evaluation tests, bootstraps and paper figures
 configs/        Experiment definitions (exp_*.yaml) + EXPERIMENT_REGISTRY.json
 notebooks/      The six review notebooks (one per analysis stage, below)
-paper/          Manuscript sources and the generators of its tables (paper/gen_*.py)
+paper/          Generators of the paper tables (paper/gen_*.py); manuscript sources are not tracked
 docs/           Design notes and findings per stage
 tests/          Unit and regression tests
 requirements.txt
@@ -37,20 +44,24 @@ Set the experiment via `CONFIG_NAME` near the top of each notebook.
 | Notebook | Paper stage | What it does |
 |----------|-------------|--------------|
 | `00_Stage0_Baseline_Correction` | Baseline correction | Baseline-correction method and IARPLS λ selection (Appendix: Baseline Correction) |
-| `01_NMF_GMM_Tissue_Classification` | Tumour selection | Spatial filtering + NMF + GMM to isolate pure tumour spectra and build the HDF5 dataset |
+| `01_NMF_GMM_Tissue_Classification` | Spectrum selection | Per-slide strong-signal mask (3×3 median filter, normalisation, maximum intensity ≥ 0.60), the input of `scripts/build_glioma_mil.py`; also the legacy NMF + GMM clustering, kept only as the unsupervised `viable_legacy` reference |
 | `02_Train_Classifiers` | TR/TR · TS/TR · TSR/TR | Trains the 4 benchmark classifiers (Apollo RF+SVM, RandomForest, XGBoost, 1D-CNN) under a selectable regimen |
 | `03_CVAE` | Generation | Trains the β-CVAE per fold and generates the synthetic spectrum pool |
 | `05_Classification_reconstruction` | CbR | Visual walkthrough of Classification by Reconstruction (illustrative; metrics live in nb 09) |
-| `09_Statistical_evaluation` | Results | Slide-level cluster-bootstrap comparison of regimens (the reported numbers) |
+| `09_Statistical_evaluation` | Results | Slide-level bootstrap comparison of regimens; the paper's patient-level intervals come from `scripts/patient_bootstrap.py` (below) |
 
-Preprocessing (stage i: airPLS baseline correction, normalisation, slide-isolated
-splits) is handled by `pipeline/preprocessing_stage.py` and `src/data/`.
+The dataset contains no tissue annotations: the mask selects spectra by signal
+strength, not by tumour content.
+
+Preprocessing (normalisation to [0, 1], then IARPLS baseline correction with
+λ = 10⁴; patient-grouped splits) is handled by `pipeline/preprocessing_stage.py`
+and `src/data/`.
 
 ## Reproducing the experiments
 
 **1. Environment**
 ```bash
-pip install -r requirements.txt        # Python 3.11+, TensorFlow, scikit-learn, xgboost, h5py …
+pip install -r requirements.txt        # tested with Python 3.13; TensorFlow, scikit-learn, xgboost, h5py …
 ```
 
 **2. Data.** The raw spectral cubes and processed dataset are available here:
@@ -71,10 +82,19 @@ python -m pipeline.tstr_stage --config exp_608
 Each stage reads its configuration from `configs/<name>.yaml` and writes models,
 synthetic pools, and statistics under `results/<name>/`.
 
-**4. Or step through the notebooks** in the order in the table above.
+**4. Patient-level bootstrap** (the intervals reported in the paper):
+```bash
+python scripts/patient_bootstrap.py --stage all    # writes results/patient_bootstrap/
+```
+The stage bootstraps above are slide-level. `paper/gen_appendix_controlled_experiments.py`
+regenerates the paper tables from those slide-level results; the v2.4 tables carry the
+patient-level values and later hand edits, so running the generator overwrites them.
+
+**5. Or step through the notebooks** in the order in the table above.
 
 ## Dataset
 
-~270,000 Raman spectra from 59 glioma biopsies of 46 patients (Lita et al.), each a
-`(H, W, 1738)` hyperspectral cube. Labels LGm1–LGm3 are IDH-mutant, LGm4–LGm6
-IDH-wildtype. See Table 1 in the paper for the class composition.
+300,506 Raman spectra from 59 glioma biopsies of 46 patients (Lita et al.), each a
+`(H, W, 1738)` hyperspectral cube; 288,678 spectra are retained at the 0.60
+intensity threshold. Labels LGm1–LGm3 are IDH-mutant, LGm4–LGm6 IDH-wildtype. See
+Table 1 in the paper for the class composition.

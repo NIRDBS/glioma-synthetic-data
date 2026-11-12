@@ -19,6 +19,7 @@ single-panel figures had at their own \linewidth inclusion.
 Usage:
     python scripts/plot_beta_sensitivity_combined.py
 """
+import os
 import sys
 from pathlib import Path
 
@@ -127,7 +128,7 @@ def _draw_fixed_beta_panels(ax_recon, ax_kl):
 
 
 def _save(fig, name):
-    out_dir = PROJECT_ROOT / "paper" / "img"
+    out_dir = Path(os.environ.get("PAPER_DIR", PROJECT_ROOT / "paper")) / "img"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / name
     fig.savefig(out_path, dpi=FIG_DPI)

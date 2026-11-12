@@ -28,9 +28,9 @@ string x 100 (0.00464 -> '0.005' -> '0.50').
 
 Usage
 -----
-    python paper/gen_boot_values.py --convert
-    python paper/gen_boot_values.py --unit slide --check
-    python paper/gen_boot_values.py --unit patient [--strict]
+    python scripts/paper/gen_boot_values.py --convert
+    python scripts/paper/gen_boot_values.py --unit slide --check
+    python scripts/paper/gen_boot_values.py --unit patient [--strict]
 """
 import argparse
 import glob
@@ -40,7 +40,7 @@ import re
 import sys
 from decimal import Decimal, ROUND_HALF_UP
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RESULTS = os.path.join(ROOT, 'results')
 PATIENT = os.path.join(RESULTS, 'patient_bootstrap')
 PAPER = os.path.join(ROOT, 'Raman synthetic data v2.2.1')
@@ -491,7 +491,7 @@ MAIN_HEADER = r"""% ============================================================
 % further down this preamble (search for "THE switch"):
 %   slide   = original class-stratified bootstrap over the 59 slides
 %   patient = class-stratified bootstrap over the 46 patients
-% Values are written by paper/gen_boot_values.py (--unit slide --check / --unit patient).
+% Values are written by scripts/paper/gen_boot_values.py (--unit slide --check / --unit patient).
 % ============================================================================
 """
 
@@ -506,7 +506,7 @@ MAIN_SWITCH_ANCHOR = r'\newcommand{\TODO}[1]{\ifdraft{\color{red}[TODO: #1]}\fi}
 SWITCH_TEX = r"""% boot_switch.tex -- accessors for the slide- vs patient-level bootstrap values.
 % The unit is chosen by \def\bootunit{slide|patient} in main.tex, just before
 % \input{boot_switch}. The values live in boot_values_<unit>.tex, written by
-% paper/gen_boot_values.py. Do not edit the values files by hand.
+% scripts/paper/gen_boot_values.py. Do not edit the values files by hand.
 \makeatletter
 \ifdefined\bootunit\else
   \PackageError{bootswitch}{\string\bootunit\space is not defined}%
@@ -580,7 +580,7 @@ def write(path, text):
 
 
 def values_file_text(unit, values, header=''):
-    L = [f'% boot_values_{unit}.tex -- written by paper/gen_boot_values.py; do not edit by hand.',
+    L = [f'% boot_values_{unit}.tex -- written by scripts/paper/gen_boot_values.py; do not edit by hand.',
          f'% Resampling unit: {unit}. One \\bootset{{<key>}}{{<field>}}{{<value>}} per value.']
     if header:
         L += ['% ' + h for h in header.splitlines()]
@@ -922,7 +922,7 @@ def write_diff(paper, slide_vals, patient_vals, missing):
                 flags.append('RF/XGBoost intervals differ')
         rows.append(f'| `{key}` | {s_txt} | {strat} | {p_txt} | {"; ".join(flags)} |')
     L = ['# Bootstrap unit: slide vs patient', '',
-         'Written by `paper/gen_boot_values.py --unit patient`. Point estimates are identical under both '
+         'Written by `scripts/paper/gen_boot_values.py --unit patient`. Point estimates are identical under both '
          'units; only the cells below differ. Columns: slide = the value printed in the paper '
          '(class-stratified bootstrap over the 59 slides); class-stratified slide = the slide-cluster '
          'diagnostic recomputed by `scripts/patient_bootstrap.py` (`slide_stratified`; for regimen and '

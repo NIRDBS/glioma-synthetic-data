@@ -1,8 +1,10 @@
 """Build data/processed/glioma_mil.h5 -- the Stage 1 canonical dataset.
 
-Requires the per-slide clustering artifacts in data/processed/<slide>/ to already
-exist (produced by notebook 01 sections 2-3: strong_signal_mask.npy, hard_labels.npy,
-tumor_mask.npy). This script does not recompute them.
+Requires the per-slide clustering artifacts of the v1 NMF/GMM pipeline in
+data/processed/<slide>/ (strong_signal_mask.npy, hard_labels.npy, tumor_mask.npy);
+this script does not recompute them. Without them, build the same spectra with
+    python scripts/build_glioma_preproc_3.py --threshold 0.6 --out data/processed/glioma_mil.h5
+which differs only in omitting the tissue_cluster / viable_legacy columns.
 
 Usage:
     python scripts/build_glioma_mil.py [--out data/processed/glioma_mil.h5] [--workers N]

@@ -26,6 +26,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -74,7 +75,7 @@ def main():
                     help="pooled per-pixel max-intensity array, cached here after computing")
     ap.add_argument("--recompute", action="store_true", help="ignore the cache, redo the raw-data pass")
     ap.add_argument("--bins", type=int, default=80)
-    ap.add_argument("--out", default="paper/img/max_intensity_histogram.png")
+    ap.add_argument("--out", default=os.path.join(os.environ.get("PAPER_DIR", "paper"), "img", "max_intensity_histogram.png"))
     args = ap.parse_args()
 
     cache_path = Path(args.cache)

@@ -1,8 +1,8 @@
 """Pad one-decimal numbers to two decimals in the live text of 'Raman_synthetic_data v2.3'
 (0.5 -> 0.50, 1.0 -> 1.00, 0.5{:}1 -> 0.50{:}1): body text, captions, notes, table cells.
 
-    python paper/pad_decimals_v23.py            # dry run: lists every replacement
-    python paper/pad_decimals_v23.py --write
+    python scripts/paper/pad_decimals_v23.py            # dry run: lists every replacement
+    python scripts/paper/pad_decimals_v23.py --write
 
 Left unchanged on purpose:
   * comments (lines or trailing parts after an unescaped %);
@@ -19,7 +19,7 @@ import os
 import re
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 V23 = os.path.join(ROOT, 'Raman_synthetic_data v2.3')
 NUM = re.compile(r'(?<![\w.])(\d+)\.(\d)(?!\d)')
 LAYOUT_BEFORE = ('arraystretch}{', 'scale=', 'tabcolsep}{')

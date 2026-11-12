@@ -1,17 +1,17 @@
 """Write the patient-level bootstrap values into the tables of 'Raman_synthetic_data v2.3'.
 
-Only that folder is touched (no file under paper/ other than this script is read for
+Only that folder is touched (no file under scripts/paper/ other than this script is read for
 editing). The slide-level originals are the zip next to the folder.
 
-    python paper/patch_v23_patient.py            # dry run: checks + summary, writes nothing
-    python paper/patch_v23_patient.py --write    # rewrite the v2.3 tables and the change report
+    python scripts/paper/patch_v23_patient.py            # dry run: checks + summary, writes nothing
+    python scripts/paper/patch_v23_patient.py --write    # rewrite the v2.3 tables and the change report
 
 What is replaced: every bootstrap-derived table cell -- 95% CIs, the Delta asterisks, the
 reported p-values, the yes/no verdicts, the synthetic-ratio star -- keeping the literal's shape
 (decimals, signs, separators, star syntax) of the cell it replaces; plus the unit words of the
 table captions/notes and of the appendix method paragraphs that say the bootstrap runs over slides.
 Point estimates are unchanged. The accuracy table in main.tex (tab:beta_results) is already
-patient-level and is only verified against paper/gen_beta_acc_table.py.
+patient-level and is only verified against scripts/paper/gen_beta_acc_table.py.
 
 Guards (any failure aborts before anything is written):
   * every converted table expands back to its original text byte for byte;
@@ -29,7 +29,7 @@ sys.path.insert(0, HERE)
 import gen_boot_values as G  # noqa: E402
 import gen_beta_acc_table as B  # noqa: E402
 
-ROOT = os.path.dirname(HERE)
+ROOT = os.path.dirname(os.path.dirname(HERE))
 V23 = os.path.join(ROOT, 'Raman_synthetic_data v2.3')
 REPORT = 'patient_bootstrap_changes.md'
 
@@ -133,7 +133,7 @@ def main():
     n_rows, missing_rows = check_main_accuracy_table(texts['main.tex'])
     print(f'main.tex accuracy table: {n_rows - len(missing_rows)}/{n_rows} generated patient rows found')
     if missing_rows:
-        sys.exit('abort: main.tex tab:beta_results differs from paper/gen_beta_acc_table.py --unit patient:\n  '
+        sys.exit('abort: main.tex tab:beta_results differs from scripts/paper/gen_beta_acc_table.py --unit patient:\n  '
                  + '\n  '.join(missing_rows))
 
     E_all, seen, per_file, converted = G.Entries(), [], {}, {}
@@ -207,7 +207,7 @@ def main():
 
 def write_report(per_file, patient, changed, flips, done):
     L = ['# Patient-level bootstrap in v2.3: changes', '',
-         'Written by `paper/patch_v23_patient.py`. The slide-level originals are `Raman_synthetic_data v2.3.zip`. '
+         'Written by `scripts/paper/patch_v23_patient.py`. The slide-level originals are `Raman_synthetic_data v2.3.zip`. '
          'Point estimates are unchanged; only bootstrap-derived cells (95% CI, asterisk, p-value, verdict) and the '
          'unit wording of captions/notes/method paragraphs were edited. Source of the new values: '
          '`results/patient_bootstrap/**` (class-stratified bootstrap over the 46 patients; 1000 resamples for the '
@@ -223,7 +223,7 @@ def write_report(per_file, patient, changed, flips, done):
         L += [f'- `{f}` ({count}x): `{old}` -> ' + (f'`{rep}`' if rep else '*(removed)*')]
     L += ['', '## Not edited', '',
           '- `main.tex` tab:beta_results (accuracy-only table): already patient-level; verified against '
-          '`paper/gen_beta_acc_table.py --unit patient`.',
+          '`scripts/paper/gen_beta_acc_table.py --unit patient`.',
           '- Key-instance verdict cells (yes/no/tie) of `main.tex` tab:mil_tests_keyinst: exact comparison of '
           'point accuracies, not a bootstrap test.']
     L += [f'- `{f}`: {why}.' for f, why in STALE.items()]

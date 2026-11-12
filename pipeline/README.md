@@ -1,12 +1,9 @@
 # `pipeline/` — Headless experiment runner
 
-Runs the full glioma synthetic-data experiments **without notebooks**, for
+Runs the glioma synthetic-data experiments from the command line, for
 reproducible and reviewable execution. Every stage is config-driven: behaviour is
 read from `configs/exp_*.yaml`, and outputs are written under
 `results/{experiment}/` so artifacts can be reused across experiments.
-
-The notebooks and this package share the same core helpers (`pipeline/_common.py`),
-so a notebook run and a headless run produce identical training behaviour.
 
 ---
 
@@ -15,17 +12,17 @@ so a notebook run and a headless run produce identical training behaviour.
 The end-to-end flow is a sequence of stages. Each experiment's config lists the
 stages it needs under `pipeline.stages`.
 
-| Stage         | Module                       | Trains on / does                                  | Notebook |
-|---------------|------------------------------|---------------------------------------------------|----------|
-| `preprocessing` | `preprocessing_stage.py`   | Raw cubes → cropped/normalised H5 dataset         | 01 / 00  |
-| `trtr`        | `trtr_stage.py`              | Real (slide-capped) → 4 models, test real         | 02       |
-| `cvae`        | `cvae_stage.py`              | Train CVAE, generate synthetic pool per fold      | 03       |
-| `tstr`        | `tstr_stage.py`              | Synthetic pool → 4 models, test real              | 02 / 04  |
-| `synth_gen`   | `synth_gen_stage.py`         | New synthetic pool from an existing decoder (no training) | — |
-| `tsrtr`       | `tsrtr_stage.py`             | Real + on-demand synthetic (ratio) → 4 models     | 02       |
-| `stats_eval`  | `evaluation_stage.py`        | Bootstrap CIs: TRTR vs TSTR / TSRTR (+ CbR)       | 09       |
-| `mil_eval`    | `mil_eval_stage.py`          | Tier 0 naive-MIL pooling baselines (no training)  | —        |
-| `mil_fit`     | `mil_fit_stage.py`           | mi-SVM fit (+ CbR posteriors with `--methods cbr`) into the latent-label store | — |
+| Stage         | Module                       | Trains on / does                                  |
+|---------------|------------------------------|---------------------------------------------------|
+| `preprocessing` | `preprocessing_stage.py`   | Raw cubes → cropped/normalised H5 dataset         |
+| `trtr`        | `trtr_stage.py`              | Real (slide-capped) → 4 models, test real         |
+| `cvae`        | `cvae_stage.py`              | Train CVAE, generate synthetic pool per fold      |
+| `tstr`        | `tstr_stage.py`              | Synthetic pool → 4 models, test real              |
+| `synth_gen`   | `synth_gen_stage.py`         | New synthetic pool from an existing decoder (no training) |
+| `tsrtr`       | `tsrtr_stage.py`             | Real + on-demand synthetic (ratio) → 4 models     |
+| `stats_eval`  | `evaluation_stage.py`        | Bootstrap CIs: TRTR vs TSTR / TSRTR (+ CbR)       |
+| `mil_eval`    | `mil_eval_stage.py`          | Tier 0 naive-MIL pooling baselines (no training)  |
+| `mil_fit`     | `mil_fit_stage.py`           | mi-SVM fit (+ CbR posteriors with `--methods cbr`) into the latent-label store |
 
 Attention MIL is fitted by `mil_attention_stage.py` (own CLI, not a `run_suite`
 stage); the MIL evaluation tests (spatial coherence, shuffled-label controls,
@@ -108,7 +105,8 @@ python -m pipeline.evaluation_stage --config exp_705 \
 python -m pipeline.mil_fit_stage --config exp_608 --methods misvm cbr
 ```
 
-(`preprocessing_stage` has no standalone CLI — run it via `run_suite --stages preprocessing`.)
+(`preprocessing_stage` has no standalone CLI — run it via `run_suite --stages preprocessing`. The
+paper's datasets are built by the scripts in the top-level README, step 1.)
 
 ---
 
@@ -153,7 +151,7 @@ The processed dataset (`paths.processed_file`, e.g. `data/processed/glioma_mil.h
 is shared across experiments and is not copied per experiment.
 
 The canonical model filename scheme (`{model}_{fold}.{ext}`) is shared by all
-classifier stages, so `stats_eval` and the notebooks can locate any model by
+classifier stages, so `stats_eval` and the analysis scripts can locate any model by
 `(experiment, regimen, fold)`.
 
 ---

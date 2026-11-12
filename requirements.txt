@@ -1,5 +1,5 @@
 # glioma-synthetic-data requirements
-# Generated from analysis of src/ and notebooks/ imports
+# Generated from analysis of src/, pipeline/ and scripts/ imports
 
 # Data Processing & Storage
 numpy==2.3.3
@@ -26,11 +26,8 @@ seaborn==0.13.2
 # Raman Spectroscopy
 ramanspy==0.2.10
 
-# Notebook & Environment
+# Progress bars
 tqdm==4.67.1
-nbconvert==7.17.0
-nbformat==5.10.4
-ipython
 
 # Cloud GPU (CVAE offload via pipeline/modal_cvae.py — only needed for --cvae-backend modal)
 modal>=0.64

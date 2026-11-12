@@ -119,7 +119,7 @@ def manifest():
 
 
 def latest_stats_json(exp, cand):
-    """Same selection rule as paper/gen_appendix_controlled_experiments.py::latest()."""
+    """Same selection rule as scripts/paper/gen_appendix_controlled_experiments.py::latest()."""
     pat = str(RESULTS / exp / 'statistical_eval' / f'statistical_evaluation_TRTR_vs_{cand}_*.json')
     files = sorted(glob.glob(pat), key=lambda f: re.search(r'(\d{8}_\d{6})', f).group(1))
     if not files:

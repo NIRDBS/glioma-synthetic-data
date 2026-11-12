@@ -6,8 +6,9 @@ was used without being imported, ``_build_file_to_map_correspondence`` was calle
 but never defined, and the tumour-map key lookup appended ``.npy`` to a key that
 never had it, so the mask was always ``None`` and every slide was skipped. The
 actual producer for every dataset on disk was notebook 01 section 4 (mirrored in
-``_archive/dev_scripts/export_hdf5_section4.py``); that logic is folded in here so
-the notebook goes back to being exploratory rather than a build dependency.
+``_archive/dev_scripts/export_hdf5_section4.py``); that logic is folded in here. The
+notebook has since been removed. ``scripts/build_glioma_preproc_3.py --threshold 0.6``
+builds the same spectra without the clustering artifacts.
 
 What changed from that notebook logic, deliberately:
 
@@ -24,9 +25,9 @@ What changed from that notebook logic, deliberately:
   keeping the export fold-independent.
 * **Clustering is not re-run.** NMF(100)/GMM(3) per slide already exists on disk
   (``data/processed/<slide>/{hard_labels,strong_signal_mask,tumor_mask}.npy``,
-  produced by notebook 01 sections 2-3) and is expensive (NMF alone is ~500
-  iterations per slide). This module reads those artifacts; it does not recompute
-  them. Regenerate them first if a slide's directory is missing.
+  produced by the v1 NMF/GMM pipeline) and is expensive (NMF alone is
+  ~500 iterations per slide). This module reads those artifacts; it does not
+  recompute them. Regenerate them first if a slide's directory is missing.
 """
 
 from __future__ import annotations

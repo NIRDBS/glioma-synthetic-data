@@ -872,3 +872,7 @@ _archive/
 # --- `results/` is excluded above, and git cannot re-include under an excluded parent,
 # --- so those artifacts are committed explicitly with `git add -f`. Keep it that way:
 # --- loosening `results/` here would sweep in model weights and synthetic pools.
+
+# Manuscript sources are not tracked; only the table generators (paper/*.py) are
+paper/*
+!paper/*.py

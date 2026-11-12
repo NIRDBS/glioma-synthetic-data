@@ -1,13 +1,13 @@
 r"""
 Generate the per-experiment downstream-classifier results tables for the
-"Controlled Experiments" appendix (paper/appendix_controlled_experiments.tex).
+"Controlled Experiments" appendix ($PAPER_DIR/appendix_controlled_experiments.tex).
 
 Covers the current paper's controlled-experiment family (the CVAE beta sweep,
 latent-dim/reconstruction-loss/synthetic-ratio axes, and the preprocessing-
 variant axis -- what docs/experiment_inventory.md section 8a had called
 "ablation studies": not accurate, since nothing is removed -- each axis varies
 one factor against a shared anchor, exp_608) and writes to
-paper/appendix_controlled_experiments_tables.tex, plus the main-text Results
+$PAPER_DIR/appendix_controlled_experiments_tables.tex, plus the main-text Results
 tables and the MIL appendix tables (see ``_results_tables``).
 
 Column design: the primary Accuracy/Delta/95% CI columns are UNCHANGED (raw bag
@@ -20,17 +20,19 @@ same CI/significance star would overstate what was actually tested. Both
 numbers are shown; only one carries a significance claim.
 
 Usage:
-    python paper/gen_appendix_controlled_experiments.py
+    PAPER_DIR=<manuscript dir> python scripts/paper/gen_appendix_controlled_experiments.py
 """
 import json
 import glob
 import os
 import re
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# The manuscript lives outside the repository; point PAPER_DIR at it.
+PAPER = os.environ.get('PAPER_DIR', os.path.join(ROOT, 'paper'))
 RESULTS = os.path.join(ROOT, 'results')
 REGISTRY = os.path.join(ROOT, 'configs', 'EXPERIMENT_REGISTRY.json')
-OUT = os.path.join(ROOT, 'paper', 'appendix_controlled_experiments_tables.tex')
+OUT = os.path.join(PAPER, 'appendix_controlled_experiments_tables.tex')
 
 MODEL_ORDER = ['Apollo', 'RF_Standard', 'XGBoost', '1D_CNN']
 MODEL_LABEL = {'Apollo': 'RF + SVM', 'RF_Standard': 'RF',
@@ -301,7 +303,7 @@ def latex_table(exp, desc, tstr_res, tsrtr_res, raw_desc=False, label_suffix='')
 
 
 BETA_TABLE_EXPS = ['exp_607', 'exp_608', 'exp_609']
-BETA_TABLE_OUT = os.path.join(ROOT, 'paper', 'results_beta_table.tex')
+BETA_TABLE_OUT = os.path.join(PAPER, 'results_beta_table.tex')
 
 
 def beta_table_latex(exps=BETA_TABLE_EXPS):
@@ -386,7 +388,7 @@ def beta_table_latex(exps=BETA_TABLE_EXPS):
 
 
 LATENT_TABLE_EXPS = ['exp_701', 'exp_608', 'exp_702']   # d = 16, 32, 64 (beta=0.5 throughout)
-LATENT_TABLE_OUT = os.path.join(ROOT, 'paper', 'results_latent_dim_table.tex')
+LATENT_TABLE_OUT = os.path.join(PAPER, 'results_latent_dim_table.tex')
 
 
 def _accuracy_axis_table(exps, col_labels, caption, label):
@@ -434,7 +436,7 @@ def latent_dim_table_latex(exps=LATENT_TABLE_EXPS):
 
 
 RECON_TABLE_EXPS = ['exp_608', 'exp_703', 'exp_704']   # MSE, MSE+Cos (0.5/0.5), Cos
-RECON_TABLE_OUT = os.path.join(ROOT, 'paper', 'results_recon_loss_table.tex')
+RECON_TABLE_OUT = os.path.join(PAPER, 'results_recon_loss_table.tex')
 RECON_COL_LABEL = {'MSE': 'MSE', 'MSE + Cosine (0.5/0.5)': 'MSE + Cos', 'Cosine': 'Cos'}
 
 
@@ -453,10 +455,10 @@ def recon_loss_table_latex(exps=RECON_TABLE_EXPS):
 
 RATIO_TABLE_EXPS = ['exp_705', 'exp_608', 'exp_706', 'exp_707']   # synthetic:real = 0.5, 1, 2, 3
 POOL_TSTR_EXPS = ['exp_608', 'exp_708']                           # 40k, 80k synthetic spectra (TS/TR)
-RATIO_TABLE_OUT = os.path.join(ROOT, 'paper', 'results_synth_ratio_table.tex')
+RATIO_TABLE_OUT = os.path.join(PAPER, 'results_synth_ratio_table.tex')
 POOL_BOOT_JSON = os.path.join(RESULTS, 'synth_pool_bootstrap', 'pairwise_pool_size_bootstrap.json')
 LATENT_BOOT_JSON = os.path.join(RESULTS, 'latent_dim_bootstrap', 'pairwise_latent_dim_bootstrap.json')
-BOOT_APPENDIX_OUT = os.path.join(ROOT, 'paper', 'appendix_bootstrap_tables.tex')
+BOOT_APPENDIX_OUT = os.path.join(PAPER, 'appendix_bootstrap_tables.tex')
 POOL_LABEL = {'exp_608': '40k', 'exp_708': '80k'}   # synthetic spectra per fold in the TS/TR pool
 
 
@@ -572,7 +574,7 @@ def bootstrap_appendix_tables_latex():
 
 
 THR_TABLE_EXPS = ['exp_4.608', 'exp_608', 'exp_2.608']   # thr = 0.4, 0.6, adaptive
-THR_TABLE_OUT = os.path.join(ROOT, 'paper', 'results_threshold_table.tex')
+THR_TABLE_OUT = os.path.join(PAPER, 'results_threshold_table.tex')
 
 
 def threshold_table_latex(exps=THR_TABLE_EXPS):
@@ -595,8 +597,8 @@ def threshold_table_latex(exps=THR_TABLE_EXPS):
         'tab:threshold_results')
 
 
-MIL_TABLE_OUT = os.path.join(ROOT, 'paper', 'results_mil_table.tex')
-APPENDIX_CTRL = os.path.join(ROOT, 'paper', 'appendix_controlled_experiments.tex')
+MIL_TABLE_OUT = os.path.join(PAPER, 'results_mil_table.tex')
+APPENDIX_CTRL = os.path.join(PAPER, 'appendix_controlled_experiments.tex')
 
 
 MIL_METRIC_KEYS = ('bag_accuracy', 'bag_balanced_accuracy', 'bag_sensitivity', 'bag_specificity', 'bag_auroc')
@@ -648,7 +650,7 @@ def mil_table_latex(exp='exp_608'):
     return '\n'.join(L)
 
 
-MIL_TESTS_TABLE_OUT = os.path.join(ROOT, 'paper', 'results_mil_tests_table.tex')
+MIL_TESTS_TABLE_OUT = os.path.join(PAPER, 'results_mil_tests_table.tex')
 # (label, stage-5 method/variant file stem, key in key_instance_utility_summary.json)
 MIL_TESTS_TIERS = [
     ('mi-SVM',              'misvm_mi_svm',         'misvm'),
@@ -755,7 +757,7 @@ def mil_tests_table_latex(exp='exp_608'):
     return '\n'.join(sp + ki_t)
 
 
-SPATIAL_PAIRED_OUT = os.path.join(ROOT, 'paper', 'results_spatial_paired_table.tex')
+SPATIAL_PAIRED_OUT = os.path.join(PAPER, 'results_spatial_paired_table.tex')
 MIL_APPENDIX_EXPS = ['exp_607', 'exp_608', 'exp_609', 'exp_2.607', 'exp_2.608', 'exp_4.608']
 EXP_SHORT = {'exp_607': '607', 'exp_608': '608', 'exp_609': '609',
              'exp_2.607': '2.607', 'exp_2.608': '2.608', 'exp_4.608': '4.608'}
@@ -803,7 +805,7 @@ def spatial_paired_table_latex(exps=MIL_APPENDIX_EXPS):
     return '\n'.join(L)
 
 
-MIL_APPENDIX_OUT = os.path.join(ROOT, 'paper', 'results_mil_appendix_tables.tex')
+MIL_APPENDIX_OUT = os.path.join(PAPER, 'results_mil_appendix_tables.tex')
 MIL_EXP_TITLE = {
     'exp_607': r'$\beta=0.25$, v1', 'exp_608': r'$\beta=0.5$, v1', 'exp_609': r'$\beta=0.75$, v1',
     'exp_2.607': r'$\beta=0.25$, v2', 'exp_2.608': r'$\beta=0.5$, v2',
@@ -995,6 +997,6 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--results-tables-only', '--beta-table-only', dest='results_tables_only',
                     action='store_true',
-                    help='write only the main-text Results tables (paper/results_beta_table.tex, '
-                         'paper/results_latent_dim_table.tex), leaving the appendix tables file untouched')
+                    help='write only the main-text Results tables ($PAPER_DIR/results_beta_table.tex, '
+                         '$PAPER_DIR/results_latent_dim_table.tex), leaving the appendix tables file untouched')
     main(results_tables_only=ap.parse_args().results_tables_only)

@@ -215,12 +215,6 @@ def within_bag_instance_recall(preds, y_true, bag_ids):
     return float(np.mean(accs)) if accs else 0.0
 
 
-# Deprecated name -- kept only because notebooks/09_Statistical_evaluation.ipynb
-# (exploratory, not a build dependency) still imports it. New code must use
-# within_bag_instance_recall, which is the same computation under an honest name.
-stratified_slide_accuracy = within_bag_instance_recall
-
-
 def bag_decisions(preds, bag_ids, y_true=None, rule='majority'):
     """
     Collapse per-instance predictions to one hard decision per bag.
@@ -843,9 +837,9 @@ def paired_cluster_test(d, slide_ids, y_slide, n_boot=10000, seed=42, cluster_un
 # ============================================================================
 # SECTION 1b: Canonical reporting helpers (single source of truth)
 #
-# Both the batch pipeline (pipeline/evaluation_stage.py) and the exploratory
-# notebook (09_Statistical_evaluation.ipynb) import these so the two paths
-# produce identical statistics and an identical output schema.
+# The batch pipeline (pipeline/evaluation_stage.py) and the analysis scripts
+# import these so every path produces identical statistics and an identical
+# output schema.
 # ============================================================================
 
 # Scalar metrics emitted (in order) to the flat CSV, per regimen. Bag-level

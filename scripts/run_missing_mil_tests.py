@@ -1,7 +1,7 @@
 """
 Task pipeline for the MIL evaluation tests behind the per-configuration appendix tables
-(spatial coherence and key-instance utility, paper/results_mil_appendix_tables.tex, generated
-by paper/gen_appendix_controlled_experiments.py) for the configurations other than exp_608.
+(spatial coherence and key-instance utility, $PAPER_DIR/results_mil_appendix_tables.tex, generated
+by scripts/paper/gen_appendix_controlled_experiments.py) for the configurations other than exp_608.
 Tasks are ordered from the cheapest to the most computationally expensive; a task runs only
 after the tasks it needs, and is skipped when its output already exists or the state file
 says it finished.
@@ -125,7 +125,7 @@ def collect_ki(exp, key):
 
 
 def refresh_tables():
-    subprocess.run([PY, str(ROOT / 'paper' / 'gen_appendix_controlled_experiments.py'), '--results-tables-only'],
+    subprocess.run([PY, str(ROOT / 'scripts' / 'paper' / 'gen_appendix_controlled_experiments.py'), '--results-tables-only'],
                    check=True, cwd=ROOT)
 
 

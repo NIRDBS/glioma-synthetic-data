@@ -4,7 +4,7 @@
 # Resumable: a cell whose per-slide file exists is skipped.
 set -u
 cd "$(dirname "$0")/.."
-PY=/c/Users/Andrei/anaconda3/envs/glioma/python.exe
+PY=${PY:-python}   # override with the environment's interpreter, e.g. PY=/path/to/python
 LOGS=results/mil_missing_tests_logs
 mkdir -p "$LOGS"
 
@@ -24,5 +24,5 @@ for exp in $EXPS; do
   "$PY" scripts/key_instance_paired_bootstrap.py --config "$exp" | grep -v '^$'
 done
 
-(cd paper && "$PY" gen_appendix_controlled_experiments.py --results-tables-only)
+"$PY" scripts/paper/gen_appendix_controlled_experiments.py --results-tables-only   # into $PAPER_DIR
 echo "=== $(date +%H:%M:%S) all done"

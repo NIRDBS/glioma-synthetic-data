@@ -865,14 +865,12 @@ _archive/
 *\ (4).*
 *\ (5).*
 
-# --- Archived paper versions are tracked in full (overrides *.pdf / *.png above) ---
-!paper/versions/**
 
 # --- Stage study artifacts under results/ are evidence for docs/stage*_findings.md.
 # --- `results/` is excluded above, and git cannot re-include under an excluded parent,
 # --- so those artifacts are committed explicitly with `git add -f`. Keep it that way:
 # --- loosening `results/` here would sweep in model weights and synthetic pools.
 
-# Manuscript sources are not tracked; only the table generators (paper/*.py) are
-paper/*
-!paper/*.py
+# The manuscript is kept outside the repository; scripts/paper/ writes its tables
+# into $PAPER_DIR (default ./paper/, ignored so generated tables are never committed)
+/paper/

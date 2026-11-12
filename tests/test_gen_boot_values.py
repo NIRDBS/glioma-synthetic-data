@@ -1,4 +1,4 @@
-"""paper/gen_boot_values.py: the v2.2.1 formatter quirks and the convert ->
+"""scripts/paper/gen_boot_values.py: the v2.2.1 formatter quirks and the convert ->
 expand round trip (slide mode must reproduce the original sources byte for byte)."""
 import importlib.util
 import os
@@ -7,7 +7,7 @@ import zipfile
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_spec = importlib.util.spec_from_file_location('gen_boot_values', os.path.join(ROOT, 'paper', 'gen_boot_values.py'))
+_spec = importlib.util.spec_from_file_location('gen_boot_values', os.path.join(ROOT, 'scripts', 'paper', 'gen_boot_values.py'))
 g = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(g)
 

@@ -220,7 +220,7 @@ def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
         'cbr_ci_hi': float(np.percentile(wbir_boot, 97.5)),
         'full_metrics': full,
     }
-    # Flat metric keys read by paper/gen_appendix_controlled_experiments.py (CbR row). _slide_
+    # Flat metric keys read by scripts/paper/gen_appendix_controlled_experiments.py (CbR row). _slide_
     # level_metrics no longer returns bare accuracy/f1_macro/precision_macro/
     # recall_macro/balanced_accuracy/kappa at all (Stage 2 retired the
     # degenerate within-bag-instance versions of these); only the bag_* and

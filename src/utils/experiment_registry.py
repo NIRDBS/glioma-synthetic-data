@@ -275,7 +275,7 @@ def register_experiment(
     """
     Convenience function to register an experiment.
     
-    Usage in notebooks:
+    Usage:
         from src.utils.experiment_registry import register_experiment
         register_experiment("exp_608", "Flat beta=0.5, 120 epochs, full suite")
     

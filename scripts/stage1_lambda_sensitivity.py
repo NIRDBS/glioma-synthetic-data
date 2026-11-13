@@ -1,4 +1,4 @@
-"""Stage 1 carryover: settle IARPLS_LAMBDA's provisional status (stage0_findings.md 7.1).
+"""Stage 1 carryover: settle IARPLS_LAMBDA's provisional status (see the paper, Appendix: Baseline Correction).
 
 Stage 0 could not settle this -- its synthetic generator was measurably smoother
 than real baselines, and its real-data check used ~40-60 spectra from a handful of

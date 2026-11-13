@@ -1,5 +1,5 @@
 """
-Latent-label store (docs/MIL_REFRAME_PLAN.md §3): every MIL formulation's
+Latent-label store: every MIL formulation's
 per-instance posterior, written to a sidecar HDF5 file next to (not inside)
 the main dataset -- results/{exp}/latent/latent_labels.h5. The main HDF5 is
 shared across experiments and must stay immutable; this file is the
@@ -144,7 +144,7 @@ def merge_out_of_sample_posterior(store_path, method, variant, fold_names):
     per-(fold, instance).
 
     Each instance is out-of-sample in exactly one fold, EXCEPT the 4 bags
-    docs/MIL_REFRAME_PLAN.md §7.1 documents as spanning two CV test folds --
+    that span two CV test folds --
     those get an out-of-sample estimate from both, which are averaged and
     renormalised here (consistent with Stage 2's own duplicate-bag handling),
     not arbitrarily picked from whichever fold happened to load first.

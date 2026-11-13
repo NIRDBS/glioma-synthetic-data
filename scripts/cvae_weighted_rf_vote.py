@@ -1,5 +1,5 @@
 """
-The key-instance utility test (docs/mil_validation_test_suite.md §B): keep
+The key-instance utility test: keep
 Tier 0's existing RF (raw 571-band spectrum, unchanged, the same trained
 model everywhere else in this project) but replace its naive "1 instance = 1
 vote" majority-vote pooling with alternatives informed by a given MIL tier's
@@ -193,8 +193,8 @@ def _collect_train_and_val_per_fold(config, cvae_config_name, method='cbr', vari
 
 
 def _fit_and_score_random_subsample_rf(per_fold, rf_kwargs, seed=123):
-    """Confound-(i) control for 'key_instance_train' (docs/mil_validation_test_suite.md
-    §B): per fold, train a fresh RF on a RANDOM subset of training instances
+    """Confound-(i) control for 'key_instance_train' (the paper, Appendix: Multiple Instance Learning,
+    key-instance utility): per fold, train a fresh RF on a RANDOM subset of training instances
     the SAME SIZE as that fold's real CVAE-selected key set, but score
     validation using the identical CVAE-selected key_val as
     'key_instance_train' -- the only thing that differs between this and
@@ -318,8 +318,8 @@ def _key_instance_vote_bag_decision(rf_pred_hard, non_diag_mass, bag_ids):
     ``_collect_per_fold``'s docstring for why these can genuinely disagree),
     restricted to 'key' instances. 'Key' is a median split on non-diagnostic
     mass, NOT an absolute 0.5 threshold: for this K=2 joint-softmax
-    posterior, non-diagnostic mass is provably bounded at (K-1)/(2K-1)=1/3
-    (docs/mil_tiers_methodology.md §7) -- confirmed directly on this data
+    posterior, non-diagnostic mass is provably bounded at (K-1)/(2K-1)=1/3,
+    confirmed directly on this data
     (observed max=0.3333) -- so a 0.5 threshold is structurally unreachable
     and would make every instance 'key', a silent no-op. The median split
     gives a real, data-driven half/half separation instead. Falls back to

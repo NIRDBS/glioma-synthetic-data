@@ -236,7 +236,7 @@ def test_iarpls_lambda_is_stable_on_a_SMOOTH_baseline():
     (scripts/stage0_generator_stress.py) withdrew that as a general claim: the inert
     window is ~2.5 decades for smooth baselines but only ~0.5 for high-curvature ones,
     and real baselines appear more curved than any synthetic family tested. See
-    docs/stage0_findings.md sections 2.3 and 7.1.
+    the paper, Appendix: Baseline Correction.
 
     `_toy_spectrum` uses a single broad Gaussian background, i.e. the smooth regime, so
     this asserts only that behaviour there has not drifted.

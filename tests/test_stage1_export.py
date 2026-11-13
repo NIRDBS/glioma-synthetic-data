@@ -166,7 +166,7 @@ def test_export_includes_all_59_slides_not_58():
     config (never read outside ConfigManager's defaults), and excluding
     HF-1887_via-t_2_1.h5_3 from the old results/exp_102 export was an artifact
     of the old RamanPreprocessor filtering, not a deliberate exclusion. The new
-    export includes it, matching the notebook-01 producer results/exp_201 also
+    export includes it, matching the v1 producer results/exp_201 also
     used (which has 59 slides; results/exp_102, built by the old class, has 58).
     This only covers the HDF5 export -- see
     test_hf1887_reachable_through_both_split_files below for the separate fix
@@ -185,7 +185,7 @@ def test_hf1887_reachable_through_both_split_files():
     independently omitted HF-1887_via-t_2_1.h5_3 from every fold's train and test
     list -- so it was never in a train or val mask for any fold, regardless of
     what the export contained (confirmed: this is why Stage 5 saw 'zero covered
-    instances' for it, docs/stage5_spatial_validation.md, not a data problem).
+    instances' for it, not a data problem).
 
     Fixed 2026-09-28, on inspection of the raw spectra (different baseline
     fluorescence than the rest, otherwise fine -- IARPLS correction is expected

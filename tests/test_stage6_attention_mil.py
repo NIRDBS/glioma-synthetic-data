@@ -1,5 +1,4 @@
-"""Stage 6 (Tier 3) regression tests: gated-attention MIL
-(docs/MIL_REFRAME_PLAN.md §4, Stage 6 backlog §13).
+"""Stage 6 (Tier 3) regression tests: gated-attention MIL.
 
 All synthetic. ``AttentionMIL`` calls its encoder inside a differentiable
 Keras graph (``self.encoder(flat, training=False)``), not via ``.predict()``
@@ -22,7 +21,7 @@ from src.mil.attention import (
 # ---------------------------------------------------------------------------
 
 def test_required_sub_bag_size_matches_plans_worked_example():
-    """docs/MIL_REFRAME_PLAN.md §4.1: pi_min=2%, epsilon=1% -> s>=228."""
+    """pi_min=2%, epsilon=1% -> s>=228."""
     assert required_sub_bag_size(pi_min=0.02, epsilon=0.01) == 228
 
 
@@ -234,9 +233,8 @@ def test_attention_mil_instance_posterior_shape_and_normalisation():
 # ---------------------------------------------------------------------------
 # 5. Regularisation added after the real exp_501 smoke test showed the
 # default (unregularised, attn_dim=64) configuration overfitting to bag
-# IDENTITY rather than diagnostic content (docs/MIL_REFRAME_PLAN.md backlog
-# §13; sub-bag loss fell while 7-bag inner-val accuracy got WORSE with more
-# training). Two independent fixes, both tested directly.
+# IDENTITY rather than diagnostic content (sub-bag loss fell while 7-bag
+# inner-val accuracy got WORSE with more training). Two independent fixes, both tested directly.
 # ---------------------------------------------------------------------------
 
 def _identity_encoder(n_features, num_classes, seed=0):

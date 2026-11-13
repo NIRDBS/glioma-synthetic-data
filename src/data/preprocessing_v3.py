@@ -257,7 +257,7 @@ class RamanPreprocessorV3:
 
             h5f.attrs["baseline_method"] = "iarpls"
             h5f.attrs["baseline_lambda"] = float(self.baseline_lambda)
-            h5f.attrs["baseline_lambda_status"] = "provisional"  # see docs/stage0_findings.md 7.1
+            h5f.attrs["baseline_lambda_status"] = "provisional"  # see the paper, Appendix: Baseline Correction
             h5f.attrs["median_kernel"] = self.median_kernel
             h5f.attrs["fixed_threshold"] = float(self.threshold)
             h5f.attrs["n_slides"] = len(results)

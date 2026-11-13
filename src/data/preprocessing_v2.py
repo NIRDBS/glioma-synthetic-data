@@ -1,13 +1,13 @@
 """Raman spectrum preprocessing, v2: raw cube -> modelling HDF5, fully automated.
 
 Replaces ``src/data/preprocessing.py``'s two-phase design (a one-time, human-in-
-the-loop NMF+GMM clustering pass in notebook 01, producing per-slide artifacts a
+the-loop NMF+GMM clustering pass in the v1 pipeline, producing per-slide artifacts a
 separate automated export script then reads) with a single automated pass with
 **no manual step and no clustering at all**:
 
     1. Load the raw cube.
     2. 3x3 spatial median filter (unchanged from v1).
-    3. Normalise the filtered cube (unchanged formula from notebook 01's NMF-input
+    3. Normalise the filtered cube (unchanged formula from v1's NMF-input
        normalisation: shift to non-negative, scale by the 99.9th percentile, clip
        to [0, 1]) -- used HERE only to compute the strong-signal threshold below,
        never passed to baseline correction (see ``process_slide_v2``'s docstring
@@ -71,12 +71,12 @@ class SlideResultV2:
 def cube_normalize(cube: np.ndarray) -> np.ndarray:
     """Shift to non-negative, scale by the 99.9th percentile, clip to [0, 1].
 
-    Identical formula to notebook 01's NMF-input normalisation (a single global
+    Identical formula to v1's NMF-input normalisation (a single global
     scalar min/percentile over every element, so it does not matter whether
     ``cube`` is 3-D (rows, cols, wavelengths) or already flattened). Used here
     ONLY to compute the strong-signal mask threshold -- never fed to baseline
     correction, which stays on the raw (median-filtered) intensity scale IARPLS's
-    Stage 0-validated lambda=1e4 was tuned against (docs/stage0_findings.md).
+    Stage 0-validated lambda=1e4 was tuned against.
     Feeding a [0, 1]-clipped spectrum into IARPLS instead would silently
     invalidate that tuning, since the penalty strength is scale-dependent.
     """
@@ -309,7 +309,7 @@ class RamanPreprocessorV2:
 
             h5f.attrs["baseline_method"] = "iarpls"
             h5f.attrs["baseline_lambda"] = float(self.baseline_lambda)
-            h5f.attrs["baseline_lambda_status"] = "provisional"  # see docs/stage0_findings.md 7.1
+            h5f.attrs["baseline_lambda_status"] = "provisional"  # see the paper, Appendix: Baseline Correction
             h5f.attrs["median_kernel"] = self.median_kernel
             h5f.attrs["n_slides"] = len(results)
             h5f.attrs["n_instances"] = n_total

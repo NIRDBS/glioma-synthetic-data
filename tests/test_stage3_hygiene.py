@@ -1,5 +1,5 @@
-"""Stage 3 regression tests: 1D-CNN instance-model hygiene
-(docs/MIL_REFRAME_PLAN.md §7.2) -- the leak fix, dropout/loss/learning_rate
+"""Stage 3 regression tests: 1D-CNN instance-model hygiene:
+the leak fix, dropout/loss/learning_rate
 forwarding, and the new/fixed augmentations.
 
 Covers the plan's three Stage 3 test bullets:

@@ -4,7 +4,6 @@
 # the dataset-change effect (IARPLS baseline correction, wider strong-signal mask, all
 # 288,678 instances vs the old 227,344) from any model/formulation change, before Stage 3's
 # CNN hygiene fixes or Stage 4's MIL package land on top of it.
-# See docs/MIL_REFRAME_PLAN.md Stage 3/4 and docs/stage1_data_layer.md.
 name: exp_501
 description: "MIL reframe: binary classification (gamma=1, delta=0) on glioma_mil.h5 -- exp_201's dataset-migrated counterpart"
 version: "1.0"
@@ -61,8 +60,8 @@ preprocessing:
   # not airPLS -- this key is kept (ConfigManager.REQUIRED_FIELDS needs it present)
   # but the value now documents the real method/lambda (HDF5 attrs:
   # baseline_method="iarpls", baseline_lambda=10000.0, status "provisional" --
-  # docs/stage1_data_layer.md §3).
-  airpls_lambda: 10000  # actually IARPLS lambda; provisional, see stage1_data_layer.md §3
+  # see the paper, Appendix: Baseline Correction).
+  airpls_lambda: 10000  # actually IARPLS lambda; provisional (the paper, Appendix: Baseline Correction)
   airpls_porder: 1
 
   normalization: "minmax"
@@ -74,8 +73,7 @@ preprocessing:
   # Explicit false rather than relying on the loader's not-found fallback: use every
   # strong-signal instance in the export, which is the whole point of the wider mask.
   y_tumor: false
-  # ignore_samples is dead config (never read by loader/pipeline code, see
-  # docs/stage1_data_layer.md §4); the real gate was data/splits/manual_splits.json,
+  # ignore_samples is dead config (never read by loader/pipeline code); the real gate was data/splits/manual_splits.json,
   # which excluded HF-1887_via-t_2_1.h5_3 from every fold's train/test list --
   # fixed 2026-09-28 (now test in fold_3, train in the other four; 59 slides
   # total, all 5 folds). This experiment (exp_501) was already fully run before
@@ -135,7 +133,7 @@ models:
     optimizer: "adam"
     loss: "categorical_crossentropy"
     batch_size: 256
-    # Stage 3 (docs/MIL_REFRAME_PLAN.md §7.2): early stopping now watches an
+    # Stage 3: early stopping now watches an
     # inner split carved from training slides only, never the true test fold
     # (see pipeline/_common.py::_inner_validation_split). exp_501's own
     # pre-fix smoke test early-stopped after 6-11/30 epochs on the leaky
@@ -199,7 +197,7 @@ mil:
   # on every instance regardless. See src/mil/misvm.py::_subsample_for_svm.
   svm_subsample_per_bag: 500
 
-  # Tier 4 (Stage 6, docs/MIL_REFRAME_PLAN.md): softmax(-mse/T) temperature
+  # Tier 4 (Stage 6): softmax(-mse/T) temperature
   # for the 'reconstruction' (CbR-promoted) posterior. Picked from a real
   # smoke test on exp_501 fold_0's validation MSE (2026-09-28): T=1 (a naive
   # default) makes the posterior nearly uniform at this data's real MSE scale

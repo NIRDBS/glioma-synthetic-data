@@ -1,5 +1,4 @@
-"""Shuffled-bag-label control regression tests (docs/MIL_REFRAME_PLAN.md §6,
-backlog §13). Pure numpy, no real data needed.
+"""Shuffled-bag-label control regression tests. Pure numpy, no real data needed.
 """
 import numpy as np
 import pytest
@@ -45,7 +44,7 @@ def test_permuted_bag_label_map_is_deterministic_given_a_seed():
 
 
 def test_permuted_bag_label_map_same_label_for_a_bag_spanning_two_folds():
-    """docs/stage1_data_layer.md's 4 duplicated slides appear with the SAME
+    """The 4 duplicated slides appear with the SAME
     bag id across two folds' instance rows -- the map must give exactly one
     permuted label per bag id regardless of how many rows/folds it spans."""
     bag_ids = np.array(['dup', 'dup', 'dup', 'other'])  # 'dup' appears 3x (2 folds worth)

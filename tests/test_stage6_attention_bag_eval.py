@@ -28,7 +28,7 @@ def test_ordinary_bag_appears_in_exactly_one_fold(tmp_path):
 
 
 def test_duplicated_bag_across_two_folds_is_averaged_not_double_counted():
-    """docs/stage1_data_layer.md's 4 duplicated slides appear as an
+    """The 4 duplicated slides appear as an
     out-of-sample test bag in TWO folds -- must be averaged (Stage 2's own
     duplicate-bag convention), never appear twice in the returned arrays."""
     import tempfile

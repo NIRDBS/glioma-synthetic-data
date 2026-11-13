@@ -1,5 +1,4 @@
-"""Stage 4 regression tests: MIL formulations and the latent-label store
-(docs/MIL_REFRAME_PLAN.md Stage 4).
+"""Stage 4 regression tests: MIL formulations and the latent-label store.
 
 Covers the plan's Stage 4 test bullets:
   1. Fold-leakage assertion: a deliberately mismatched fold must raise.

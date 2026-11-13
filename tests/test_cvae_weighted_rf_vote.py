@@ -1,7 +1,7 @@
 """
 Tests for scripts/cvae_weighted_rf_vote.py's random_subsample control (the
-confound-(i) control for key_instance_train, docs/mil_validation_test_suite.md
-§B) -- pure functions, synthetic per_fold data, no real dataset dependency.
+confound-(i) control for key_instance_train)
+-- pure functions, synthetic per_fold data, no real dataset dependency.
 """
 import sys
 import types

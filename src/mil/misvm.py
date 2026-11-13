@@ -1,6 +1,6 @@
 """
 Tier 1: mi-SVM / MI-SVM (Andrews et al. 2002), one-vs-rest per diagnostic
-class, over the constrained model (C) -- docs/MIL_REFRAME_PLAN.md §4.
+class, over the constrained model (C) (the paper, Appendix: Multiple Instance Learning).
 
 Reuses Apollo (src/models/baselines.py: RF top-20 feature selection + RBF SVM)
 as the base learner per one-vs-rest sub-problem, so the feature pipeline is
@@ -52,8 +52,8 @@ def _fit_one_vs_rest(X, bag_ids, y_bag_per_instance, target_class, pi_min, varia
     One binary mi-SVM/MI-SVM sub-problem.
 
     variant='mi_svm': relabel the top ceil(pi_min * n_b) scoring instances per
-        positive bag as positive each round (docs/MIL_REFRAME_PLAN.md §4:
-        "relabel instances subject to >= pi_min positives per positive bag").
+        positive bag as positive each round (relabel instances subject to
+        >= pi_min positives per positive bag).
     variant='MI_SVM': keep only the single top-scoring instance (the witness)
         per positive bag -- sparser, yields an explicit, interpretable
         witness set.
@@ -109,7 +109,7 @@ def fit_misvm(X, bag_ids, y_bag_per_instance, n_classes, pi_min=0.02, variant='m
              max_iters=10, seed=42, verbose=True, svm_subsample_per_bag=500):
     """
     Fit one one-vs-rest mi-SVM/MI-SVM per diagnostic class and combine into a
-    single (n, K+1) posterior (docs/MIL_REFRAME_PLAN.md §4): Platt-scaled
+    single (n, K+1) posterior: Platt-scaled
     margins across the K one-vs-rest problems, non-diagnostic mass as
     1 - max_k p_k, renormalised to a valid probability vector.
 

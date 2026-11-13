@@ -38,7 +38,7 @@ def preprocessing_stage(config, output_dir=None):
     print(f"Cluster artifacts: {processed_dir}  (must already exist per slide)")
     print(f"Output:          {output_h5}")
     print(f"Baseline:        IARPLS, lambda={baseline_lambda:g} (provisional -- "
-          f"docs/stage0_findings.md 7.1)")
+          f"see the paper, Appendix: Baseline Correction)")
 
     preprocessor = RamanPreprocessor(
         raw_data_dir=paths['raw_data_dir'],

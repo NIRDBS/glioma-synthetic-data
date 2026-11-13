@@ -91,7 +91,7 @@ class GliomaDataLoader:
         """
         Create a GliomaDataLoader from a configuration dictionary.
         
-        This is the recommended way to instantiate loaders in notebooks when using
+        This is the recommended way to instantiate loaders when using
         the centralized config system.
         
         Features:
@@ -166,7 +166,7 @@ class GliomaDataLoader:
         print(f"Loading data from {self.data_path}...")
         
         # 'y_bag' is the Stage 1 name (a bag/slide label broadcast to its instances,
-        # never an instance-level label -- see docs/stage1_data_layer.md). Older
+        # never an instance-level label). Older
         # exports (pre-MIL-reframe) only have 'y_class'; read that as a fallback so
         # this loader still opens them, but never write 'y_class' again.
         if self.memory_mapped:

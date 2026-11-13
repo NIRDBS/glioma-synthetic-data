@@ -1,5 +1,4 @@
-"""Stage 6 (Tier 4) regression tests: generative MIL from the CVAE
-(docs/MIL_REFRAME_PLAN.md Stage 6).
+"""Stage 6 (Tier 4) regression tests: generative MIL from the CVAE.
 
 All synthetic, no real CVAE weights or exp_501 export needed -- the encoder/
 decoder are lightweight fakes with a fully deterministic, hand-checkable
@@ -62,8 +61,8 @@ def test_mse_to_posterior_favours_lowest_mse_class():
 
 def test_mse_to_posterior_temperature_controls_sharpness():
     """Higher T flattens the posterior toward uniform; lower T sharpens it
-    toward the hard argmin -- exactly the real-data behaviour the smoke test
-    in docs/stage6_generative_mil.md motivates the default (0.001) from."""
+    toward the hard argmin -- exactly the real-data behaviour the default
+    (0.001) was chosen from."""
     mse = np.array([[0.001, 0.003]])
     sharp = mse_to_posterior(mse, temperature=0.0001)
     flat = mse_to_posterior(mse, temperature=10.0)
@@ -231,8 +230,7 @@ def test_score_one_fold_cbr_not_in_default_methods_but_in_all_methods():
 
 
 # ---------------------------------------------------------------------------
-# 4. scripts/stage6_bag_eval.py's circularity guard (docs/stage6_generative_mil.md
-# §5): a method that hard-restricts every instance to {nulls, own-bag-class}
+# 4. scripts/stage6_bag_eval.py's circularity guard: a method that hard-restricts every instance to {nulls, own-bag-class}
 # throughout scoring makes K-diagnostic-column bag classification trivially,
 # vacuously correct. This must stay caught, not silently regress.
 # ---------------------------------------------------------------------------

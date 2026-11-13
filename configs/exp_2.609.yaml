@@ -155,8 +155,8 @@ notes: |
     pipeline/mil_attention_stage.py directly, same as exp_2.607/2.608's own
     Tier 3/4 runs (mil_fit/mil_eval deliberately excluded from
     pipeline.stages above, consistent with every other Suite 600 config).
-  - Per the Tier 1 dataset-level finding confirmed for exp_2.607/exp_2.608
-    (docs/experiment_inventory.md §4.3): Tier 1 (mi-SVM) depends only on the
+  - Per the Tier 1 dataset-level finding confirmed for exp_2.607/exp_2.608:
+    Tier 1 (mi-SVM) depends only on the
     raw spectra, not beta -- if exp_2.608's fit completes first, confirm
     bit-identity before refitting Tier 1 here rather than assuming it (same
     verification discipline as 2.607 vs 2.608).

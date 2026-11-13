@@ -1,7 +1,7 @@
 """
 Stage: CVAE training + synthetic generation.
 
-Ports the canonical manual training loop from train_CVAE.py / notebook 03:
+Manual CVAE training loop:
 config-driven CVAE, dynamic per-epoch patient capping, on-the-fly augmentation,
 optional beta/alpha annealing, then generation of a balanced synthetic pool
 (samples_per_class per class) saved as fold_{name}_X_synth.npy / _y_synth.npy.
@@ -28,8 +28,8 @@ def _make_epoch_dataset(X_epoch, y_epoch, aug_cfg, num_classes, batch_size):
     fill a large shuffle buffer (which was the dominant bottleneck: 15-25 s/epoch
     just to materialise 22k elements into the buffer).  Augmentation:
     - Within-class mixup: partners pre-computed in numpy, blending in TF graph.
-    - Spectral shift: one random integer shift PER SAMPLE (docs/MIL_REFRAME_PLAN.md
-      §7.2's named defect was a single shared shift for the whole batch -- fixed
+    - Spectral shift: one random integer shift PER SAMPLE (the earlier defect was a
+      single shared shift for the whole batch -- fixed
       here via a vectorised per-row tf.gather, not a Python-level loop).
     - Baseline wobble: a vectorised TF-native stand-in for
       src/data/augmentation.py's baseline_wobble (smooth random perturbation,
@@ -285,7 +285,7 @@ def run_local(config, epochs=None, permutation_seed=None, model_out_dir=None,
     ``permutation_seed``: if given, substitutes the loader's own y_class with
     an exact permutation of the true label multiset (src/mil/shuffle_control.py
     -- the same technique already used for Tiers 1-3's shuffled-bag-label
-    controls, docs/MIL_REFRAME_PLAN.md backlog §13) BEFORE any fold splitting,
+    controls) BEFORE any fold splitting,
     then trains completely unchanged from there. This is what Tier 4's own
     control needs: a full CVAE retrain under permuted labels, since (unlike
     Tiers 1-3) Tier 4 conditions directly on the CVAE's own weights rather
@@ -367,7 +367,7 @@ if __name__ == '__main__':
     project_root = Path(__file__).resolve().parents[1]
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
-    from src.notebooks.experiment_utils import setup_experiment
+    from src.utils.experiment_utils import setup_experiment
 
     cfg, out_dir = setup_experiment(args.config)
     cvae_stage(cfg, out_dir, backend=args.backend, epochs=args.epochs)

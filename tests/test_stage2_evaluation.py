@@ -1,5 +1,5 @@
 """Stage 2 regression tests: bag-level metrics, Tier-0 pooling, and the
-duplicate-bag CV schema (docs/MIL_REFRAME_PLAN.md §7, §7.1).
+duplicate-bag CV schema.
 
 Covers exactly the three bullets in the plan's Stage 2 "Tests" spec:
   1. Hand-built single-class bags -- each previously-degenerate metric
@@ -9,7 +9,7 @@ Covers exactly the three bullets in the plan's Stage 2 "Tests" spec:
      (bag, fold) test pairs -- both via plain pooling (bag_decisions) and via
      the genuine per-fold path (aggregate_bag_scores_across_folds). (Was
      58 from 62 until data/splits/manual_splits.json picked up its 59th
-     slide, HF-1887_via-t_2_1.h5_3 -- docs/stage1_data_layer.md §4.)
+     slide, HF-1887_via-t_2_1.h5_3.)
   3. Tier-0 mean/majority pooling reproduces the existing majority-vote
      confusion matrix where they should agree (no within-bag ties).
 
@@ -104,8 +104,7 @@ def test_bag_f1_macro_does_not_drop_zero_accuracy_bag():
 
 def test_within_bag_instance_recall_differs_from_bag_accuracy():
     """The core Stage 2 fix: pre-Stage-2, accuracy/balanced_accuracy/recall_macro
-    were literally the same float as this diagnostic (docs/MIL_REFRAME_PLAN.md
-    §7). They must now diverge whenever within-bag votes aren't unanimous."""
+    were literally the same float as this diagnostic. They must now diverge whenever within-bag votes aren't unanimous."""
     m = _wxyz_metrics()
     assert m['within_bag_instance_recall'] == pytest.approx(0.55, abs=1e-6)
     assert m['bag_accuracy'] == pytest.approx(0.75, abs=1e-6)
@@ -138,15 +137,14 @@ def test_bag_decisions_rejects_mixed_labels_within_bag():
 #
 # Was 62 -> 58 until 2026-09-28: HF-1887_via-t_2_1.h5_3 was missing from every
 # fold's train/test list in this split file (an independent bug, unrelated to
-# the 4 deliberately-duplicated slides below -- see docs/stage1_data_layer.md
-# §4). It's now a normal, single-test-fold slide (fold_3), so it adds exactly
+# the 4 deliberately-duplicated slides below). It's now a normal, single-test-fold slide (fold_3), so it adds exactly
 # 1 to both the pair count and the unique-bag count, and does not join the
 # duplicated set.
 # ---------------------------------------------------------------------------
 
 @requires_splits
 def test_manual_splits_has_63_test_pairs_59_unique_bags():
-    """docs/MIL_REFRAME_PLAN.md §7.1: 4 slides are forced into two test folds
+    """4 slides are forced into two test folds
     each (6-class stratification over classes with only 4 patients), giving 62
     (slide, fold) test pairs over 58 unique slides -- plus HF-1887's own single
     test-fold appearance (fold_3), for 63 pairs over 59 unique slides."""

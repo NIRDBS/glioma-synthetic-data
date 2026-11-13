@@ -1,5 +1,5 @@
 """
-Stage 5: real-data spatial validation (docs/MIL_REFRAME_PLAN.md §6, Stage 5).
+Stage 5: real-data spatial validation.
 
 Reads a MIL formulation's fitted posteriors from the latent-label store,
 merges them into one leak-free per-instance posterior (out-of-sample only --
@@ -56,7 +56,7 @@ def hard_diagnostic_threshold(method, K):
     didn't need it.
 
     For a genuine joint K-way softmax (Tier 3's attention head, Tier 4's cbr
-    variants -- docs/mil_tiers_methodology.md Sec 1/6.3), max_k p_k is
+    variants), max_k p_k is
     bounded below at 1/K by construction, so after the "1 - max_p" K+1 lift,
     non-diagnostic mass can never reach 0.5 at all: confirmed directly on
     real data (ARI=AMI=0.0000, every single instance called "diagnostic",
@@ -172,9 +172,8 @@ def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42
     # non-diagnostic mass < threshold (see hard_diagnostic_threshold's
     # docstring), compared against the OLD manually-curated tumour-cluster
     # boolean -- the finest-grained comparison available from the
-    # (K+1)-collapsed posterior alone (see docs/stage5_spatial_validation.md
-    # for why the full (M+K)-way ARI against hard_labels.npy's 3-cluster id
-    # is deferred, not done here).
+    # (K+1)-collapsed posterior alone (the full (M+K)-way ARI against
+    # hard_labels.npy's 3-cluster id is deferred, not done here).
     K = posterior.shape[1] - 1
     threshold = hard_diagnostic_threshold(method, K)
     covered = n_folds_covering > 0

@@ -326,7 +326,7 @@ IARPLS_VALID_FROM_CM1 = 300.0
 #: *more* curved than any synthetic family tested. This value sits in the low-drift,
 #: reasonable-retention region on real spectra and matches the synthetic oracle, but it
 #: is a documented default awaiting a Stage 1 sensitivity analysis -- NOT a settled
-#: constant, and not evidence of insensitivity. See docs/stage0_findings.md sections 2.3 and 7.1.
+#: constant, and not evidence of insensitivity. See the paper, Appendix: Baseline Correction (lambda selection).
 IARPLS_LAMBDA = 1e4
 
 

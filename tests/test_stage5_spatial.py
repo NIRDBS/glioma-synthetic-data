@@ -1,4 +1,4 @@
-"""Stage 5 regression tests: spatial validation (docs/MIL_REFRAME_PLAN.md §6).
+"""Stage 5 regression tests: spatial validation.
 
 Covers the plan's Stage 5 test bullets:
   1. Lag-band computation verified on synthetic maps of known correlation
@@ -160,8 +160,6 @@ def test_external_agreement_random_labels_near_zero():
 
 # ---------------------------------------------------------------------------
 # hard_diagnostic_threshold: the K=2-softmax external-agreement fix
-# (docs/MIL_REFRAME_PLAN.md backlog, docs/stage6_generative_mil.md Sec 4,
-# docs/stage6_attention_mil.md Sec 5)
 # ---------------------------------------------------------------------------
 
 def test_hard_diagnostic_threshold_misvm_is_untouched_at_flat_half():

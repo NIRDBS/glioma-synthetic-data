@@ -1,5 +1,5 @@
 """
-The shuffled-bag-label control (docs/MIL_REFRAME_PLAN.md §6, backlog §13):
+The shuffled-bag-label control:
 permute which label goes with which bag, holding every instance's features,
 bag membership, and the CV split completely fixed, then refit and re-run
 Stage 5's spatial validation. If lag>=3 coherence survives a permutation
@@ -8,7 +8,7 @@ attributed to the true label -- it must come from something else (real
 spatial autocorrelation in the raw features, an acquisition artifact, etc).
 This is the only available way to validate the spatial claim now that no
 tumor-size ground truth exists to check a variogram range against
-(see [[project_no_tumor_ground_truth]]; docs/stage6_generative_mil.md §4).
+(see [[project_no_tumor_ground_truth]]).
 
 The permutation is EXACT -- a random reassignment of the true label
 multiset across bags, not independent resampling -- so class balance stays
@@ -22,7 +22,7 @@ import numpy as np
 def permuted_bag_label_map(bag_ids, y_bag_per_instance, seed):
     """
     {bag_id: permuted_label} -- computed ONCE, globally, not per fold, so a
-    bag that spans two CV folds (docs/stage1_data_layer.md's 4 duplicated
+    bag that spans two CV folds (the 4 duplicated
     slides) gets the SAME permuted label in both -- required for
     aggregate_bag_scores_across_folds's own "a bag's label must not change
     across folds" assertion to keep holding under the permutation too.

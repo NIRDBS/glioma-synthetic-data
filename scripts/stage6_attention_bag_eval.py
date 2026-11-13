@@ -9,8 +9,7 @@ per-instance posterior and pools it (mean, across folds) -- correct for
 mi-SVM/Tier 4, whose evaluation doesn't depend on attention. For Tier 3,
 the store's per-instance posterior is deliberately attention-FREE (right
 for Stage 5's spatial validation, wrong for bag classification -- see
-AttentionMIL.bag_posterior's docstring and docs/stage6_generative_mil.md's
-backlog). Reusing stage6_bag_eval.py's pooling on Tier 3's store posterior
+AttentionMIL.bag_posterior's docstring). Reusing stage6_bag_eval.py's pooling on Tier 3's store posterior
 would reproduce the exact misleading, chance-level result the smoke tests
 already exposed and fixed. This script reads the ALREADY attention-weighted,
 already bag-level artifact instead -- no further pooling rule needed, since
@@ -38,7 +37,7 @@ def _load_bag_level_across_folds(bag_level_path):
     """
     Merge every fold's {bag_ids, posterior, y_true} into one (bag_ids, K+1
     posterior, y_true) triple. A bag appearing in two folds' test sets
-    (docs/stage1_data_layer.md's 4 duplicated slides) gets both folds'
+    (the 4 duplicated slides) gets both folds'
     posteriors averaged -- the same duplicate-bag convention Stage 2/
     src/mil/store.py::merge_out_of_sample_posterior already use elsewhere,
     reapplied here since this JSON artifact is a parallel structure to the

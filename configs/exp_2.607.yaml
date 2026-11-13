@@ -152,7 +152,7 @@ notes: |
     pipeline/mil_attention_stage.py directly, same as exp_607/608/2.608's own
     Tier 3/4 runs (mil_fit/mil_eval deliberately excluded from
     pipeline.stages above, consistent with every other Suite 600 config).
-  - Full validation suite (spatial coherence + key-instance utility,
-    docs/mil_validation_test_suite.md) requested alongside the classifier
+  - Full validation suite (spatial coherence + key-instance utility;
+    the paper, Appendix: Multiple Instance Learning) requested alongside the classifier
     suite -- a first for this dataset, matching what was just backfilled for
     exp_2.608 and the v1 beta sweep (607/608/609).

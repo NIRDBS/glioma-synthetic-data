@@ -2,7 +2,7 @@
 Configuration Manager for Experiment Settings
 
 Loads and validates YAML configuration files for glioma-synthetic-data experiments.
-Ensures consistent parameters across all notebooks in a pipeline.
+Ensures consistent parameters across all stages of a pipeline.
 """
 
 import os
@@ -330,7 +330,7 @@ def get_experiment_config(experiment_name: str) -> ConfigManager:
     """
     Convenience function to load configuration by experiment name.
     
-    This is the primary entry point for loading configs in notebooks.
+    This is the primary entry point for loading configs.
     
     Args:
         experiment_name: Name of the experiment (without .yaml extension)

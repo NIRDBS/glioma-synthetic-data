@@ -1,12 +1,11 @@
 """
 Stage 6: bag-level classification accuracy for a stored MIL posterior, vs the
-Tier 0 reference (docs/MIL_REFRAME_PLAN.md Stage 6 exit criterion: "Beats
-Tier 0 at bag level").
+Tier 0 reference (Stage 6 exit criterion: "Beats Tier 0 at bag level").
 
 Generic over (method, variant) -- works for Tier 4's 'cbr' variants and
 Tier 1 ('misvm') alike, since it reads directly from the latent-label store
-rather than any tier-specific code. This closes a real gap: docs/stage4_mil.md
-§6 never computed a bag-accuracy number for mi-SVM -- its story stayed at
+rather than any tier-specific code. This closes a real gap: the earlier mi-SVM
+evaluation never computed a bag-accuracy number -- its story stayed at
 degeneracy diagnostics and Stage 5's spatial checks. This script is what
 "beats Tier 0" actually needs.
 
@@ -18,14 +17,13 @@ column 0 answers a different question (is this instance diagnostic at all)
 and is deliberately not part of this comparison.
 
 **This metric is CIRCULAR for a method that implements Model (C)'s hard
-support restriction throughout scoring, not just fitting** (docs/
-MIL_REFRAME_PLAN.md §1: each instance's state is restricted to
+support restriction throughout scoring, not just fitting** (each instance's state is restricted to
 {null_1..null_M, Y_b} -- never another diagnostic class -- so it cannot,
 architecturally, ever place mass on the "wrong" diagnostic column). Such a
 posterior has *zero* instances with both diagnostic columns simultaneously
 nonzero, giving a trivial, always-correct bag_accuracy of 1.0000 that
 reflects the model's known-by-construction bag label, not anything it
-learned (docs/stage6_generative_mil.md §5). mi-SVM (independent one-vs-rest scores,
+learned. mi-SVM (independent one-vs-rest scores,
 no hard mask) and Tier 4's cbr variants (plain softmax, no notion of
 "allowed states" at all) do NOT have this property (16.5% and ~100% of
 instances respectively show real competition between the two diagnostic
@@ -84,8 +82,8 @@ def diagnostic_column_competition_frac(fold_data):
 
 def _load_y_bag_and_sample_ids(h5_path, config):
     """
-    y_bag as stored is the raw 0-indexed 6-class label (docs/stage1_data_layer.md
-    -- confirmed 0..5, not 1..6, in glioma_mil.h5), but every MIL formulation
+    y_bag as stored is the raw 0-indexed 6-class label
+    (confirmed 0..5, not 1..6, in glioma_mil.h5), but every MIL formulation
     was fit under prepare_fold's binary mapping when num_classes==2 (y<3 -> 0,
     y>=3 -> 1) -- the SAME mapping evaluation_stage.py's own reference
     pipeline applies (_binary_map). Reusing that function here, rather than
@@ -129,7 +127,7 @@ def _store_fold_data(store_path, method, variant, fold_names, sample_ids, y_bag)
 def _tier0_reference(config, n_boot, seed, regimen_label='TRTR', reference_model='cnn'):
     """Majority-vote Tier 0 pooling of one classifier's per-instance
     predictions (default: the 1D-CNN, the model this MIL programme is meant
-    to improve on -- docs/MIL_REFRAME_PLAN.md §7.2) -- the same reference
+    to improve on) -- the same reference
     pipeline/mil_eval_stage.py itself compares its own pooling rules against."""
     folds = _build_fold_val_sets(config)
     regimen_dir = {
@@ -219,8 +217,8 @@ def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
         config, n_boot, seed, regimen_label=regimen_label, reference_model=reference_model)
     # Align to the SAME bag set (store's out-of-sample coverage need not be
     # identical to the reference classifier's -- e.g. a slide with zero
-    # covered instances, see docs/stage5_spatial_validation.md's HF-1887
-    # history). Restrict the comparison to the intersection, not assumed.
+    # covered instances, as HF-1887 once had). Restrict the comparison to the
+    # intersection, not assumed.
     common = sorted(set(bag_ids.tolist()) & set(ref_bag_ids.tolist()))
     if len(common) < n_bags or len(common) < len(ref_bag_ids):
         print(f"  [note] comparing on {len(common)}/{n_bags} store bags "

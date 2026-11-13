@@ -6,8 +6,8 @@ Unlike modal_classifiers.py (which parallelizes the SAME stage across several
 experiment configs), each (method, fold) pair here is an independent unit of
 work for ONE config: mi-SVM fits fold f's training bags only and never shares
 state across folds. This machine's free RAM does not cover 5 folds' worth of
-independent data copies running at once locally (see docs/stage4_mil.md /
-the RAM check that motivated this file) -- Modal gives each fold its own
+independent data copies running at once locally (the RAM check that
+motivated this file) -- Modal gives each fold its own
 isolated container instead, at the same CPU-only cost profile as
 modal_classifiers.py (this is sklearn/RF/SVM work throughout; no GPU need).
 

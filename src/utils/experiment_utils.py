@@ -1,8 +1,8 @@
 """
-Experiment Utilities for Notebook Integration
+Experiment utilities.
 
-Provides setup and utility functions to streamline experiment execution in notebooks.
-Called at the top of each notebook to ensure consistent configuration and output management.
+Provides setup and utility functions called at the start of each pipeline stage to
+ensure consistent configuration and output management.
 """
 
 from pathlib import Path
@@ -16,8 +16,8 @@ def setup_experiment(config_name: str, verbose: bool = True) -> Tuple[Dict[str, 
     """
     Initialize an experiment by loading configuration and creating output directories.
     
-    Call this function once at the top of each notebook (after imports) to set up the experiment.
-    This ensures all notebooks in a pipeline use the same configuration and output the same way.
+    Call this function once at the start of each stage to set up the experiment.
+    This ensures all stages in a pipeline use the same configuration and output the same way.
     
     Args:
         config_name: Name of the experiment (e.g., 'exp_608')
@@ -33,14 +33,13 @@ def setup_experiment(config_name: str, verbose: bool = True) -> Tuple[Dict[str, 
         FileNotFoundError: If config file doesn't exist
         ValueError: If config is invalid
     
-    Example (use in notebooks):
-        # At the top of notebook, after imports
-        from src.notebooks.experiment_utils import setup_experiment
+    Example:
+        from src.utils.experiment_utils import setup_experiment
         
         config_name = 'exp_608'  # <-- User edits this line
         config, output_dir = setup_experiment(config_name)
         
-        # Now use throughout notebook:
+        # Now use throughout the stage:
         preprocessing_config = config['preprocessing']
         model_config = config['models']
         
@@ -53,7 +52,7 @@ def setup_experiment(config_name: str, verbose: bool = True) -> Tuple[Dict[str, 
         print("EXPERIMENT SETUP")
         print("=" * 80)
     
-    # 0. Find and change to project root (important for relative paths in notebooks)
+    # 0. Find and change to project root (important for relative paths)
     current = Path.cwd()
     for parent in [current] + list(current.parents):
         if (parent / 'configs').exists() and (parent / 'src').exists():
@@ -89,7 +88,7 @@ def setup_experiment(config_name: str, verbose: bool = True) -> Tuple[Dict[str, 
         registry.register_experiment(
             experiment_name=config_name,
             description=config.get('description', 'No description'),
-            notes=f"Notebook initialization on {_get_timestamp()}"
+            notes=f"Experiment initialization on {_get_timestamp()}"
         )
         if verbose:
             print(f" Registered in experiment registry")
@@ -101,12 +100,12 @@ def setup_experiment(config_name: str, verbose: bool = True) -> Tuple[Dict[str, 
         else:
             raise
     
-    # 4. Update registry status to indicate this notebook is running
+    # 4. Update registry status to indicate this stage is running
     try:
         registry.update_run_status(
             experiment_name=config_name,
             status='running',
-            stage='notebook-execution'
+            stage='pipeline'
         )
     except:
         pass  # Registry update is not critical

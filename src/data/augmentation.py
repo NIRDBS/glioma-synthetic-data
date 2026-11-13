@@ -52,8 +52,8 @@ def baseline_wobble(spectrum, max_amplitude=0.05, n_control_points=5):
     """
     Add a random smooth baseline (low-order spline through a few random control
     points), making the classifier invariant to residual baseline error left
-    over from imperfect correction (docs/MIL_REFRAME_PLAN.md §7.2 -- "the most
-    valuable of these", directly motivated by the Stage 0 baseline study).
+    over from imperfect correction -- directly motivated by the Stage 0 baseline
+    study (see the paper, Appendix: Baseline Correction).
 
     Args:
         spectrum: (n_features,) array, already baseline-corrected + normalised
@@ -177,8 +177,7 @@ class AugmentedDataGenerator:
                 - 'max_shift': float - max spectral shift in pixels (default: 3.0)
                 - 'mixup_alpha': float - upper bound for mixup blending (default: 0.5)
                 - 'baseline_wobble': {'enabled': bool, 'max_amplitude': float} --
-                  default enabled (docs/MIL_REFRAME_PLAN.md §7.2: "the most valuable
-                  of these"), directly motivated by the Stage 0 baseline study
+                  default enabled, directly motivated by the Stage 0 baseline study
                 - 'intensity_jitter': {'enabled': bool, 'scale_range': (lo, hi)}
                 - 'additive_noise': {'enabled': bool, 'snr_db': float}
                 - 'band_dropout': {'enabled': bool, 'max_width': int, 'n_bands': int}

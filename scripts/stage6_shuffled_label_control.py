@@ -1,6 +1,6 @@
 """
-Stage 6 backlog: the shuffled-bag-label control (docs/MIL_REFRAME_PLAN.md
-§6, backlog §13). Permutes which label goes with which bag (exact
+Stage 6 backlog: the shuffled-bag-label control. Permutes which label goes with
+which bag (exact
 permutation of the true label multiset -- src/mil/shuffle_control.py),
 holds everything else fixed, refits a MIL formulation under the permuted
 labels, and reports the same spatial statistics Stage 5 computes for the
@@ -126,7 +126,7 @@ def run(config_name, method, pi_min=None, max_iters=10, svm_subsample_per_bag=50
         # Unlike misvm, CbR's own posterior computation
         # (_score_one_fold_cbr) never reads fd.y_train/y_val at all -- it is
         # a pure function of which CVAE weights it loads and which features
-        # it scores (docs/mil_tiers_methodology.md §7). So the label
+        # it scores. So the label
         # permutation above is a harmless no-op for this method specifically
         # -- what actually makes this a "shuffled" result is that the CVAE
         # weights themselves were trained under permuted labels (--method

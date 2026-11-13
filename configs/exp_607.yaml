@@ -11,7 +11,7 @@
 # in the other direction), so the actual downstream TSTR/TSRTR classifier
 # accuracy is needed before picking a winner. mil_eval/mil_fit are
 # deliberately EXCLUDED from stages below -- those belong to the separate,
-# already-concluded MIL-tiers investigation (docs/mil_tiers_findings.md),
+# already-concluded MIL-tiers investigation,
 # not this CVAE-tuning/TSTR-TSRTR comparison.
 #
 # TRTR is REUSED, not retrained: models_baseline_dir points directly at

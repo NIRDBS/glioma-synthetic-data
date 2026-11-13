@@ -1,6 +1,6 @@
 """
 Stage 6, Tier 3: gated-attention MIL, trained per fold on a frozen CVAE
-encoder trunk (docs/MIL_REFRAME_PLAN.md §4, backlog §13).
+encoder trunk.
 
 Unlike Tier 4 ('cbr', pure inference), this tier genuinely trains a small
 instance head + attention branch per fold, on randomly-resampled sub-bags
@@ -15,8 +15,7 @@ to the latent-label store, exactly like Tier 1/2/4.
 
 Per the agreed Stage 6 reordering ("Tier 3 attention MIL second with cheap
 smoke test"), do not launch a full 5-fold run without a cheap ``--folds``
-subset run first (see docs/stage6_generative_mil.md / backlog §13 for the
-two real, informative smoke-test failures this caught before a full run).
+subset run first (this caught two real smoke-test failures before a full run).
 """
 import json
 from pathlib import Path
@@ -65,7 +64,7 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
     Train Tier 3 on one fold and return its posteriors scattered onto the
     full dataset's row order -- same per-fold contract as
     pipeline/mil_fit_stage.py's _fit_one_fold, so it slots into the same
-    store-writing machinery (docs/MIL_REFRAME_PLAN.md §3).
+    store-writing machinery.
 
     Returns (fold_name, posterior_full, in_sample_full, diagnostics) --
     diagnostics carries the epoch history, best inner-val bag accuracy, and
@@ -311,7 +310,7 @@ if __name__ == '__main__':
                         help="disable per-bag feature centering (on by default)")
     args = parser.parse_args()
 
-    from src.notebooks.experiment_utils import setup_experiment
+    from src.utils.experiment_utils import setup_experiment
     cfg, out_dir = setup_experiment(args.config)
     mil_attention_stage(
         cfg, out_dir, sub_bag_size=args.sub_bag_size,

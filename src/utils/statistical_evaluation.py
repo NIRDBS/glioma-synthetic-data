@@ -182,7 +182,7 @@ def within_bag_instance_recall(preds, y_true, bag_ids):
     **This is a diagnostic, not a bag-level accuracy.** It answers "how much of
     a bag's spectra get the bag's own label under the naive assumption that
     every instance in a bag carries that bag's label" — which is precisely the
-    assumption the MIL reframing exists to retire (docs/MIL_REFRAME_PLAN.md §7).
+    assumption the MIL reframing exists to retire.
     No instance-level ground truth exists in this dataset, so this number is not
     validated against anything; it is a property of the naive pooling, kept for
     continuity with pre-reframe results. For the actual clinical claim (one
@@ -221,14 +221,14 @@ def bag_decisions(preds, bag_ids, y_true=None, rule='majority'):
 
     ``rule='majority'``: each bag's decision is the mode of its instances'
     predicted labels (ties broken by ``np.bincount().argmax()``, i.e. lowest
-    label index). This is Tier 0's majority-vote pooling
-    (docs/MIL_REFRAME_PLAN.md §4); it was previously computed inline in
+    label index). This is Tier 0's majority-vote pooling;
+    it was previously computed inline in
     ``_slide_level_metrics`` only to build the confusion matrix and discarded
     otherwise -- this is that same computation, factored out and reused for the
     genuine bag-level metrics below.
 
-    Bags spanning more than one CV fold (duplicated in ``manual_splits.json`` --
-    docs/stage1_data_layer.md, or MIL_REFRAME_PLAN.md §7.1) need no special
+    Bags spanning more than one CV fold (duplicated in ``manual_splits.json``)
+    need no special
     handling under majority vote specifically: pooling every instance from every
     fold a bag appears in and voting once is mathematically identical to voting
     per fold and averaging the fold-level vote-count vectors, whenever the bag
@@ -275,7 +275,7 @@ def bag_decisions(preds, bag_ids, y_true=None, rule='majority'):
 def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
     """
     Two separate metric sets in one dict, at two different units of analysis --
-    do not mix them when reading this (docs/MIL_REFRAME_PLAN.md §7):
+    do not mix them when reading this:
 
     **Bag-level** (``bag_*`` keys, plus ``confusion_matrix``) -- the actual
     clinical claim. One majority-vote decision per bag (``bag_decisions``), then
@@ -300,8 +300,7 @@ def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
     (was upward-biased and non-monotone in accuracy -- it silently dropped bags
     with 0% within-bag accuracy, e.g. ``results/exp_401``'s
     ``f1_macro=0.926`` beside ``accuracy=0.431``). All three now name genuine
-    bag-level quantities instead (see docs/stage0_findings.md-style writeup at
-    docs/MIL_REFRAME_PLAN.md §7 for the derivation of each bug).
+    bag-level quantities instead.
     """
     y_true = np.asarray(y_true)
     preds = np.asarray(preds)
@@ -410,7 +409,7 @@ def stratified_slide_metrics(preds, y_true, slide_ids):
 
 # ============================================================================
 # SECTION 1c: Tier 0 -- naive-MIL aggregation baselines
-# (docs/MIL_REFRAME_PLAN.md §4). Pools per-instance probabilities the existing
+# Pools per-instance probabilities the existing
 # TRTR/TSTR/TSRTR models already emit -- no new training. Everything else in
 # the MIL programme must beat these.
 # ============================================================================
@@ -420,7 +419,7 @@ def pool_instance_scores(proba, bag_ids, rule='mean', topq_fraction=0.1, lse_tem
     Pool per-instance class probabilities into one (K,) score vector per bag,
     WITHOUT taking a final argmax -- returning scores (not decisions) lets
     ``aggregate_bag_scores_across_folds`` average a duplicated bag's per-fold
-    scores before deciding once, per docs/MIL_REFRAME_PLAN.md §7.1.
+    scores before deciding once.
 
     rule:
       'mean'     -- mean-posterior: bag score = mean of instance probabilities.
@@ -435,7 +434,7 @@ def pool_instance_scores(proba, bag_ids, rule='mean', topq_fraction=0.1, lse_tem
                     class (the "witness fraction" baseline). A **fraction** of
                     the bag's own instance count, not a fixed count -- a fixed
                     count would favour large bags (more chances at one
-                    high-scoring instance); MIL_REFRAME_PLAN.md §4.
+                    high-scoring instance).
 
     Returns ``(bag_ids_sorted, scores)``, ``scores`` shape ``(n_bags, K)``, each
     row summing to 1 so different bags'/rules'/folds' scores are comparable and
@@ -480,8 +479,8 @@ def pool_instance_scores(proba, bag_ids, rule='mean', topq_fraction=0.1, lse_tem
 
 def aggregate_bag_scores_across_folds(fold_data, rule='mean', **rule_kwargs):
     """
-    Tier 0 pooling with the duplicate-bag cross-fold averaging rule
-    (docs/MIL_REFRAME_PLAN.md §7.1): 4 bags in ``manual_splits.json`` appear in
+    Tier 0 pooling with the duplicate-bag cross-fold averaging rule:
+    4 bags in ``manual_splits.json`` appear in
     two CV folds' validation sets each (forced by 6-class stratification over
     classes with only 4 patients). Each gets one score per fold it appears in;
     those per-fold scores are averaged before the final decision, so it is not
@@ -536,8 +535,8 @@ def bag_level_bootstrap(bag_pred_A, bag_pred_B, bag_true, n_boot=1000, seed=42):
     """
     Class-stratified bootstrap over BAG decisions (not instances, not the
     within-bag-instance-recall statistic) -- the primary-inference CI for the
-    reframed metrics (docs/MIL_REFRAME_PLAN.md §7.1's "CI from the existing
-    stratified_slide_bootstrap, now resampling bag decisions").
+    reframed metrics (the CI from the existing
+    stratified_slide_bootstrap, now resampling bag decisions).
 
     Implemented by reusing ``stratified_slide_bootstrap`` with each bag as its
     own singleton "slide" (``bag_ids = np.arange(len(bag_true))``): that
@@ -844,7 +843,7 @@ def paired_cluster_test(d, slide_ids, y_slide, n_boot=10000, seed=42, cluster_un
 
 # Scalar metrics emitted (in order) to the flat CSV, per regimen. Bag-level
 # (bag_*) is the headline; the rest are within-bag instance diagnostics, kept
-# for continuity with pre-reframe reporting (docs/MIL_REFRAME_PLAN.md §7).
+# for continuity with pre-reframe reporting.
 # 'accuracy'/'balanced_accuracy' no longer appear here: pre-Stage-2 they were
 # aliases of the diagnostic 'within_bag_instance_recall' (the three were
 # literally the same float); that ambiguity is exactly what the rename fixes,
@@ -862,9 +861,9 @@ def compute_full_metrics(y_true, preds, proba=None, slide_ids=None):
     """
     Full metric set for one model/regimen.
 
-    When ``slide_ids`` is supplied (the default in both the pipeline and notebook
-    09) metrics are computed at **two separate levels** via ``_slide_level_metrics``
-    (docs/MIL_REFRAME_PLAN.md §7) -- see that function's docstring for the full
+    When ``slide_ids`` is supplied (the default in the pipeline) metrics are computed
+    at **two separate levels** via ``_slide_level_metrics``
+    -- see that function's docstring for the full
     split. In short: ``bag_*`` keys (``bag_accuracy``, ``bag_balanced_accuracy``,
     ``bag_f1_macro``, ``bag_precision_macro``, ``bag_recall_macro``, ``bag_kappa``,
     ``bag_sensitivity``/``bag_specificity`` for binary tasks,
@@ -956,7 +955,7 @@ def build_summary_rows(results, baseline_label, candidate_label):
     ``bag_ci_diff_lo/hi``, ``bag_p_bootstrap``, ``bag_significant_95``) are the
     primary inference. ``within_bag_instance_recall_*`` columns are the demoted
     diagnostic, kept for continuity with pre-reframe reporting -- not a bag
-    accuracy (docs/MIL_REFRAME_PLAN.md §7). Each model row is expected to carry
+    accuracy. Each model row is expected to carry
     both sets plus ``full_metrics_{label}`` dicts (see
     ``pipeline/evaluation_stage.py``). A Classification by Reconstruction row
     (model == 'Classification_by_Reconstruction') is handled separately with

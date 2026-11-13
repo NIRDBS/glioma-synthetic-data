@@ -1,7 +1,7 @@
 """
 Tier 3: gated-attention MIL (Ilse et al. 2018), over instance LOGITS rather
 than pooled embeddings, on a frozen per-fold CVAE encoder trunk
-(docs/MIL_REFRAME_PLAN.md §4, Stage 6).
+(see the paper, Appendix: Multiple Instance Learning).
 
 Architecture, per bag (here: per *sub-bag*, see below):
   frozen encoder trunk  X (s, n_features) -> z_mean (s, latent_dim)
@@ -22,8 +22,8 @@ instance's opinion counts toward the bag decision.
 **Why the instance head is never masked to the bag's own class (Model (C)'s
 support restriction)**: Stage 6 found that a bag-classification
 metric applied to a hard-masked posterior is circular -- it can only ever
-recover the label it was given, not one it inferred
-(docs/stage6_generative_mil.md §5). This tier's whole point is a genuinely
+recover the label it was given, not one it inferred.
+This tier's whole point is a genuinely
 *learned* instance posterior, evaluable the same honest way Tier 4's is, so
 the instance head stays a free K-way softmax throughout; only the
 attention-pooled BAG score is supervised by Y_b (standard MIL attention
@@ -32,8 +32,7 @@ training), never a per-instance hard state constraint.
 The (K+1)-way store posterior (non-diagnostic mass) uses the same
 `1 - max_k p_k` convention as Tier 4/mi-SVM (src/mil/generative.py,
 src/mil/misvm.py) for cross-tier comparability -- and inherits the exact
-same K=2 boundedness caveat documented there
-(docs/stage6_generative_mil.md §4): for K=2 it can never exceed 1/3.
+same K=2 boundedness caveat documented there: for K=2 it can never exceed 1/3.
 """
 import numpy as np
 import tensorflow as tf
@@ -47,7 +46,7 @@ N_NULL_COMPONENTS = 3  # unused by this module directly, kept for reference --
 
 def required_sub_bag_size(pi_min, epsilon=0.01):
     """
-    docs/MIL_REFRAME_PLAN.md §4.1: the smallest sub-bag size s such that
+    The smallest sub-bag size s such that
     P(a uniformly-drawn sub-bag from a bag at the pi_min floor contains zero
     diagnostic instances) <= epsilon, i.e. s >= ln(epsilon) / ln(1 - pi_min).
     At pi_min=0.02, epsilon=0.01 this gives s>=228 (the plan's own worked
@@ -102,7 +101,7 @@ def sample_sub_bags(X, bag_ids, y_bag_per_instance, n_per_bag, sub_bag_size, see
 def sub_bag_null_rate(X, bag_ids, y_bag_per_instance, instance_posterior, sub_bag_size,
                       n_per_bag=200, diagnostic_threshold=0.5, seed=None):
     """
-    docs/MIL_REFRAME_PLAN.md §4.1's named diagnostic: the empirical fraction
+    Named diagnostic: the empirical fraction
     of sampled sub-bags that contain ZERO instances with own-class posterior
     mass above ``diagnostic_threshold``, using an already-fitted MIL
     formulation's instance posterior as the best available proxy for "which
@@ -145,8 +144,8 @@ class AttentionMIL(Model):
                 epsilon=0.0, dropout_rate=0.3, l2=1e-3, center_by_bag=True,
                 name="AttentionMIL", **kwargs):
         """
-        ``epsilon``: one-sided label-smoothing rate (docs/MIL_REFRAME_PLAN.md
-        §4.1), computed by the caller from the actual sub-bag size via
+        ``epsilon``: one-sided label-smoothing rate, computed by the caller from the
+        actual sub-bag size via
         ``required_sub_bag_size``'s inverse, not guessed. For K=2, symmetric
         Keras label_smoothing=2*epsilon reproduces exactly the one-sided
         case (true class -> 1-epsilon, the other -> epsilon; there is only
@@ -322,8 +321,7 @@ class AttentionMIL(Model):
         For BAG-LEVEL classification (accuracy, the plan's "beats Tier 0"
         question), use ``bag_posterior`` instead -- see its docstring for
         why this attention-free posterior is a poor fit for that specific
-        question, confirmed empirically, not just argued (docs/
-        MIL_REFRAME_PLAN.md backlog §13).
+        question, confirmed empirically, not just argued).
         """
         from src.mil.generative import class_probs_to_posterior
 

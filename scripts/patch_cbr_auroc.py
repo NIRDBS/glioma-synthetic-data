@@ -55,7 +55,7 @@ def main():
     ap.add_argument('--force', action='store_true', help='recompute even if bag_auroc is present')
     args = ap.parse_args()
 
-    from src.notebooks.experiment_utils import setup_experiment
+    from src.utils.experiment_utils import setup_experiment
     from pipeline.evaluation_stage import _build_fold_val_sets, _cbr_predictions, _cbr_bag_auroc
     from src.utils.statistical_evaluation import compute_full_metrics
 

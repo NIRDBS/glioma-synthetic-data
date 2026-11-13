@@ -43,7 +43,7 @@ STAGE_ALIASES = {
 
 
 def _configure_gpu_memory_growth():
-    """Avoid TF grabbing all VRAM up front (matches notebook behaviour)."""
+    """Avoid TF grabbing all VRAM up front."""
     try:
         import tensorflow as tf
         for gpu in tf.config.list_physical_devices('GPU'):
@@ -203,7 +203,7 @@ def _log_suite(config, record):
 
 def _record(summary, config, stage, status, secs):
     """Append to summary list and write to suite_log.json."""
-    from src.notebooks.experiment_utils import log_stage_completion
+    from src.utils.experiment_utils import log_stage_completion
     summary.append((config['name'], stage, status, secs))
     _log_suite(config, {'stage': stage, 'status': status, 'seconds': round(secs, 1),
                         'timestamp': datetime.now().isoformat()})
@@ -231,7 +231,7 @@ def _run_one_stage(stage, config, output_dir, cvae_backend, epochs, summary, con
 def run_suite(config_names, stages_override=None, cvae_backend='local',
               classifiers_backend='local', epochs=None,
               continue_on_error=False, force=False):
-    from src.notebooks.experiment_utils import setup_experiment
+    from src.utils.experiment_utils import setup_experiment
 
     _configure_gpu_memory_growth()
     summary = []

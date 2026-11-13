@@ -29,7 +29,6 @@ pipeline/       Headless, config-driven experiment runner — see pipeline/READM
 scripts/        Dataset builders, MIL evaluation tests, bootstraps, figures
 scripts/paper/  Generators of the paper tables (write into $PAPER_DIR)
 configs/        Experiment definitions (exp_*.yaml) + EXPERIMENT_REGISTRY.json
-docs/           Design notes and findings per stage
 tests/          Unit and regression tests
 requirements.txt
 ```

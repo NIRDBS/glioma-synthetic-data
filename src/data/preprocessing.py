@@ -5,22 +5,20 @@ the previous ``RamanPreprocessor``, which could not run at all -- ``gaussian_fil
 was used without being imported, ``_build_file_to_map_correspondence`` was called
 but never defined, and the tumour-map key lookup appended ``.npy`` to a key that
 never had it, so the mask was always ``None`` and every slide was skipped. The
-actual producer for every dataset on disk was notebook 01 section 4 (mirrored in
-``_archive/dev_scripts/export_hdf5_section4.py``); that logic is folded in here. The
-notebook has since been removed. ``scripts/build_glioma_preproc_3.py --threshold 0.6``
+actual producer for every dataset on disk was the v1 export (since removed); its
+logic is folded in here. ``scripts/build_glioma_preproc_3.py --threshold 0.6``
 builds the same spectra without the clustering artifacts.
 
-What changed from that notebook logic, deliberately:
+What changed from that earlier logic, deliberately:
 
 * **Mask widened to all strong-signal pixels**, not just the manually-selected
   "tumour" clusters. That selection was never a tumour label -- it is a
   biologically-viable-signal mask (NMF(100) -> GMM(3) per slide, then a human
-  picked which of the 3 clusters to call "tumour" in ``file_names.csv``). See
-  ``docs/stage1_data_layer.md`` for the full argument. The old, narrower selection
+  picked which of the 3 clusters to call "tumour" in ``file_names.csv``). The old, narrower selection
   survives as the boolean ``viable_legacy`` column, so anything that depended on
   the exact old subset still can.
 * **Baseline correction is IARPLS**, not airPLS(lambda=100) -- the Stage 0 finding
-  (``docs/stage0_findings.md``). Still strictly per-spectrum: no statistic is ever
+  (see the paper, Appendix: Baseline Correction). Still strictly per-spectrum: no statistic is ever
   computed across spectra, preserving the project's no-global-parameter rule and
   keeping the export fold-independent.
 * **Clustering is not re-run.** NMF(100)/GMM(3) per slide already exists on disk
@@ -48,7 +46,7 @@ from src.preprocessing.baseline import IARPLS_LAMBDA, correct_iarpls
 __all__ = ["RamanPreprocessor", "SlideResult"]
 
 _FILENAME_RE = re.compile(r"LGm-(?P<class_id>\d)[/\\]HF-(?P<patient_id>\d+)_")
-_MEDIAN_KERNEL = 3  # matches notebook 01 MEDIAN_KERNEL and the paper's methods text
+_MEDIAN_KERNEL = 3  # matches the paper's methods text
 
 
 class SlideResult:
@@ -252,7 +250,7 @@ class RamanPreprocessor:
 
             h5f.attrs["baseline_method"] = "iarpls"
             h5f.attrs["baseline_lambda"] = float(self.baseline_lambda)
-            h5f.attrs["baseline_lambda_status"] = "provisional"  # see docs/stage0_findings.md 7.1
+            h5f.attrs["baseline_lambda_status"] = "provisional"  # see the paper, Appendix: Baseline Correction
             h5f.attrs["median_kernel"] = self.median_kernel
             h5f.attrs["n_slides"] = len(results)
             h5f.attrs["n_instances"] = n_total

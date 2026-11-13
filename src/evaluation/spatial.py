@@ -1,5 +1,5 @@
 """
-Stage 5: spatial validation (docs/MIL_REFRAME_PLAN.md §6, Stage 5).
+Stage 5: spatial validation.
 
 The design: withhold coords from every MIL model, infer the latent posterior,
 reproject it onto the slide's pixel grid (src/data/spatial.py::reproject),
@@ -214,9 +214,8 @@ def external_agreement(hard_assignment, reference_labels):
     ARI/AMI between a learned hard assignment and an independent reference
     clustering (§6: "the strongest available check", e.g. against
     hard_labels.npy's NMF+GMM tissue clusters, or against viable_legacy as a
-    binary reference when only a K+1-collapsed posterior is available -- see
-    docs/stage5_spatial_validation.md for which reference this was actually
-    run against and why). Thin wrapper, kept as one call site so the exact
+    binary reference when only a K+1-collapsed posterior is available).
+    Thin wrapper, kept as one call site so the exact
     metrics used are consistent everywhere they're reported.
     """
     hard_assignment = np.asarray(hard_assignment)

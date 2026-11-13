@@ -1,5 +1,5 @@
 """
-Stage: MIL Tier 0 -- naive-MIL aggregation baselines (docs/MIL_REFRAME_PLAN.md §4).
+Stage: MIL Tier 0 -- naive-MIL aggregation baselines.
 
 Pools the per-instance posteriors the existing TRTR/TSTR/TSRTR classifiers
 already emit (no new training) under four aggregation rules -- mean-posterior,
@@ -13,7 +13,7 @@ generative) must beat. Majority vote is also what
 naive reference is to the *choice* of pooling rule, across all four.
 
 Cross-fold duplicate bags (4 bags appear in two CV folds each -- see
-docs/MIL_REFRAME_PLAN.md §7.1) are handled by
+the paper, Appendix: Stratified Evaluation Protocol) are handled by
 ``aggregate_bag_scores_across_folds``, never by pooling instances first and
 losing the fold boundary.
 
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-boot', type=int, default=None)
     args = parser.parse_args()
 
-    from src.notebooks.experiment_utils import setup_experiment
+    from src.utils.experiment_utils import setup_experiment
 
     cfg, out_dir = setup_experiment(args.config)
     mil_eval_stage(cfg, out_dir, regimen_dir=args.regimen_dir,

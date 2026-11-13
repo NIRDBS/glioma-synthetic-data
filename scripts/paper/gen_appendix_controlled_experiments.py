@@ -4,7 +4,7 @@ Generate the per-experiment downstream-classifier results tables for the
 
 Covers the current paper's controlled-experiment family (the CVAE beta sweep,
 latent-dim/reconstruction-loss/synthetic-ratio axes, and the preprocessing-
-variant axis -- what docs/experiment_inventory.md section 8a had called
+variant axis -- once called
 "ablation studies": not accurate, since nothing is removed -- each axis varies
 one factor against a shared anchor, exp_608) and writes to
 $PAPER_DIR/appendix_controlled_experiments_tables.tex, plus the main-text Results

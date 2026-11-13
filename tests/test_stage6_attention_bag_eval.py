@@ -1,12 +1,12 @@
-"""Regression tests for scripts/stage6_attention_bag_eval.py's duplicate-bag
+"""Regression tests for scripts/attention_bag_level_eval.py's duplicate-bag
 merging -- the one piece of non-trivial new logic in that script (everything
 else reuses already-tested machinery: bag_level_bootstrap,
-summarize_bootstrap_diffs, stage6_bag_eval._tier0_reference)."""
+summarize_bootstrap_diffs, bag_level_eval._tier0_reference)."""
 import json
 
 import numpy as np
 
-from scripts.stage6_attention_bag_eval import _load_bag_level_across_folds
+from scripts.attention_bag_level_eval import _load_bag_level_across_folds
 
 
 def _write_bag_level_json(path, by_fold):

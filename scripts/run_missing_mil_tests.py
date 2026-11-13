@@ -148,11 +148,11 @@ def build_tasks():
         store = RESULTS / e / 'latent' / 'latent_labels_shuffled_misvm.h5'
         out5 = RESULTS / e / 'spatial_validation' / 'stage5_misvm_mi_svm_shuffled.json'
         T.append(Task(f'fit:{e}:misvm_shuffled', 4, f'{e}: shuffled-bag-label refit of mi-SVM (Modal, fold-parallel)',
-                      cmd=[PY, 'scripts/stage6_shuffled_label_control.py', '--config', e, '--method', 'misvm',
+                      cmd=[PY, 'scripts/shuffled_label_control.py', '--config', e, '--method', 'misvm',
                            '--store-suffix', 'shuffled_misvm', '--backend', 'modal'],
                       done=store.exists, modal=True))
         T.append(Task(f'stage5:{e}:misvm_shuffled', 4, f'{e}: stage-5 statistics of the shuffled mi-SVM fit', fills=1,
-                      cmd=[PY, 'scripts/stage5_spatial_validation.py', '--config', e, '--method', 'misvm', '--variant', 'mi_svm',
+                      cmd=[PY, 'scripts/spatial_validation.py', '--config', e, '--method', 'misvm', '--variant', 'mi_svm',
                            '--store-path', str(store), '--out-path', str(out5)],
                       needs=[f'fit:{e}:misvm_shuffled'], done=out5.exists, modal=True))
     # rank 9 -- paired spatial tests on the new fits, then the tables

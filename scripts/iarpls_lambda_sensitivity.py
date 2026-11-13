@@ -1,6 +1,6 @@
-"""Stage 1 carryover: settle IARPLS_LAMBDA's provisional status (see the paper, Appendix: Baseline Correction).
+"""IARPLS lambda sensitivity: settle IARPLS_LAMBDA's provisional status (see the paper, Appendix: Baseline Correction).
 
-Stage 0 could not settle this -- its synthetic generator was measurably smoother
+The baseline-correction study could not settle this -- its synthetic generator was measurably smoother
 than real baselines, and its real-data check used ~40-60 spectra from a handful of
 slides. Two things happen here:
 
@@ -15,7 +15,7 @@ slides. Two things happen here:
    dominate. The corner-finding heuristic reads that as "the fit is too stiff"
    and collapses lambda, exactly as GCV did.
 
-2. **A properly powered, slide-stratified real-data sweep**, replacing Stage 0's
+2. **A properly powered, slide-stratified real-data sweep**, replacing that study's
    ~40-60-spectra check with a sample drawn across every slide in the actual
    export, using the same ground-truth-free invariance criterion (peak drift
    when synthetic fluorescence is added) plus retention (how much of the
@@ -38,10 +38,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from src.preprocessing.baseline import RAMAN_REFERENCE_BANDS, correct_iarpls  # noqa: E402
-from stage0_baseline_study import invariance_score, synthetic_baseline  # noqa: E402
+from baseline_correction_study import invariance_score, synthetic_baseline  # noqa: E402
 
 LAMBDA_GRID = [1e2, 3.16e2, 1e3, 3.16e3, 1e4, 3.16e4, 1e5]
-FLUORESCENCE_AMP = 8.0  # x signal ptp -- "medium" in the Stage 0 study
+FLUORESCENCE_AMP = 8.0  # x signal ptp -- "medium" in the baseline-correction study
 
 
 def lcurve_iarpls(y, wn, grid):

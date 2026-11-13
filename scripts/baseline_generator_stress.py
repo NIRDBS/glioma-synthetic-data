@@ -1,8 +1,8 @@
-"""Stage 0 follow-up: how much of the lambda-insensitivity is our generator?
+"""Generator stress test: how much of the lambda-insensitivity is our generator?
 
 Kizilov et al. (J. Raman Spectrosc. 2026, arXiv:2507.17917) report that IARPLS is
-*more* sensitive to its parameters than ALS, over lambda in 1e2..1e9. The Stage 0
-study found lambda effectively inert over 1e2..1e4. Those are reconcilable only if
+*more* sensitive to its parameters than ALS, over lambda in 1e2..1e9. The baseline-
+correction study found lambda effectively inert over 1e2..1e4. Those are reconcilable only if
 our synthetic baselines are drawn from an easier family than theirs -- a smooth,
 low-curvature one that a second-difference penalty represents well over a wide range
 of lambda.
@@ -10,7 +10,7 @@ of lambda.
 This script tests that directly by making the generator harder along three axes and
 watching where lambda sensitivity appears:
 
-* **baseline complexity** -- `smooth` (the Stage 0 family: one broad Gaussian +
+* **baseline complexity** -- `smooth` (the baseline study's family: one broad Gaussian +
   Rayleigh wing + cubic drift) through `structured` (several fluorophore-like
   Gaussians) to `sharp` (adds a narrow, high-curvature component).
 * **band lineshape** -- Gaussian vs Lorentzian. Lorentzian tails are heavier, so a
@@ -24,7 +24,7 @@ case, because that is precisely the quantity the lambda penalty acts on: it make
 
 Usage
 -----
-    python scripts/stage0_generator_stress.py --out-dir results/stage0_baseline
+    python scripts/baseline_generator_stress.py --out-dir results/stage0_baseline
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from stage0_baseline_study import (  # noqa: E402
+from baseline_correction_study import (  # noqa: E402
     SYNTHETIC_BANDS,
     load_wavenumbers,
     run_iarpls,
@@ -71,7 +71,7 @@ def signal(wn, rng, lineshape="gaussian", peak_scale=400.0):
 def baseline(wn, rng, amplitude, family="smooth"):
     """Fluorescence background of increasing curvature.
 
-    ``smooth`` reproduces the Stage 0 family exactly. ``structured`` superposes several
+    ``smooth`` reproduces the baseline study's family exactly. ``structured`` superposes several
     fluorophore-like Gaussians of differing widths. ``sharp`` adds a narrow component,
     which is what a second-difference penalty struggles to follow at large lambda.
     """
@@ -195,7 +195,7 @@ def main():
         }
 
     pd.set_option("display.width", 170)
-    print("\n=== baseline curvature energy, relative to the Stage 0 'smooth' family ===")
+    print("\n=== baseline curvature energy, relative to the baseline study's 'smooth' family ===")
     print(curv_rel.to_string())
 
     print("\n=== IARPLS fingerprint NRMSE vs lambda, by baseline family (median) ===")

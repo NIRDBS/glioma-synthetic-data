@@ -151,7 +151,7 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
     best_val_acc = _bag_accuracy(model, X_inner_val, bag_inner_val, y_inner_val)
 
     # The attention-weighted bag-level posterior for the TRUE held-out test
-    # fold -- what scripts/stage6_bag_eval.py's cross-tier comparison needs,
+    # fold -- what scripts/bag_level_eval.py's cross-tier comparison needs,
     # and NOT what instance_posterior/the latent store give it (that naive,
     # attention-free pooling is the exact thing _bag_accuracy's docstring
     # documents as misleading for this architecture). Computed here, while
@@ -214,7 +214,7 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
 
     ``loader``, ``store_path``, ``bag_level_path``: optional overrides, unused
     by the real fit (which builds its own loader and uses the default paths
-    below). scripts/stage6_shuffled_label_control.py passes all three
+    below). scripts/shuffled_label_control.py passes all three
     explicitly -- a loader with its y_class already permuted (built the same
     way _fit_one_formulation's caller does it, before any fold splitting) and
     a separate pair of output paths, so a shuffled run can never collide with
@@ -276,7 +276,7 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
         # result survives even if a later fold crashes or the run is
         # stopped -- the per-instance store above already has this property
         # (write_posteriors runs per fold); this keeps the same guarantee
-        # for the bag-level artifact scripts/stage6_bag_eval.py needs.
+        # for the bag-level artifact scripts/bag_level_eval.py needs.
         bag_level_path.parent.mkdir(parents=True, exist_ok=True)
         with open(bag_level_path, 'w') as f:
             json.dump(bag_level_by_fold, f, indent=2)

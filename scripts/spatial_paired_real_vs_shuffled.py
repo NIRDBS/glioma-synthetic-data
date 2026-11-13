@@ -33,7 +33,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.stage5_spatial_validation import _load_raw_side_tables  # noqa: E402
+from scripts.spatial_validation import _load_raw_side_tables  # noqa: E402
 from src.data.spatial import reproject  # noqa: E402
 from src.evaluation.spatial import morans_i_by_lag, variogram_by_lag  # noqa: E402
 from src.mil.store import merge_out_of_sample_posterior  # noqa: E402
@@ -41,7 +41,7 @@ from src.mil.store import merge_out_of_sample_posterior  # noqa: E402
 LAG = 3
 N_BOOT = 10000
 SEED = 42
-MIN_COVERED = 20   # same eligibility as scripts/stage5_spatial_validation.py
+MIN_COVERED = 20   # same eligibility as scripts/spatial_validation.py
 
 
 def _groups(store_path):

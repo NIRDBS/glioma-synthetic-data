@@ -107,7 +107,7 @@ def _collect_per_fold(config, cvae_config_name, method='cbr', variant='reconstru
     that bag's majority vote) -- a genuine floating-point-accumulation
     quirk, not a tie-breaking edge case. The project's established
     convention everywhere else (``load_and_predict``, used by
-    `scripts/stage6_bag_eval.py`/`pipeline/evaluation_stage.py`) is
+    `scripts/bag_level_eval.py`/`pipeline/evaluation_stage.py`) is
     ``.predict()``; any hard decision here must match it, or this script's
     'baseline' silently stops being the same baseline every other number in
     the project is compared against."""

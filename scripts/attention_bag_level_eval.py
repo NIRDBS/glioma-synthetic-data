@@ -1,22 +1,22 @@
 """
-Stage 6, Tier 3: bag-level accuracy vs Tier 0, from the attention-weighted
+Tier 3 (attention MIL): bag-level accuracy vs Tier 0, from the attention-weighted
 bag-level artifact (pipeline/mil_attention_stage.py writes
 results/{exp}/latent/attention_bag_level.json).
 
-Why this is a SEPARATE script from scripts/stage6_bag_eval.py rather than
+Why this is a SEPARATE script from scripts/bag_level_eval.py rather than
 another --method choice there: that script reads the latent-label STORE's
 per-instance posterior and pools it (mean, across folds) -- correct for
 mi-SVM/Tier 4, whose evaluation doesn't depend on attention. For Tier 3,
 the store's per-instance posterior is deliberately attention-FREE (right
-for Stage 5's spatial validation, wrong for bag classification -- see
-AttentionMIL.bag_posterior's docstring). Reusing stage6_bag_eval.py's pooling on Tier 3's store posterior
+for the spatial validation, wrong for bag classification -- see
+AttentionMIL.bag_posterior's docstring). Reusing bag_level_eval.py's pooling on Tier 3's store posterior
 would reproduce the exact misleading, chance-level result the smoke tests
 already exposed and fixed. This script reads the ALREADY attention-weighted,
 already bag-level artifact instead -- no further pooling rule needed, since
 each fold already produced one decision per held-out bag directly.
 
 Usage:
-    python scripts/stage6_attention_bag_eval.py --config exp_501
+    python scripts/attention_bag_level_eval.py --config exp_501
 """
 import argparse
 import json
@@ -29,7 +29,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.stage6_bag_eval import _tier0_reference
+from scripts.bag_level_eval import _tier0_reference
 from src.utils.statistical_evaluation import bag_level_bootstrap, summarize_bootstrap_diffs
 
 
@@ -38,7 +38,7 @@ def _load_bag_level_across_folds(bag_level_path):
     Merge every fold's {bag_ids, posterior, y_true} into one (bag_ids, K+1
     posterior, y_true) triple. A bag appearing in two folds' test sets
     (the 4 duplicated slides) gets both folds'
-    posteriors averaged -- the same duplicate-bag convention Stage 2/
+    posteriors averaged -- the same duplicate-bag convention the evaluation code and
     src/mil/store.py::merge_out_of_sample_posterior already use elsewhere,
     reapplied here since this JSON artifact is a parallel structure to the
     HDF5 store, not read through it.
@@ -78,7 +78,7 @@ def run(config_name, n_boot=1000, seed=42, regimen_label='TRTR', reference_model
     bag_level_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \
         / 'latent' / 'attention_bag_level.json'
 
-    print(f"\n{'='*80}\nSTAGE 6 TIER 3 BAG-LEVEL EVAL (attention-weighted)  ({config_name})\n{'='*80}")
+    print(f"\n{'='*80}\nTIER 3 BAG-LEVEL EVAL (attention-weighted)  ({config_name})\n{'='*80}")
     bag_ids, posterior, y_true = _load_bag_level_across_folds(bag_level_path)
     n_bags = len(bag_ids)
     bag_pred = posterior[:, 1:].argmax(axis=1)
@@ -97,10 +97,10 @@ def run(config_name, n_boot=1000, seed=42, regimen_label='TRTR', reference_model
         'bag_kappa': float(cohen_kappa_score(y_true, bag_pred))
                      if len(np.unique(y_true)) > 1 else float('nan'),
     }
-    # Same convention as scripts/stage6_bag_eval.py: binary-only sensitivity/
+    # Same convention as scripts/bag_level_eval.py: binary-only sensitivity/
     # specificity as per-class recall, AUC from the diagnostic-only columns
     # RENORMALIZED to sum to 1 after dropping column 0 (non-diagnostic mass) --
-    # matching stage6_bag_eval.py's _store_fold_data exactly, so the two
+    # matching bag_level_eval.py's _store_fold_data exactly, so the two
     # scripts' AUC numbers sit on the same scale and are comparable.
     if len(classes) == 2:
         recall_per_class = recall_score(y_true, bag_pred, average=None,

@@ -11,7 +11,7 @@ gamma(h) = sigma^2 (1 - rho(h)), so gamma(h) / sigma^2 is on the same footing as
 1 - I(h) and is what should be compared between fits. Per slide, sigma^2 is the
 population variance of the in-mask map; slides with sigma^2 = 0 (constant maps) have
 an undefined ratio and are excluded and counted. The reported value is the mean over
-slides, like the pooled statistics in scripts/stage5_spatial_validation.py (same
+slides, like the pooled statistics in scripts/spatial_validation.py (same
 eligibility: >= 20 covered instances, slide in the shape registry).
 
 Writes results/<exp>/spatial_validation/standardized_variogram_lag3.json:
@@ -33,7 +33,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.stage5_spatial_validation import _load_raw_side_tables  # noqa: E402
+from scripts.spatial_validation import _load_raw_side_tables  # noqa: E402
 from src.data.spatial import reproject  # noqa: E402
 from src.evaluation.spatial import variogram_by_lag  # noqa: E402
 from src.mil.store import merge_out_of_sample_posterior  # noqa: E402

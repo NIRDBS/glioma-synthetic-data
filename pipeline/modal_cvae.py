@@ -239,7 +239,7 @@ def run_on_modal(config_name, epochs=None, permutation_seed=None, store_suffix=N
     ``permutation_seed``/``store_suffix``: both None for a real run (default,
     unchanged behaviour). Both set together to run Tier 4's shuffled-bag-label
     control on Modal GPU -- e.g. permutation_seed=123, store_suffix='shuffled'
-    (matching the convention scripts/stage6_shuffled_label_control.py already
+    (matching the convention scripts/shuffled_label_control.py already
     uses for Tiers 1-3) writes to results/{exp}/models/cvae_shuffled/ and
     .../data/synthetic_shuffled/, never touching the real weights Tier 3's
     frozen trunk and Tier 4's CbR depend on.

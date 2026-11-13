@@ -1,4 +1,4 @@
-"""Stage 0 validation study: does a per-spectrum lambda beat the inherited constant?
+"""Baseline-correction validation study: does a per-spectrum lambda beat the inherited constant?
 
 Design
 ------
@@ -22,7 +22,7 @@ Arms compared
 
 Usage
 -----
-    python scripts/stage0_baseline_study.py --out-dir results/stage0_baseline
+    python scripts/baseline_correction_study.py --out-dir results/stage0_baseline
 """
 
 from __future__ import annotations

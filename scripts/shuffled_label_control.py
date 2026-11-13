@@ -1,9 +1,9 @@
 """
-Stage 6 backlog: the shuffled-bag-label control. Permutes which label goes with
+The shuffled-bag-label control. Permutes which label goes with
 which bag (exact
 permutation of the true label multiset -- src/mil/shuffle_control.py),
 holds everything else fixed, refits a MIL formulation under the permuted
-labels, and reports the same spatial statistics Stage 5 computes for the
+labels, and reports the same spatial statistics scripts/spatial_validation.py computes for the
 real fit -- so the two can be compared directly. If lag>=3 coherence
 survives this, the real result cannot be attributed to the true label.
 
@@ -32,10 +32,10 @@ see the comment at its call site) -- what makes its result "shuffled" is
 that --method cvae already trained the weights it loads.
 
 Usage:
-    python scripts/stage6_shuffled_label_control.py --config exp_501 --method misvm
-    python scripts/stage6_shuffled_label_control.py --config exp_501 --method attention
-    python scripts/stage6_shuffled_label_control.py --config exp_501 --method cvae [--epochs N]
-    python scripts/stage6_shuffled_label_control.py --config exp_501 --method cbr
+    python scripts/shuffled_label_control.py --config exp_501 --method misvm
+    python scripts/shuffled_label_control.py --config exp_501 --method attention
+    python scripts/shuffled_label_control.py --config exp_501 --method cvae [--epochs N]
+    python scripts/shuffled_label_control.py --config exp_501 --method cbr
 """
 import argparse
 import sys

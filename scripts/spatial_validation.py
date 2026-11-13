@@ -1,5 +1,5 @@
 """
-Stage 5: real-data spatial validation.
+Real-data spatial validation.
 
 Reads a MIL formulation's fitted posteriors from the latent-label store,
 merges them into one leak-free per-instance posterior (out-of-sample only --
@@ -18,7 +18,7 @@ non-diagnostic mass onto its pixel grid, and reports:
     row-aligned to the loader's own order; no loader change needed).
 
 Usage:
-    python scripts/stage5_spatial_validation.py --config exp_608 --method misvm
+    python scripts/spatial_validation.py --config exp_608 --method misvm
 """
 import argparse
 import json
@@ -93,7 +93,7 @@ def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42
        out_path=None, store_path=None):
     """
     ``store_path``: override the default real-store path -- e.g. to read
-    ``latent_labels_shuffled.h5`` (scripts/stage6_shuffled_label_control.py)
+    ``latent_labels_shuffled.h5`` (scripts/shuffled_label_control.py)
     for the shuffled-bag-label control's own spatial statistics, compared
     directly against the real fit's, without touching the real store.
     """
@@ -214,7 +214,7 @@ def run(config_name, method, variant, n_folds=5, max_lag=10, n_perm=200, seed=42
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Stage 5 spatial validation")
+    parser = argparse.ArgumentParser(description="Spatial validation")
     parser.add_argument('--config', required=True)
     parser.add_argument('--method', required=True,
                         choices=['misvm', 'cbr', 'attention'])

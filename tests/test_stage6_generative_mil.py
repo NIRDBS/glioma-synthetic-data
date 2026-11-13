@@ -230,7 +230,7 @@ def test_score_one_fold_cbr_not_in_default_methods_but_in_all_methods():
 
 
 # ---------------------------------------------------------------------------
-# 4. scripts/stage6_bag_eval.py's circularity guard: a method that hard-restricts every instance to {nulls, own-bag-class}
+# 4. scripts/bag_level_eval.py's circularity guard: a method that hard-restricts every instance to {nulls, own-bag-class}
 # throughout scoring makes K-diagnostic-column bag classification trivially,
 # vacuously correct. This must stay caught, not silently regress.
 # ---------------------------------------------------------------------------
@@ -238,7 +238,7 @@ def test_score_one_fold_cbr_not_in_default_methods_but_in_all_methods():
 def test_diagnostic_column_competition_frac_detects_hard_masked_posterior():
     """A hard-masked Model (C) shape: every instance has exactly one nonzero diagnostic
     column (its own bag's known class) -- zero real competition."""
-    from scripts.stage6_bag_eval import diagnostic_column_competition_frac
+    from scripts.bag_level_eval import diagnostic_column_competition_frac
 
     fold_data = [{
         'proba': np.array([
@@ -256,7 +256,7 @@ def test_diagnostic_column_competition_frac_detects_hard_masked_posterior():
 def test_diagnostic_column_competition_frac_detects_real_competition():
     """mi-SVM / Tier 4's shape: independent per-class scores, both columns
     routinely nonzero -- genuine competition."""
-    from scripts.stage6_bag_eval import diagnostic_column_competition_frac
+    from scripts.bag_level_eval import diagnostic_column_competition_frac
 
     fold_data = [{
         'proba': np.array([[0.7, 0.3], [0.4, 0.6], [0.9, 0.1]]),
@@ -268,5 +268,5 @@ def test_diagnostic_column_competition_frac_detects_real_competition():
 
 
 def test_diagnostic_column_competition_frac_handles_empty_input():
-    from scripts.stage6_bag_eval import diagnostic_column_competition_frac
+    from scripts.bag_level_eval import diagnostic_column_competition_frac
     assert np.isnan(diagnostic_column_competition_frac([]))

@@ -81,11 +81,11 @@ Run `exp_501` and `exp_608` first: the ratio and pool-size experiments
 python -m pipeline.mil_eval_stage --config exp_608                      # naive-MIL baselines
 python -m pipeline.mil_fit_stage --config exp_608 --methods misvm cbr   # mi-SVM fit, CbR posteriors
 python -m pipeline.mil_attention_stage --config exp_608                 # attention MIL
-python scripts/stage6_bag_eval.py --config exp_608 --method misvm --variant mi_svm   # likewise cbr
-python scripts/stage6_attention_bag_eval.py --config exp_608
+python scripts/bag_level_eval.py --config exp_608 --method misvm --variant mi_svm   # likewise cbr
+python scripts/attention_bag_level_eval.py --config exp_608
 # spatial coherence: real fit, shuffled-label refit, paired test (--method misvm | attention | cbr)
-python scripts/stage5_spatial_validation.py --config exp_608 --method misvm
-python scripts/stage6_shuffled_label_control.py --config exp_608 --method misvm
+python scripts/spatial_validation.py --config exp_608 --method misvm
+python scripts/shuffled_label_control.py --config exp_608 --method misvm
 python scripts/spatial_paired_real_vs_shuffled.py --config exp_608
 python scripts/standardized_variogram.py --config exp_608
 # key-instance utility for all appendix configurations and tiers, with its paired test
@@ -111,9 +111,9 @@ slide-level intervals.
 python scripts/latent_kl_per_dim.py --check         # active latent dimensions per fold (App. B)
 python scripts/plot_beta_sensitivity_combined.py    # β-sensitivity figure
 python scripts/plot_max_intensity_histogram.py      # max-intensity distribution
-python scripts/stage0_baseline_study.py             # baseline-correction study (App. A)
-python scripts/stage0_generator_stress.py
-python scripts/stage1_lambda_sensitivity.py         # IARPLS λ sensitivity
+python scripts/baseline_correction_study.py             # baseline-correction study (App. A)
+python scripts/baseline_generator_stress.py
+python scripts/iarpls_lambda_sensitivity.py         # IARPLS λ sensitivity
 ```
 The figure scripts write into `$PAPER_DIR/img/` (default `./paper/img/`).
 

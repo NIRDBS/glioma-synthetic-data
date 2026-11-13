@@ -166,7 +166,7 @@ def test_hard_diagnostic_threshold_misvm_is_untouched_at_flat_half():
     """mi-SVM's independent one-vs-rest scores aren't bounded below 0.5 the
     way a joint softmax's are -- already non-degenerate under a flat 0.5, so
     this fix must not silently change its already-reported result."""
-    from scripts.stage5_spatial_validation import hard_diagnostic_threshold
+    from scripts.spatial_validation import hard_diagnostic_threshold
     assert hard_diagnostic_threshold('misvm', K=2) == pytest.approx(0.5)
 
 
@@ -174,7 +174,7 @@ def test_hard_diagnostic_threshold_joint_softmax_k2_matches_the_derived_bound():
     """For a genuine joint K-way softmax, non-diagnostic mass after the
     K+1 lift is bounded above by (K-1)/(2K-1) -- 1/3 at K=2 -- so the
     rescaled threshold (half that bound) must be exactly 1/6, not 0.5."""
-    from scripts.stage5_spatial_validation import hard_diagnostic_threshold
+    from scripts.spatial_validation import hard_diagnostic_threshold
     assert hard_diagnostic_threshold('attention', K=2) == pytest.approx(1.0 / 6.0)
     assert hard_diagnostic_threshold('cbr', K=2) == pytest.approx(1.0 / 6.0)
 
@@ -183,7 +183,7 @@ def test_hard_diagnostic_threshold_joint_softmax_scales_with_k():
     """The bound loosens toward, but never reaches, 0.5 as K grows -- the
     rescaled threshold should track that, e.g. K=6 gives a looser (larger)
     cutoff than K=2, but always strictly below the flat 0.5 mi-SVM uses."""
-    from scripts.stage5_spatial_validation import hard_diagnostic_threshold
+    from scripts.spatial_validation import hard_diagnostic_threshold
     t2 = hard_diagnostic_threshold('cbr', K=2)
     t6 = hard_diagnostic_threshold('cbr', K=6)
     assert t2 < t6 < 0.5

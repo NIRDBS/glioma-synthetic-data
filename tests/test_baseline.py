@@ -233,7 +233,7 @@ def test_iarpls_lambda_is_stable_on_a_SMOOTH_baseline():
     """Regression guard for the *smooth* baseline case only -- NOT general insensitivity.
 
     Stage 0 initially reported lambda inert over 1e2-1e4. The follow-up study
-    (scripts/stage0_generator_stress.py) withdrew that as a general claim: the inert
+    (scripts/baseline_generator_stress.py) withdrew that as a general claim: the inert
     window is ~2.5 decades for smooth baselines but only ~0.5 for high-curvature ones,
     and real baselines appear more curved than any synthetic family tested. See
     the paper, Appendix: Baseline Correction.

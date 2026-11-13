@@ -1,16 +1,16 @@
 """
-Stage 6: bag-level classification accuracy for a stored MIL posterior, vs the
-Tier 0 reference (Stage 6 exit criterion: "Beats Tier 0 at bag level").
+Bag-level classification accuracy for a stored MIL posterior, vs the
+Tier 0 reference (exit criterion: "Beats Tier 0 at bag level").
 
 Generic over (method, variant) -- works for Tier 4's 'cbr' variants and
 Tier 1 ('misvm') alike, since it reads directly from the latent-label store
 rather than any tier-specific code. This closes a real gap: the earlier mi-SVM
 evaluation never computed a bag-accuracy number -- its story stayed at
-degeneracy diagnostics and Stage 5's spatial checks. This script is what
+degeneracy diagnostics and the spatial checks. This script is what
 "beats Tier 0" actually needs.
 
-The store's posterior is (n, K+1): column 0 is non-diagnostic mass (Stage 5's
-own concern, mapped spatially), columns 1..K are the K diagnostic classes.
+The store's posterior is (n, K+1): column 0 is non-diagnostic mass (the spatial
+analysis's concern, mapped spatially), columns 1..K are the K diagnostic classes.
 For BAG CLASSIFICATION specifically -- "which of the K classes does this bag
 belong to" -- only the K diagnostic columns are used here, renormalised;
 column 0 answers a different question (is this instance diagnostic at all)
@@ -33,8 +33,8 @@ call and prints a loud warning when it is nearly zero, rather than trusting
 the caller to remember which methods are safe to evaluate this way.
 
 Usage:
-    python scripts/stage6_bag_eval.py --config exp_501 --method cbr --variant reconstruction
-    python scripts/stage6_bag_eval.py --config exp_501 --method cbr --variant encoder_head
+    python scripts/bag_level_eval.py --config exp_501 --method cbr --variant reconstruction
+    python scripts/bag_level_eval.py --config exp_501 --method cbr --variant encoder_head
 """
 import argparse
 import json
@@ -154,7 +154,7 @@ def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
     store_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \
         / 'latent' / 'latent_labels.h5'
 
-    print(f"\n{'='*80}\nSTAGE 6 BAG-LEVEL EVAL: {method}/{variant}  ({config_name})\n{'='*80}")
+    print(f"\n{'='*80}\nBAG-LEVEL EVAL: {method}/{variant}  ({config_name})\n{'='*80}")
     sample_ids, y_bag = _load_y_bag_and_sample_ids(config['paths']['processed_file'], config)
     fold_data = _store_fold_data(store_path, method, variant, fold_names, sample_ids, y_bag)
     n_oos = sum(len(fd['y_true']) for fd in fold_data)
@@ -266,7 +266,7 @@ def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Stage 6 bag-level eval of a stored MIL posterior")
+    parser = argparse.ArgumentParser(description="Bag-level eval of a stored MIL posterior")
     parser.add_argument('--config', required=True)
     parser.add_argument('--method', required=True)
     parser.add_argument('--variant', required=True)

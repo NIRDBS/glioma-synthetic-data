@@ -609,7 +609,7 @@ MIL_LEGACY_LABEL = {'misvm_mi_svm': 'mi-SVM', 'attention_attention': 'Attention'
 
 def mil_metric_values(exp):
     """[(label, stem, [acc, bal_acc, sens, spec, auc])] for the four MIL tiers of one
-    experiment, from scripts/stage6_bag_eval.py's per-tier output."""
+    experiment, from scripts/bag_level_eval.py's per-tier output."""
     out = []
     for label, stem, _ in MIL_TESTS_TIERS:
         m = json.load(open(os.path.join(RESULTS, exp, 'mil_eval', f'stage6_bag_eval_{stem}.json')))['metrics']

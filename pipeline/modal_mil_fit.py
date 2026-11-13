@@ -103,7 +103,7 @@ def fit_fold_remote(config_name: str, method: str, fold_name: str, h5_name: str,
     in explicitly rather than recomputed remotely -- avoids any risk of
     local/remote RNG divergence producing a different permutation per
     container. When given, substitutes the loader's own y_class before fold
-    splitting, exactly mirroring scripts/stage6_shuffled_label_control.py's
+    splitting, exactly mirroring scripts/shuffled_label_control.py's
     local path (the only "shuffled" intervention; everything downstream is
     identical to a real fit) -- this is what lets the shuffled-label
     control run fold-parallel on Modal instead of ~4h sequential locally."""
@@ -159,7 +159,7 @@ def run_mil_fit_parallel(config, methods=('misvm',), pi_min=None, max_iters=10, 
     write every result into the local latent-label store.
 
     ``label_map`` / ``store_path`` (optional, both or neither): the same
-    shuffled-label-control override scripts/stage6_shuffled_label_control.py
+    shuffled-label-control override scripts/shuffled_label_control.py
     uses locally (see fit_fold_remote's docstring) -- lets the shuffled
     mi-SVM control run fold-parallel on Modal instead of ~4h sequential
     locally. ``store_path`` defaults to the real store

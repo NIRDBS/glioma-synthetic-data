@@ -321,7 +321,7 @@ def select_lambda(
 IARPLS_VALID_FROM_CM1 = 300.0
 
 #: PROVISIONAL. Stage 0 initially found lambda inert over 1e2-1e4; the follow-up study
-#: (scripts/stage0_generator_stress.py) withdrew that -- the inert window is 2.5 decades
+#: (scripts/baseline_generator_stress.py) withdrew that -- the inert window is 2.5 decades
 #: for smooth baselines but only 0.5 for high-curvature ones, and real baselines appear
 #: *more* curved than any synthetic family tested. This value sits in the low-drift,
 #: reasonable-retention region on real spectra and matches the synthetic oracle, but it

@@ -14,14 +14,12 @@ stages it needs under `pipeline.stages`.
 
 | Stage         | Module                       | Trains on / does                                  |
 |---------------|------------------------------|---------------------------------------------------|
-| `preprocessing` | `preprocessing_stage.py`   | Raw cubes → cropped/normalised H5 dataset         |
 | `trtr`        | `trtr_stage.py`              | Real (slide-capped) → 4 models, test real         |
 | `cvae`        | `cvae_stage.py`              | Train CVAE, generate synthetic pool per fold      |
 | `tstr`        | `tstr_stage.py`              | Synthetic pool → 4 models, test real              |
 | `synth_gen`   | `synth_gen_stage.py`         | New synthetic pool from an existing decoder (no training) |
 | `tsrtr`       | `tsrtr_stage.py`             | Real + on-demand synthetic (ratio) → 4 models     |
 | `stats_eval`  | `evaluation_stage.py`        | Bootstrap CIs: TRTR vs TSTR / TSRTR (+ CbR)       |
-| `mil_eval`    | `mil_eval_stage.py`          | Tier 0 naive-MIL pooling baselines (no training)  |
 | `mil_fit`     | `mil_fit_stage.py`           | mi-SVM fit (+ CbR posteriors with `--methods cbr`) into the latent-label store |
 
 Attention MIL is fitted by `mil_attention_stage.py` (own CLI, not a `run_suite`
@@ -50,7 +48,8 @@ behaviour; it is **not read by any code** (the cap behaviour is hardcoded per
 stage, keyed only on `patient_cap`).
 
 Default stage order (`run_suite.DEFAULT_STAGES`):
-`trtr → cvae → tstr → tsrtr → stats_eval → mil_eval → mil_fit`.
+`trtr → cvae → tstr → tsrtr → stats_eval`. The MIL models are fitted and tested with
+`scripts/run_mil_tests.sh <config>` (top-level README, step 3).
 
 ---
 
@@ -95,7 +94,9 @@ Each stage module is also a standalone CLI (handy for debugging one step):
 
 ```bash
 python -m pipeline.trtr_stage   --config exp_501
-python -m pipeline.cvae_stage   --config exp_608 --backend local --epochs 70
+python -m pipeline.cvae_stage   --config exp_608 --backend local
+# continue the weights of exp_601 for the 100 epochs of exp_605 (windowed beta):
+python -m pipeline.cvae_stage   --config exp_605 --resume-from results/exp_601/models/cvae --epoch-offset 100
 python -m pipeline.tstr_stage   --config exp_608
 python -m pipeline.tsrtr_stage  --config exp_705          # uses tsrtr.synth_ratio
 python -m pipeline.evaluation_stage --config exp_705 \
@@ -105,8 +106,7 @@ python -m pipeline.evaluation_stage --config exp_705 \
 python -m pipeline.mil_fit_stage --config exp_608 --methods misvm cbr
 ```
 
-(`preprocessing_stage` has no standalone CLI — run it via `run_suite --stages preprocessing`. The
-paper's datasets are built by the scripts in the top-level README, step 1.)
+The datasets are built by the scripts in the top-level README, step 1.
 
 ---
 

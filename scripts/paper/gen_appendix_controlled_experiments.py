@@ -19,8 +19,12 @@ not balanced accuracy, so reporting balanced accuracy as if it carried that
 same CI/significance star would overstate what was actually tested. Both
 numbers are shown; only one carries a significance claim.
 
+Intervals and tests are the patient-level ones of scripts/patient_bootstrap.py by default
+(``--unit patient``, the paper's choice); ``--unit slide`` uses the stage outputs' slide-level
+bootstrap instead. Point estimates are identical under both and are asserted to agree.
+
 Usage:
-    PAPER_DIR=<manuscript dir> python scripts/paper/gen_appendix_controlled_experiments.py
+    PAPER_DIR=<manuscript dir> python scripts/paper/gen_appendix_controlled_experiments.py [--unit slide]
 """
 import json
 import glob
@@ -31,7 +35,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 # The manuscript lives outside the repository; point PAPER_DIR at it.
 PAPER = os.environ.get('PAPER_DIR', os.path.join(ROOT, 'paper'))
 RESULTS = os.path.join(ROOT, 'results')
-REGISTRY = os.path.join(ROOT, 'configs', 'EXPERIMENT_REGISTRY.json')
+PATIENT_RESULTS = os.path.join(RESULTS, 'patient_bootstrap')
+# Resampling unit of every interval and test in the tables: 'patient' (the paper's choice, read from
+# results/patient_bootstrap/, written by scripts/patient_bootstrap.py) or 'slide' (the stage outputs).
+# Point estimates are identical under both; set from --unit in main().
+UNIT = 'patient'
 OUT = os.path.join(PAPER, 'appendix_controlled_experiments_tables.tex')
 
 MODEL_ORDER = ['Apollo', 'RF_Standard', 'XGBoost', '1D_CNN']
@@ -160,7 +168,12 @@ def _derive_bag_sens_spec(fm):
         fm['bag_specificity'] = float(sum(spec_list) / len(spec_list))
 
 
-def latest(exp, candidate):
+PATIENT_INTERVAL_KEYS = ('bag_boot_mean_diff', 'bag_ci_diff_lo', 'bag_ci_diff_hi', 'bag_p_bootstrap',
+                         'bag_significant_95')
+PATIENT_CBR_KEYS = ('cbr_bag_boot_mean', 'cbr_bag_ci_lo', 'cbr_bag_ci_hi')
+
+
+def _latest_slide(exp, candidate):
     pat = os.path.join(RESULTS, exp, 'statistical_eval',
                        f'statistical_evaluation_TRTR_vs_{candidate}_*.json')
     files = glob.glob(pat)
@@ -168,6 +181,45 @@ def latest(exp, candidate):
         return None
     files.sort(key=lambda f: re.search(r'(\d{8}_\d{6})', f).group(1))
     return json.load(open(files[-1]))
+
+
+def latest(exp, candidate):
+    """Stats-eval result of TR/TR vs ``candidate`` for one experiment. With UNIT == 'patient' the
+    intervals, p-values and significance flags come from the patient-level bootstrap; the point
+    estimates must agree with the slide-level file (asserted)."""
+    res = _latest_slide(exp, candidate)
+    if res is None or UNIT == 'slide':
+        return res
+    path = os.path.join(PATIENT_RESULTS, exp, f'regimen_TRTR_vs_{candidate}.json')
+    if not os.path.exists(path):
+        raise SystemExit(f'{path} not found: run `python scripts/patient_bootstrap.py --stage all` '
+                         f'(or pass --unit slide)')
+    pat = json.load(open(path))
+    by_model = {r['model']: r for r in pat['results']}
+    for r in res['results']:
+        q = by_model.get(r['model'])
+        if q is None:   # the CbR entry is overlaid separately below
+            continue
+        for key in ('bag_acc_TRTR', f'bag_acc_{candidate}', 'bag_delta'):
+            assert abs(r[key] - q[key]) < 1e-9, f'{exp}/{candidate}/{r["model"]}: {key} differs between units'
+        r.update({k: q[k] for k in PATIENT_INTERVAL_KEYS})
+    if res.get('cbr') and pat.get('cbr'):
+        assert abs(res['cbr']['cbr_bag_accuracy'] - pat['cbr']['cbr_bag_accuracy']) < 1e-9, \
+            f'{exp}: CbR accuracy differs between units'
+        res['cbr'].update({k: pat['cbr'][k] for k in PATIENT_CBR_KEYS})
+    return res
+
+
+def _boot_desc():
+    """Caption wording of the resampling unit."""
+    if UNIT == 'patient':
+        return 'cluster bootstrap over patients (all slides of a drawn patient together)'
+    return r'bootstrap over the $n=59$ bag decisions'
+
+
+def _unit_path(exp, *parts):
+    """Patient-level copy of a per-experiment result file."""
+    return os.path.join(PATIENT_RESULTS, exp, *parts)
 
 
 def fnum(x, signed=False):
@@ -377,8 +429,8 @@ def beta_table_latex(exps=BETA_TABLE_EXPS):
     L += [r'\bottomrule', r'\end{tabular*}',
           r'\note{Regimens: TR/TR (real-only), TS/TR (synthetic-only), TSR/TR (synthetic + real), '
           r'CbR (Classification by Reconstruction). All metrics are bag-level ($n=59$ slides, '
-          r'majority vote). $\Delta$ and 95\% CI: class-stratified bootstrap difference in accuracy '
-          r'vs.\ TR/TR (1000 iterations); (*) = CI excluding zero. Balanced accuracy, sensitivity '
+          r'majority vote). $\Delta$ and 95\% CI: difference in accuracy vs.\ TR/TR from a class-stratified '
+          + _boot_desc() + r' (1000 iterations); (*) = CI excluding zero. Balanced accuracy, sensitivity '
           r'(IDH-wildtype recall), specificity (IDH-mutant recall) and AUC are point estimates. '
           r'TR/TR is real-only and independent of $\beta$ (one line per model). CbR reports its own '
           r'accuracy and 95\% CI; its AUC ranks the bags by the mean over their spectra of the normalised '
@@ -456,8 +508,18 @@ def recon_loss_table_latex(exps=RECON_TABLE_EXPS):
 RATIO_TABLE_EXPS = ['exp_705', 'exp_608', 'exp_706', 'exp_707']   # synthetic:real = 0.5, 1, 2, 3
 POOL_TSTR_EXPS = ['exp_608', 'exp_708']                           # 40k, 80k synthetic spectra (TS/TR)
 RATIO_TABLE_OUT = os.path.join(PAPER, 'results_synth_ratio_table.tex')
-POOL_BOOT_JSON = os.path.join(RESULTS, 'synth_pool_bootstrap', 'pairwise_pool_size_bootstrap.json')
-LATENT_BOOT_JSON = os.path.join(RESULTS, 'latent_dim_bootstrap', 'pairwise_latent_dim_bootstrap.json')
+
+
+def _pool_boot_json():
+    return (os.path.join(PATIENT_RESULTS, 'pairwise_pool_size.json') if UNIT == 'patient' else
+            os.path.join(RESULTS, 'synth_pool_bootstrap', 'pairwise_pool_size_bootstrap.json'))
+
+
+def _latent_boot_json():
+    return (os.path.join(PATIENT_RESULTS, 'pairwise_latent_dim.json') if UNIT == 'patient' else
+            os.path.join(RESULTS, 'latent_dim_bootstrap', 'pairwise_latent_dim_bootstrap.json'))
+
+
 BOOT_APPENDIX_OUT = os.path.join(PAPER, 'appendix_bootstrap_tables.tex')
 POOL_LABEL = {'exp_608': '40k', 'exp_708': '80k'}   # synthetic spectra per fold in the TS/TR pool
 
@@ -477,8 +539,8 @@ def synth_ratio_table_latex(exps=RATIO_TABLE_EXPS, pool_exps=POOL_TSTR_EXPS):
     ratios = [EXP_PARAMS[e]['ratio'] for e in exps]
 
     pool_sig = {}
-    if os.path.exists(POOL_BOOT_JSON):
-        pool_sig = {t['model']: t['significant_95'] for t in json.load(open(POOL_BOOT_JSON))['tests']}
+    if os.path.exists(_pool_boot_json()):
+        pool_sig = {t['model']: t['significant_95'] for t in json.load(open(_pool_boot_json()))['tests']}
 
     L = [r'\begin{table}[H]', r'\centering', r'\small',
          r'\caption{Bag-level accuracy ($n=59$ slides) of the downstream classifiers trained on '
@@ -522,16 +584,16 @@ def bootstrap_appendix_tables_latex():
     """Appendix tables of the pairwise bag-level bootstrap tests: latent dimension (16 tests)
     and TS/TR synthetic-pool size (4 tests). Read from the result JSONs written by
     scripts/latent_dim_pairwise_bootstrap.py and scripts/synth_pool_pairwise_bootstrap.py."""
-    lat = json.load(open(LATENT_BOOT_JSON))['tests']
-    pool = json.load(open(POOL_BOOT_JSON))['tests']
+    lat = json.load(open(_latent_boot_json()))['tests']
+    pool = json.load(open(_pool_boot_json()))['tests']
     by = {(t['regimen'], t['model'], t['comparison']): t for t in lat}
     comps = [('d=16 vs d=32', r'$16 \to 32$'), ('d=32 vs d=64', r'$32 \to 64$')]
 
     L = [r'\begin{table}[H]', r'\centering', r'\scriptsize',
          r'\caption{Pairwise bag-level bootstrap between CVAE latent dimensions ($\beta=0.5$, '
          r'\texttt{latent\_dim} $d\in\{16,32,64\}$). $\Delta$ is the bag accuracy at the larger $d$ minus '
-         r'at the smaller $d$, with its 95\% CI from the class-stratified bootstrap over the $n=59$ bag '
-         r'decisions (1000 iterations, paired); (*) marks a CI excluding zero.}',
+         r'at the smaller $d$, with its 95\% CI from the class-stratified ' + _boot_desc() +
+         r' (1000 iterations, paired); (*) marks a CI excluding zero.}',
          r'\label{tab:ctrl_boot_latent}',
          r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc}',
          r'\toprule',
@@ -663,8 +725,39 @@ PENDING = r'\emph{pending}'
 
 def _paired_spatial(exp):
     """Per-fit paired real-vs-shuffled spatial tests (scripts/spatial_paired_real_vs_shuffled.py)."""
-    path = os.path.join(RESULTS, exp, 'spatial_validation', 'spatial_paired_real_vs_shuffled.json')
+    path = _spatial_paired_path(exp)
     return json.load(open(path))['fits'] if os.path.exists(path) else {}
+
+
+def _spatial_paired_path(exp):
+    return (_unit_path(exp, 'spatial_paired.json') if UNIT == 'patient' else
+            os.path.join(RESULTS, exp, 'spatial_validation', 'spatial_paired_real_vs_shuffled.json'))
+
+
+def _key_instance_paired_path(exp):
+    return (_unit_path(exp, 'key_instance_paired.json') if UNIT == 'patient' else
+            os.path.join(RESULTS, exp, 'mil_eval', 'key_instance_paired.json'))
+
+
+def _key_instance_summary(exp):
+    """Bag accuracies of the key-instance test, computed from the per-slide predictions that
+    scripts/cvae_weighted_rf_vote.py writes: {'baseline_bag_acc': the naive MIL RF,
+    <tier key>: {'key_instance_train': selected instances, 'random_subsample': random subset}}."""
+    import numpy as np
+    out = {}
+    for _label, stem, key in MIL_TESTS_TIERS:
+        path = os.path.join(RESULTS, exp, 'mil_eval', 'key_instance_per_slide', stem + '.json')
+        if not os.path.exists(path):
+            continue
+        j = json.load(open(path))
+        y = np.asarray(j['y_true'])
+
+        def acc(k):
+            return round(float(np.mean(np.asarray(j[k]) == y)), 4)
+        out.setdefault('baseline_bag_acc', acc('naive'))
+        assert out['baseline_bag_acc'] == acc('naive'), f'{exp}: tiers disagree on the naive MIL accuracy'
+        out[key] = {'key_instance_train': acc('selected'), 'random_subsample': acc('random')}
+    return out
 
 
 def _paired_cells(t):
@@ -678,8 +771,8 @@ def _paired_cells(t):
 
 def mil_tests_table_latex(exp='exp_608'):
     """Status table of the MIL validation tests for one configuration. Every cell is
-    read from result files (spatial_paired_real_vs_shuffled.json,
-    key_instance_utility_summary.json); a test whose result does not exist yet is shown
+    read from result files (the paired spatial tests and the per-slide key-instance
+    predictions); a test whose result does not exist yet is shown
     as 'pending', so re-running this generator after the missing jobs finish fills the
     table in with no manual edits.
 
@@ -687,13 +780,12 @@ def mil_tests_table_latex(exp='exp_608'):
     95% bootstrap CI above zero on BOTH Moran's I and the standardized variogram. Key-instance verdict: the
     RF trained on the selected instances vs. the naive MIL benchmark (the same RF
     trained on all instances, all of them voting), compared exactly."""
-    ki = json.load(open(os.path.join(RESULTS, exp, 'mil_eval', 'key_instance_utility_summary.json')))
+    ki = _key_instance_summary(exp)
     paired = _paired_spatial(exp)
     naive = ki['baseline_bag_acc']
 
     sp_rows, ki_rows = [], []
-    paired_boot = (json.load(open(os.path.join(RESULTS, exp, 'spatial_validation', 'spatial_paired_real_vs_shuffled.json')))['n_boot']
-                   if paired else 0)
+    paired_boot = json.load(open(_spatial_paired_path(exp)))['n_boot'] if paired else 0
     for label, stem, ki_key in MIL_TESTS_TIERS:
         t = paired.get(stem) or {}
         t_i, t_v = t.get('morans_i'), t.get('one_minus_gamma_over_var')
@@ -706,7 +798,7 @@ def mil_tests_table_latex(exp='exp_608'):
         if k:
             sel, rnd = k['key_instance_train'], k['random_subsample']
             verdict = lambda a, b: 'tie' if a == b else ('yes' if a > b else 'no')
-            ki_cells = (f'${sel:.4f}$ & ${naive:.4f}$ & ${rnd:.4f}$ & '
+            ki_cells = (f'${sel:.3f}$ & ${naive:.3f}$ & ${rnd:.3f}$ & '
                         f'{verdict(sel, naive)} & {verdict(sel, rnd)}')
         else:
             ki_cells = ' & '.join([PENDING] * 5)
@@ -722,7 +814,7 @@ def mil_tests_table_latex(exp='exp_608'):
           r'$1-\hat\gamma_3/\hat\sigma^2$ (same scale as $I$; higher is more coherent), at Chebyshev lag 3, '
           r'per slide, for the real fit and for a refit under shuffled bag labels. Means are over the '
           r'slides where both fits are defined. $\Delta$ is the mean paired per-slide difference '
-          r'(real $-$ shuffled) with its 95\% CI from a bootstrap over slides '
+          r'(real $-$ shuffled) with its 95\% CI from a ' + _boot_desc() + ' '
           r'(' + str(paired_boot) + r' resamples); (*) marks a CI above zero. '
           r'The verdict is yes only if both statistics are starred.}',
           r'\label{tab:mil_tests_status}',
@@ -770,7 +862,7 @@ def spatial_paired_table_latex(exps=MIL_APPENDIX_EXPS):
          r'\caption{Paired per-slide spatial-coherence test, real fit vs.\ shuffled-bag-label refit, at '
          r'Chebyshev lag 3: Moran' + r"'s $I$ and $1-\hat\gamma_3/\hat\sigma^2$ " +
          r'(higher is more coherent). Means are over the slides where both fits are defined; $\Delta$ is '
-         r'the mean per-slide difference (real $-$ shuffled) with its 95\% CI from a bootstrap over slides '
+         r'the mean per-slide difference (real $-$ shuffled) with its 95\% CI from a ' + _boot_desc() + ' '
          r'(10,000 resamples). (*) marks a CI above zero; the verdict is yes only if both statistics are '
          r'starred.}',
          r'\label{tab:spatial_paired}',
@@ -871,23 +963,24 @@ def mil_experiment_tables_latex(exp):
     sp = _bottom_caption_table(
         [r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc}', r'\toprule',
          r' & \multicolumn{3}{c}{\emph{Moran\textquotesingle{}s $I$}} & '
-         r'\multicolumn{3}{c}{\emph{Variogram range}} \\',
+         r'\multicolumn{3}{c}{\emph{$1-\hat\gamma_3/\hat\sigma^2$}} \\',
          r'\cmidrule(lr){2-4} \cmidrule(lr){5-7}',
          r'\emph{Model} & \emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & '
          r'\emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} \\',
          r'\midrule'] + sp_rows + [r'\bottomrule', r'\end{tabular*}'],
         _red(r'Spatial coherence of the MIL posterior maps, ' + where + r": Moran's $I$ and the "
-             r'variogram range at Chebyshev lag 3 (higher is more coherent), real fit vs.\ '
+             r'standardized variogram $1-\hat\gamma_3/\hat\sigma^2$ at Chebyshev lag 3 (higher is more coherent), real fit vs.\ '
              r'shuffled-bag-label refit, averaged over the slides where both are defined. $\Delta$ is the '
-             r'mean per-slide difference (real $-$ shuffled) with its 95\% bootstrap CI over slides; (*) '
+             r'mean per-slide difference (real $-$ shuffled) with its 95\% CI from a ' + _boot_desc() + r'; (*) '
              r'marks a CI above zero. The real fit is more coherent than its control only if both '
              r'statistics are starred.'),
         f'tab:ctrl_spatial_{short}', notes=sp_note, pre=[r'\setlength{\tabcolsep}{1.5pt}'])
 
     # 3. key-instance utility (paired per-slide bootstrap, scripts/key_instance_paired_bootstrap.py)
-    p = os.path.join(RESULTS, exp, 'mil_eval', 'key_instance_paired.json')
+    p = _key_instance_paired_path(exp)
     paired_ki = json.load(open(p))['tiers'] if os.path.exists(p) else {}
-    ki_rows, fell_back, n_boot, naive_acc = [], [], 10000, set()
+    n_boot = json.load(open(p))['n_boot'] if os.path.exists(p) else 0
+    ki_rows, fell_back, naive_acc = [], [], set()
     for label, stem, _ in MIL_TESTS_TIERS:
         r = paired_ki.get(stem)
         if r is None:
@@ -916,7 +1009,7 @@ def mil_experiment_tables_latex(exp):
         _red(r'Key-instance utility, ' + where + r': bag accuracy of a random forest trained only on the '
              r'instances a tier selects (median split on non-diagnostic mass) and voting with the selected '
              r'validation instances, against the na\"{\i}ve MIL benchmark. $\Delta$ is the paired per-slide '
-             r'accuracy difference (tier $-$ na\"{\i}ve) with its 95\% CI from a bootstrap over slides '
+             r'accuracy difference (tier $-$ na\"{\i}ve) with its 95\% CI from a ' + _boot_desc() + ' '
              r'(' + f'{n_boot:,}' + r' resamples); (*) marks a CI above zero, i.e.\ the tier is better than the na\"{\i}ve benchmark.'),
         f'tab:ctrl_keyinst_{short}', notes=ki_note)
 
@@ -999,4 +1092,8 @@ if __name__ == '__main__':
                     action='store_true',
                     help='write only the main-text Results tables ($PAPER_DIR/results_beta_table.tex, '
                          '$PAPER_DIR/results_latent_dim_table.tex), leaving the appendix tables file untouched')
-    main(results_tables_only=ap.parse_args().results_tables_only)
+    ap.add_argument('--unit', choices=('patient', 'slide'), default='patient',
+                    help='resampling unit of the intervals (default: patient, as in the paper)')
+    args = ap.parse_args()
+    UNIT = args.unit
+    main(results_tables_only=args.results_tables_only)

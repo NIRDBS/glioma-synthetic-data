@@ -1,41 +1,17 @@
-"""Raman spectrum preprocessing, v3: raw cube -> modelling HDF5, fixed-threshold mask.
+"""Raman preprocessing with a fixed maximum-intensity threshold: raw cube -> modelling HDF5.
 
-Same spirit as ``src/data/preprocessing_v2.py`` (fully automated, no NMF/GMM
-clustering, no manual tumour-cluster curation step) with exactly one
-difference: the strong-signal mask is a **fixed** max-intensity threshold
-(default 0.4) instead of v2's adaptive, per-slide percentile rule
-(``compute_strong_signal_mask``). Confirmed directly (not assumed): v1's
-*current* default dataset (``glioma_mil.h5``) already corresponds to this
-same fixed-threshold family at threshold=0.6 -- its precomputed
-``strong_signal_mask.npy`` artifacts were produced by
-``_archive/dev_scripts/batch_process_all_slides.py``'s
-``mask_strong = np.max(data_normalized, axis=1) >= SIGNAL_THRESHOLD``
-(``SIGNAL_THRESHOLD = 0.6``), i.e. the exact same rule as
-:func:`compute_fixed_threshold_mask` here with ``threshold=0.6`` -- the
-NMF/GMM step downstream of that only separates tumour-vs-other tissue
-*within* the already-thresholded strong-signal pixels, it does not define
-the strong-signal gate itself. This module exists to test a lower threshold
-(0.4, wider than v1's effective 0.6) in the same fully-automated style as v2,
-after an informal 0.6-vs-0.8 comparison found looser cuts performing better
--- counter to the intuitive expectation that lower-intensity signal should
-be lower quality.
-
-Pipeline (identical to v2 except step 4):
+Identical to ``preprocessing_v2`` except for step 4:
     1. Load the raw cube.
-    2. 3x3 spatial median filter (unchanged from v1/v2).
-    3. :func:`src.data.preprocessing_v2.cube_normalize` (reused directly, not
-       reimplemented, so both versions stay numerically identical on this step).
-    4. **Fixed threshold** on per-pixel max intensity
-       (:func:`compute_fixed_threshold_mask`) -- replaces v2's adaptive mask.
-    5. IARPLS baseline-correct the masked pixels' spectra (on the raw,
-       median-filtered scale -- never the [0,1]-clipped one, same reasoning
-       as v2's ``cube_normalize`` docstring).
-    6. Persist the per-slide mask (optional, for inspectability) and write
-       the output HDF5 (``RamanPreprocessorV3.run``).
+    2. 3x3 spatial median filter.
+    3. ``preprocessing_v2.cube_normalize`` (used only to compute the mask).
+    4. Keep the spectra whose maximum normalised intensity is >= the threshold
+       (``compute_fixed_threshold_mask``).
+    5. IARPLS baseline correction of the kept spectra on the raw, median-filtered scale, then
+       per-spectrum min-max normalisation.
+    6. Optionally persist each slide's mask, and write the HDF5 (``RamanPreprocessorV3.run``).
 
-Does **not** modify or replace ``preprocessing.py``/``preprocessing_v2.py`` --
-produces a separate file (conventionally ``glioma-preproc-3.h5``), same
-narrow schema as v2 (no ``tissue_cluster``/``viable_legacy`` columns).
+Threshold 0.60 gives the paper's main dataset (``glioma_mil.h5``, 288,678 spectra); threshold 0.40
+gives ``glioma-preproc-3.h5`` (exp_4.608). The default is 0.40.
 """
 
 from __future__ import annotations
@@ -49,8 +25,7 @@ import pandas as pd
 from scipy.ndimage import median_filter
 from tqdm import tqdm
 
-from src.data.preprocessing import _extract_ids
-from src.data.preprocessing_v2 import cube_normalize
+from src.data.preprocessing_v2 import _extract_ids, cube_normalize
 from src.preprocessing.baseline import IARPLS_LAMBDA, correct_iarpls
 
 __all__ = [
@@ -257,7 +232,7 @@ class RamanPreprocessorV3:
 
             h5f.attrs["baseline_method"] = "iarpls"
             h5f.attrs["baseline_lambda"] = float(self.baseline_lambda)
-            h5f.attrs["baseline_lambda_status"] = "provisional"  # see docs/stage0_findings.md 7.1
+            h5f.attrs["baseline_lambda_status"] = "provisional"  # see the paper, Appendix: Baseline Correction
             h5f.attrs["median_kernel"] = self.median_kernel
             h5f.attrs["fixed_threshold"] = float(self.threshold)
             h5f.attrs["n_slides"] = len(results)

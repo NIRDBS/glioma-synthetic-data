@@ -146,33 +146,6 @@ def load_and_predict_proba(path: str, model_type: str, X: np.ndarray) -> np.ndar
         raise ValueError(f"Unknown model type: '{model_type}'")
 
 
-def get_fold_specific_predictions(preds_by_fold, patient_ids, patient_to_fold):
-    """
-    Extract fold-specific predictions with no data leakage.
-    
-    For each patient, uses ONLY the predictions from the fold where that patient
-    was in the validation set (i.e., the fold whose model was trained WITHOUT that patient).
-    
-    This ensures honest evaluation: no patient is evaluated by a model that trained on them.
-    
-    Args:
-        preds_by_fold: (n_folds, n_samples) array of predictions from each fold's model
-        patient_ids: (n_samples,) array of patient IDs
-        patient_to_fold: dict mapping patient_id -> fold_idx (patient's validation fold)
-    
-    Returns:
-        np.ndarray: (n_samples,) array where preds[i] comes from the model trained on
-                    patient_ids[i]'s validation fold (not their training folds)
-    """
-    preds = np.zeros(len(patient_ids), dtype=int)
-    
-    for i, patient_id in enumerate(patient_ids):
-        fold_j = patient_to_fold[patient_id]
-        preds[i] = preds_by_fold[fold_j][i]
-    
-    return preds
-
-
 def within_bag_instance_recall(preds, y_true, bag_ids):
     """
     Mean of per-(bag, class) instance accuracies — E_bag[fraction of a bag's
@@ -182,7 +155,7 @@ def within_bag_instance_recall(preds, y_true, bag_ids):
     **This is a diagnostic, not a bag-level accuracy.** It answers "how much of
     a bag's spectra get the bag's own label under the naive assumption that
     every instance in a bag carries that bag's label" — which is precisely the
-    assumption the MIL reframing exists to retire (docs/MIL_REFRAME_PLAN.md §7).
+    assumption the MIL reframing exists to retire.
     No instance-level ground truth exists in this dataset, so this number is not
     validated against anything; it is a property of the naive pooling, kept for
     continuity with pre-reframe results. For the actual clinical claim (one
@@ -221,14 +194,14 @@ def bag_decisions(preds, bag_ids, y_true=None, rule='majority'):
 
     ``rule='majority'``: each bag's decision is the mode of its instances'
     predicted labels (ties broken by ``np.bincount().argmax()``, i.e. lowest
-    label index). This is Tier 0's majority-vote pooling
-    (docs/MIL_REFRAME_PLAN.md §4); it was previously computed inline in
+    label index). This is naive MIL's majority-vote pooling;
+    it was previously computed inline in
     ``_slide_level_metrics`` only to build the confusion matrix and discarded
     otherwise -- this is that same computation, factored out and reused for the
     genuine bag-level metrics below.
 
-    Bags spanning more than one CV fold (duplicated in ``manual_splits.json`` --
-    docs/stage1_data_layer.md, or MIL_REFRAME_PLAN.md §7.1) need no special
+    Bags spanning more than one CV fold (duplicated in ``manual_splits.json``)
+    need no special
     handling under majority vote specifically: pooling every instance from every
     fold a bag appears in and voting once is mathematically identical to voting
     per fold and averaging the fold-level vote-count vectors, whenever the bag
@@ -275,7 +248,7 @@ def bag_decisions(preds, bag_ids, y_true=None, rule='majority'):
 def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
     """
     Two separate metric sets in one dict, at two different units of analysis --
-    do not mix them when reading this (docs/MIL_REFRAME_PLAN.md §7):
+    do not mix them when reading this:
 
     **Bag-level** (``bag_*`` keys, plus ``confusion_matrix``) -- the actual
     clinical claim. One majority-vote decision per bag (``bag_decisions``), then
@@ -283,7 +256,7 @@ def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
     recall, kappa) computed on those ``n_bags`` decisions against the ``n_bags``
     true labels. These are genuine, non-degenerate multiclass metrics -- no
     instance-level ground truth is assumed or required. ``auroc``/``auprc`` use
-    per-bag mean-pooled probabilities (Tier 0's mean-posterior rule) ranked
+    per-bag mean-pooled probabilities (naive MIL's mean-posterior rule) ranked
     against the bag labels.
 
     **Within-bag instance diagnostics** (``within_bag_instance_recall``,
@@ -300,8 +273,7 @@ def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
     (was upward-biased and non-monotone in accuracy -- it silently dropped bags
     with 0% within-bag accuracy, e.g. ``results/exp_401``'s
     ``f1_macro=0.926`` beside ``accuracy=0.431``). All three now name genuine
-    bag-level quantities instead (see docs/stage0_findings.md-style writeup at
-    docs/MIL_REFRAME_PLAN.md §7 for the derivation of each bug).
+    bag-level quantities instead.
     """
     y_true = np.asarray(y_true)
     preds = np.asarray(preds)
@@ -395,22 +367,9 @@ def _slide_level_metrics(y_true, preds, slide_ids, proba=None):
     return m
 
 
-def stratified_slide_metrics(preds, y_true, slide_ids):
-    """Deprecated: use ``_slide_level_metrics(...)``'s ``bag_f1_macro`` /
-    ``bag_precision_macro`` / ``bag_recall_macro`` keys directly. Kept only so
-    nothing importing this name at module load time breaks; not used by the
-    live pipeline (grepped: no callers outside this module)."""
-    full = _slide_level_metrics(y_true, preds, slide_ids)
-    return {
-        'f1_macro': full['bag_f1_macro'],
-        'precision_macro': full['bag_precision_macro'],
-        'recall_macro': full['bag_recall_macro'],
-    }
-
-
 # ============================================================================
-# SECTION 1c: Tier 0 -- naive-MIL aggregation baselines
-# (docs/MIL_REFRAME_PLAN.md §4). Pools per-instance probabilities the existing
+# SECTION 1c: naive MIL -- naive-MIL aggregation baselines
+# Pools per-instance probabilities the existing
 # TRTR/TSTR/TSRTR models already emit -- no new training. Everything else in
 # the MIL programme must beat these.
 # ============================================================================
@@ -420,7 +379,7 @@ def pool_instance_scores(proba, bag_ids, rule='mean', topq_fraction=0.1, lse_tem
     Pool per-instance class probabilities into one (K,) score vector per bag,
     WITHOUT taking a final argmax -- returning scores (not decisions) lets
     ``aggregate_bag_scores_across_folds`` average a duplicated bag's per-fold
-    scores before deciding once, per docs/MIL_REFRAME_PLAN.md §7.1.
+    scores before deciding once.
 
     rule:
       'mean'     -- mean-posterior: bag score = mean of instance probabilities.
@@ -435,7 +394,7 @@ def pool_instance_scores(proba, bag_ids, rule='mean', topq_fraction=0.1, lse_tem
                     class (the "witness fraction" baseline). A **fraction** of
                     the bag's own instance count, not a fixed count -- a fixed
                     count would favour large bags (more chances at one
-                    high-scoring instance); MIL_REFRAME_PLAN.md §4.
+                    high-scoring instance).
 
     Returns ``(bag_ids_sorted, scores)``, ``scores`` shape ``(n_bags, K)``, each
     row summing to 1 so different bags'/rules'/folds' scores are comparable and
@@ -480,8 +439,8 @@ def pool_instance_scores(proba, bag_ids, rule='mean', topq_fraction=0.1, lse_tem
 
 def aggregate_bag_scores_across_folds(fold_data, rule='mean', **rule_kwargs):
     """
-    Tier 0 pooling with the duplicate-bag cross-fold averaging rule
-    (docs/MIL_REFRAME_PLAN.md §7.1): 4 bags in ``manual_splits.json`` appear in
+    naive MIL pooling with the duplicate-bag cross-fold averaging rule:
+    4 bags in ``manual_splits.json`` appear in
     two CV folds' validation sets each (forced by 6-class stratification over
     classes with only 4 patients). Each gets one score per fold it appears in;
     those per-fold scores are averaged before the final decision, so it is not
@@ -496,7 +455,7 @@ def aggregate_bag_scores_across_folds(fold_data, rule='mean', **rule_kwargs):
     for all four rules, both because 'lse' and 'topq' are not linear in this
     sense (top-q over pooled instances != averaging two folds' top-q means) and
     because that equivalence is meant as a validation check on this function
-    (tests/test_stage2_evaluation.py), not as the implementation strategy.
+    (tests/test_bag_level_metrics.py), not as the implementation strategy.
 
     Args:
         fold_data: list of dicts, each with 'proba' (n_i, K), 'y_true' (n_i,),
@@ -536,8 +495,8 @@ def bag_level_bootstrap(bag_pred_A, bag_pred_B, bag_true, n_boot=1000, seed=42):
     """
     Class-stratified bootstrap over BAG decisions (not instances, not the
     within-bag-instance-recall statistic) -- the primary-inference CI for the
-    reframed metrics (docs/MIL_REFRAME_PLAN.md §7.1's "CI from the existing
-    stratified_slide_bootstrap, now resampling bag decisions").
+    reframed metrics (the CI from the existing
+    stratified_slide_bootstrap, now resampling bag decisions).
 
     Implemented by reusing ``stratified_slide_bootstrap`` with each bag as its
     own singleton "slide" (``bag_ids = np.arange(len(bag_true))``): that
@@ -844,7 +803,7 @@ def paired_cluster_test(d, slide_ids, y_slide, n_boot=10000, seed=42, cluster_un
 
 # Scalar metrics emitted (in order) to the flat CSV, per regimen. Bag-level
 # (bag_*) is the headline; the rest are within-bag instance diagnostics, kept
-# for continuity with pre-reframe reporting (docs/MIL_REFRAME_PLAN.md §7).
+# for continuity with pre-reframe reporting.
 # 'accuracy'/'balanced_accuracy' no longer appear here: pre-Stage-2 they were
 # aliases of the diagnostic 'within_bag_instance_recall' (the three were
 # literally the same float); that ambiguity is exactly what the rename fixes,
@@ -862,9 +821,9 @@ def compute_full_metrics(y_true, preds, proba=None, slide_ids=None):
     """
     Full metric set for one model/regimen.
 
-    When ``slide_ids`` is supplied (the default in both the pipeline and notebook
-    09) metrics are computed at **two separate levels** via ``_slide_level_metrics``
-    (docs/MIL_REFRAME_PLAN.md §7) -- see that function's docstring for the full
+    When ``slide_ids`` is supplied (the default in the pipeline) metrics are computed
+    at **two separate levels** via ``_slide_level_metrics``
+    -- see that function's docstring for the full
     split. In short: ``bag_*`` keys (``bag_accuracy``, ``bag_balanced_accuracy``,
     ``bag_f1_macro``, ``bag_precision_macro``, ``bag_recall_macro``, ``bag_kappa``,
     ``bag_sensitivity``/``bag_specificity`` for binary tasks,
@@ -956,7 +915,7 @@ def build_summary_rows(results, baseline_label, candidate_label):
     ``bag_ci_diff_lo/hi``, ``bag_p_bootstrap``, ``bag_significant_95``) are the
     primary inference. ``within_bag_instance_recall_*`` columns are the demoted
     diagnostic, kept for continuity with pre-reframe reporting -- not a bag
-    accuracy (docs/MIL_REFRAME_PLAN.md §7). Each model row is expected to carry
+    accuracy. Each model row is expected to carry
     both sets plus ``full_metrics_{label}`` dicts (see
     ``pipeline/evaluation_stage.py``). A Classification by Reconstruction row
     (model == 'Classification_by_Reconstruction') is handled separately with
@@ -1020,119 +979,6 @@ def build_summary_rows(results, baseline_label, candidate_label):
 # ============================================================================
 # SECTION 2: CVAE Classification by Reconstruction (CbR) Functions
 # ============================================================================
-
-def compute_cbr_predictions_per_fold(loader, cvae_config, model_dir, n_folds):
-    """
-    Extract per-fold Classification by Reconstruction predictions.
-    
-    For each fold:
-    1. Load validation data (X_val, y_val, sample_names)
-    2. Load CVAE encoder/decoder for that fold
-    3. Encode X_val -> z_mean
-    4. For each class k: decode(z_mean, class_k) -> reconstruct X_k
-    5. Calculate MSE for each class -> argmin(MSE) = predicted class
-    6. Return predictions and metadata
-    
-    Args:
-        loader: GliomaDataLoader iterator yielding fold_data dicts
-        cvae_config: Configuration dict for CVAE architecture
-        model_dir: Directory containing CVAE weights (encoder_fold_X.weights.h5, decoder_fold_X.weights.h5)
-        n_folds: Number of cross-validation folds
-    
-    Returns:
-        tuple:
-            - cbr_preds_all: (n_samples,) array of CbR predictions across all folds
-            - cbr_sample_names: (n_samples,) array of sample names (for patient ID extraction)
-            - cbr_classes_all: (n_samples,) array of true class labels
-    """
-    cbr_preds_all = []
-    cbr_sample_names_all = []
-    cbr_classes_all = []
-    
-    print("\n" + "="*70)
-    print("PHASE 1: Computing Classification by Reconstruction per-fold")
-    print("="*70)
-    
-    for fold_data in loader:
-        fold_name = fold_data['fold_name']
-        print(f"\n{fold_name}...")
-        
-        # Unpack validation data
-        X_val = fold_data['val'][0].astype(np.float32)
-        y_val = fold_data['val'][1]
-        sample_names = fold_data['val'][2] if len(fold_data['val']) > 2 else None
-        
-        # Fix 1-indexed to 0-indexed if necessary
-        if np.min(y_val) == 1:
-            y_val = y_val - 1
-        
-        X_val_exp = np.expand_dims(X_val, axis=-1)  # (N, 1738, 1)
-        n_samples = X_val.shape[0]
-        
-        # Initialize CVAE
-        tf.keras.backend.clear_session()
-        cvae = CVAE(cvae_config)
-        cvae.compile(optimizer='adam')
-        
-        # Dummy batch to initialize shapes
-        n_features = cvae_config['input_shape'][0]
-        dummy_x = tf.zeros((2, n_features, 1))
-        num_classes = cvae_config.get('num_classes', 6)
-        dummy_y = tf.convert_to_tensor(
-            tf.keras.utils.to_categorical([0, 1], num_classes=num_classes),
-            dtype=tf.float32
-        )
-        cvae.train_step((dummy_x, dummy_y))
-        
-        # Load fold-specific weights
-        enc_path = f"{model_dir}/encoder_{fold_name}.weights.h5"
-        dec_path = f"{model_dir}/decoder_{fold_name}.weights.h5"
-        
-        if not os.path.exists(enc_path) or not os.path.exists(dec_path):
-            print(f"    CVAE weights not found for {fold_name}. Skipping CbR for this fold.")
-            continue
-        
-        cvae.encoder.load_weights(enc_path)
-        cvae.decoder.load_weights(dec_path)
-        
-        encoder = cvae.encoder
-        decoder = cvae.decoder
-        
-        # PHASE 1: ENCODE
-        z_mean, _, _, _ = encoder.predict(X_val_exp, batch_size=256, verbose=0)
-        
-        # PHASE 2: DECODE (for each class) and compute MSE
-        mse_scores = np.zeros((n_samples, num_classes), dtype=np.float32)
-        for class_idx in range(num_classes):
-            requested_classes = tf.convert_to_tensor(
-                tf.keras.utils.to_categorical([class_idx] * n_samples, num_classes=num_classes),
-                dtype=tf.float32
-            )
-            reconstructed = decoder.predict([z_mean, requested_classes], batch_size=256, verbose=0)
-            reconstructed = np.squeeze(reconstructed, axis=-1)
-            mse_scores[:, class_idx] = np.mean((X_val - reconstructed)**2, axis=1)
-        
-        # PHASE 3: CLASSIFY by argmin(MSE)
-        y_pred_cbr = np.argmin(mse_scores, axis=1)
-        
-        cbr_preds_all.append(y_pred_cbr)
-        if sample_names is not None:
-            cbr_sample_names_all.append(sample_names)
-        cbr_classes_all.append(y_val)
-        
-        acc_cbr = accuracy_score(y_val, y_pred_cbr)
-        print(f"   Accuracy: {acc_cbr:.4f}")
-    
-    # Concatenate across folds
-    cbr_preds_all = np.concatenate(cbr_preds_all)
-    cbr_classes_all = np.concatenate(cbr_classes_all)
-    
-    if cbr_sample_names_all:
-        cbr_sample_names_all = np.concatenate(cbr_sample_names_all)
-    else:
-        cbr_sample_names_all = None
-    
-    return cbr_preds_all, cbr_sample_names_all, cbr_classes_all
 
 
 def stratified_slide_bootstrap_cbr(preds_cbr, y_true, slide_ids, n_boot=1000, seed=42):

@@ -2,7 +2,7 @@
 Configuration Manager for Experiment Settings
 
 Loads and validates YAML configuration files for glioma-synthetic-data experiments.
-Ensures consistent parameters across all notebooks in a pipeline.
+Ensures consistent parameters across all stages of a pipeline.
 """
 
 import os
@@ -21,17 +21,14 @@ class ConfigManager:
     
     Example:
         config = ConfigManager.load_config("exp_608")
-        lambda_param = config['preprocessing']['airpls_lambda']
+        crop_region = config['preprocessing']['crop_region']
     """
     
     # Default values for optional configuration parameters
     DEFAULTS = {
         'preprocessing': {
-            'airpls_lambda': 100,
-            'airpls_porder': 1,
             'signal_length': 1738,
             'crop_region': [700, 1800],
-            'ignore_samples': [],
         },
         'cv_strategy': {
             'use_group_aware_cv': True,
@@ -79,7 +76,6 @@ class ConfigManager:
     REQUIRED_FIELDS = [
         'name',
         'description',
-        'preprocessing.airpls_lambda',
         'preprocessing.signal_length',
         'preprocessing.crop_region',
         'cv_strategy.split_source',
@@ -262,8 +258,8 @@ class ConfigManager:
         Get a value from nested dictionary using dot notation.
         
         Example:
-            _get_nested(config, 'preprocessing.airpls_lambda')
-            -> config['preprocessing']['airpls_lambda']
+            _get_nested(config, 'preprocessing.crop_region')
+            -> config['preprocessing']['crop_region']
         
         Args:
             config: Dictionary to search
@@ -330,7 +326,7 @@ def get_experiment_config(experiment_name: str) -> ConfigManager:
     """
     Convenience function to load configuration by experiment name.
     
-    This is the primary entry point for loading configs in notebooks.
+    This is the primary entry point for loading configs.
     
     Args:
         experiment_name: Name of the experiment (without .yaml extension)

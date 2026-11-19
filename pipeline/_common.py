@@ -1,8 +1,8 @@
 """
 Shared helpers for the unified pipeline stages.
 
-These functions factor out the canonical logic used by notebook 02
-(02_Train_Classifiers.ipynb): config-driven loading, per-fold preparation
+These functions hold the logic shared by the classifier stages: config-driven
+loading, per-fold preparation
 (0-indexing fix, binary mapping, train-only patient cap), and the 4-model
 benchmark (Apollo / RandomForest / XGBoost / 1D-CNN). The stage modules
 (trtr/tstr/tsrtr) all delegate here so the training behaviour stays identical
@@ -52,12 +52,12 @@ class FoldArrays:
 
     Iterates as the historical 4-tuple ``(X_train, y_train, X_val, y_val)`` so every
     existing call site's ``X_train, y_train, X_val, y_val = prepare_fold(...)`` keeps
-    working unchanged. New code (Stage 4+ MIL fitting) reaches the per-instance
+    working unchanged. The MIL code reaches the per-instance
     coords/bag-ids by attribute instead of threading more positional returns:
     ``fd = prepare_fold(...); fd.train_coords, fd.train_bag_ids``.
 
-    Coords/bag-ids are ``None`` when the source HDF5 predates Stage 1 (no
-    ``coords`` dataset) -- callers that need them should check, not assume.
+    Coords/bag-ids are ``None`` when the source HDF5 has no ``coords``
+    dataset -- callers that need them should check, not assume.
     """
     X_train: np.ndarray
     y_train: np.ndarray
@@ -74,9 +74,9 @@ class FoldArrays:
 
 def prepare_fold(fold_data, config, cap_train=True):
     """
-    Prepare one CV fold exactly as notebook 02 does.
+    Prepare one CV fold for the classifier stages.
 
-    Order of operations (must match the notebook):
+    Order of operations:
       1. 0-indexing fix (labels stored 1..6 -> 0..5)
       2. Binary mapping when num_classes == 2  (y<3 -> 0 Mutant, else 1 Wildtype)
       3. Train-only per-slide cap (validation is never capped). This is a single
@@ -144,8 +144,8 @@ def _inner_validation_split(y, bag_ids=None, val_fraction=0.15, seed=42):
     """
     Carve an inner train/val split out of a fold's TRAINING data only, for the
     CNN's early-stopping monitor -- never the true held-out CV test fold
-    (docs/MIL_REFRAME_PLAN.md §7.2: "early-stops on the test fold itself... not
-    merely optimism -- restore_best_weights selects on held-out data").
+    (early-stopping on the test fold itself is not merely optimism:
+    restore_best_weights selects on held-out data).
 
     Group-aware when ``bag_ids`` identifies real slides (whole slides go
     entirely to one side, so the leakage this project's whole CV design exists
@@ -194,7 +194,7 @@ def train_four_models(X_train, y_train, X_val, y_val, config, model_dir, fold_na
         apollo_{fold}.joblib, rf_{fold}.joblib, xgb_{fold}.json, cnn_{fold}.keras
 
     Returns a dict {model_name: val_accuracy}. TensorFlow is imported lazily inside
-    the CNN block (matches the notebook; avoids Windows DLL load issues up front).
+    the CNN block (avoids Windows DLL load issues up front).
 
     ``train_bag_ids`` (optional): per-row slide id for ``X_train`` (``None`` for
     rows with no real slide, e.g. synthetic instances). Used only by the CNN's

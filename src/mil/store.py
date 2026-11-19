@@ -1,5 +1,5 @@
 """
-Latent-label store (docs/MIL_REFRAME_PLAN.md §3): every MIL formulation's
+Latent-label store: every MIL formulation's
 per-instance posterior, written to a sidecar HDF5 file next to (not inside)
 the main dataset -- results/{exp}/latent/latent_labels.h5. The main HDF5 is
 shared across experiments and must stay immutable; this file is the
@@ -9,7 +9,7 @@ Leakage rule -- this is the load-bearing part of §3. Index by fold: a bag in
 fold f's *validation* set gets its posterior from the fold-f model, which
 never saw it during fitting (in_sample=False for those rows). A bag in fold
 f's *training* set is in-sample by necessity (in_sample=True) -- legitimate
-for T3's CVAE conditioning, since that is train-side use. Enforced here with
+for conditioning on the training bags, since that is train-side use. Enforced here with
 an assertion at read time (assert_no_fold_leakage), not left as a convention
 callers might forget.
 """
@@ -121,7 +121,7 @@ def assert_no_fold_leakage(store_path, method, variant, fold_name, val_bag_ids_t
     belonging to this fold's OWN validation bags must be marked
     in_sample=False (scored by a model that did not train on them). A
     deliberately mismatched fold (passing another fold's validation bags)
-    must raise -- see tests/test_stage4_mil.py.
+    must raise -- see tests/test_mil.py.
     """
     data = read_posteriors(store_path, method, variant, fold_name)
     in_sample = data['in_sample']
@@ -139,19 +139,19 @@ def merge_out_of_sample_posterior(store_path, method, variant, fold_names):
     """
     Combine every fold's out-of-sample (in_sample=False) rows into one
     full-dataset (N, K+1) posterior -- the single leak-free estimate for each
-    instance, for consumers (Stage 5's spatial validation, T3's CVAE
-    conditioning) that want one posterior per instance rather than
+    instance, for consumers (the spatial-coherence test, conditioning
+    on the training bags) that want one posterior per instance rather than
     per-(fold, instance).
 
     Each instance is out-of-sample in exactly one fold, EXCEPT the 4 bags
-    docs/MIL_REFRAME_PLAN.md §7.1 documents as spanning two CV test folds --
+    that span two CV test folds --
     those get an out-of-sample estimate from both, which are averaged and
-    renormalised here (consistent with Stage 2's own duplicate-bag handling),
+    renormalised here (consistent with the duplicate-bag handling of the bag-level metrics),
     not arbitrarily picked from whichever fold happened to load first.
 
     Returns (posterior, n_folds_covering): posterior is (N, K+1) float32,
     NaN for any row no fold ever marked out-of-sample (should not happen for
-    a correctly-run Stage 4 fit, but not silently assumed away);
+    a correctly-run fit, but not silently assumed away);
     n_folds_covering is (N,) int, the number of folds that contributed to
     each row (1 for ordinary bags, 2 for the duplicated ones, 0 if missing).
     """

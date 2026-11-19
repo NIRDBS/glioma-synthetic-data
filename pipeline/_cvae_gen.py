@@ -18,8 +18,8 @@ def build_cvae_config(config, n_features):
     ``CVAE`` class expects. ``input_shape`` is derived from the actual (possibly
     cropped) feature count so the architecture matches the data.
 
-    gamma/delta (Suite 200 reconstruction-loss ablation) are passed through so
-    the ablation actually takes effect during training; they don't affect the
+    gamma/delta (the reconstruction-loss weights) are passed through so
+    they take effect during training; they don't affect the
     encoder/decoder topology, so decoder weights remain load-compatible
     regardless of their values.
     """

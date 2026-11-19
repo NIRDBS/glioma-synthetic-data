@@ -1,15 +1,12 @@
-"""Build data/processed/glioma-preproc-2.h5 -- the fully-automated v2 dataset.
+"""Build data/processed/glioma-preproc-2.h5: the dataset with the per-slide adaptive mask (exp_2.607-2.609).
 
-No precomputed artifacts required (unlike scripts/build_glioma_mil.py): this
-pipeline has no NMF/GMM clustering and no manual tumour-cluster curation step,
-so a single run does load -> median filter -> cube-normalise -> adaptive
-strong-signal mask -> IARPLS -> per-spectrum normalise -> HDF5, start to finish.
-See src/data/preprocessing_v2.py for the full pipeline and what it deliberately
-no longer does.
+A single run does load -> median filter -> slide normalisation -> adaptive mask -> IARPLS ->
+per-spectrum normalisation -> HDF5; see src/data/preprocessing_v2.py.
 
 Usage:
     python scripts/build_glioma_preproc_2.py [--out data/processed/glioma-preproc-2.h5] [--workers N]
 """
+
 from __future__ import annotations
 
 import argparse

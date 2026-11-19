@@ -47,9 +47,9 @@ image = (
         # Classifiers
         "xgboost",
         # Raman / signal processing
-        "ramanspy", "natsort",
+        "ramanspy",
         # Utilities
-        "tqdm", "matplotlib", "seaborn",
+        "tqdm", "matplotlib",
         "statsmodels", "shap", "hdbscan",
     )
     .add_local_dir(str(ROOT / "src"), remote_path="/root/src")
@@ -74,7 +74,7 @@ def _effective_output_dirs(config, store_suffix):
     The real training run passes ``store_suffix=None`` and gets the config's
     own paths, unchanged. A shuffled-label control run passes a suffix (e.g.
     'shuffled') so its weights land in a sibling directory instead of
-    overwriting the real CVAE weights that Tier 3's frozen trunk and Tier 4's
+    overwriting the real CVAE weights that attention MIL's frozen trunk and CVAE MIL's
     CbR both depend on -- used identically on the remote (write) side and the
     local (download) side so the two never disagree about where a run's
     files live.
@@ -95,7 +95,7 @@ def train_cvae_remote(config_name: str, epochs=None, h5_name: str = None,
 
     ``permutation_seed``/``store_suffix``: see cvae_stage.run_local and
     _effective_output_dirs -- None/None for a real run (unchanged behaviour);
-    both set together for Tier 4's shuffled-bag-label control.
+    both set together for CVAE MIL's shuffled-bag-label control.
 
     ``resume_tag``/``epoch_offset``: if ``resume_tag`` is given, downloads
     that tag's checkpoint from /vol/resume_checkpoints/{resume_tag}/ (staged
@@ -237,12 +237,12 @@ def run_on_modal(config_name, epochs=None, permutation_seed=None, store_suffix=N
     GPU, download weights + synthetic pools back to the local results dirs.
 
     ``permutation_seed``/``store_suffix``: both None for a real run (default,
-    unchanged behaviour). Both set together to run Tier 4's shuffled-bag-label
+    unchanged behaviour). Both set together to run CVAE MIL's shuffled-bag-label
     control on Modal GPU -- e.g. permutation_seed=123, store_suffix='shuffled'
-    (matching the convention scripts/stage6_shuffled_label_control.py already
-    uses for Tiers 1-3) writes to results/{exp}/models/cvae_shuffled/ and
-    .../data/synthetic_shuffled/, never touching the real weights Tier 3's
-    frozen trunk and Tier 4's CbR depend on.
+    (matching the convention scripts/shuffled_label_control.py already
+    uses for mi-SVM and attention MIL) writes to results/{exp}/models/cvae_shuffled/ and
+    .../data/synthetic_shuffled/, never touching the real weights attention MIL's
+    frozen trunk and CVAE MIL's CbR depend on.
 
     ``resume_local_dir``/``resume_tag``/``epoch_offset``: continue training
     from an existing LOCAL checkpoint (e.g. results/exp_501/models/cvae/,

@@ -1,14 +1,7 @@
-# TSTR with a 2x synthetic pool. exp_608's TSTR trains the four classifiers on a
-# fixed 20000/class (40000 total) pool per fold; this trains them on 40000/class
-# (80000 total) generated from the SAME exp_608 decoders -- same models, same
-# hyperparameters, same real validation folds, only more synthetic training data.
-# No CVAE training: pipeline/synth_gen_stage.py loads exp_608's saved
-# decoder_{fold}.weights.h5 and only generates. The `cvae` stage is deliberately
-# NOT in this config's stages: with synthetic_dir pointing at a new directory its
-# skip-check would fail and it would retrain, overwriting exp_608's decoders.
-# TRTR is exp_501's (reused); only synth_gen + tstr + stats_eval run fresh.
+# exp_708: TS/TR with a synthetic pool of 40,000 spectra per class (80,000 per fold), decoders of exp_608 (beta=0.5, latent_dim=32, reconstruction=MSE, threshold 0.60)
+# See configs/README.md.
 name: exp_708
-description: "TSTR with 2x synthetic data: pool 40000/class (exp_608 has 20000/class), generated from exp_608 decoders, otherwise identical to exp_608 TSTR (beta=0.5; only synth_gen+TSTR+stats_eval run fresh)"
+description: "TS/TR with a synthetic pool of 40,000 spectra per class (80,000 per fold), decoders of exp_608 (beta=0.5, latent_dim=32, reconstruction=MSE, threshold 0.60)"
 version: "1.0"
 
 paths:
@@ -19,7 +12,6 @@ paths:
 
   results_root: "results"
   experiment_root: "results/exp_708"
-  data_output_dir: "results/exp_708/data"
   processed_file: "data/processed/glioma_mil.h5"
 
   models_baseline_dir: "results/exp_501/models/trtr"   # REUSED
@@ -27,22 +19,15 @@ paths:
   models_tsrtr_dir: "results/exp_708/models/tsrtr"     # unused (no tsrtr stage); stats_eval skips it
   models_cvae_dir: "results/exp_608/models/cvae"       # REUSED -- decoders only; never trained here
   synthetic_dir: "results/exp_708/synthetic"           # OWN -- the 2x pool (synth_gen stage output)
-  quality_dir: "results/exp_708/data_quality"
   statistical_dir: "results/exp_708/statistical_eval"
 
 pipeline:
   stages: [trtr, synth_gen, tstr, stats_eval]   # no cvae: see header
 
 preprocessing:
-  spatial_median_filter: true
-  spatial_median_filter_size: 3
-  airpls_lambda: 10000
-  airpls_porder: 1
-  normalization: "minmax"
   signal_length: 1738
   crop_region: [700, 1800]
   y_tumor: false
-  ignore_samples: []
 
 augmentation:
   enabled: true
@@ -51,11 +36,8 @@ augmentation:
 
 cv_strategy:
   split_source: "data/splits/manual_splits.json"
-  use_group_aware_cv: true
-  holdout_test_set: true
   n_folds: 5
   patient_cap: 500
-  cap_strategy: "dynamic_per_epoch"
 
 training:
   random_seed: 42
@@ -119,7 +101,6 @@ statistics:
   bootstrap_samples: 1000
   alpha: 0.05
   random_seed: 42
-  primary_metric: "f1_macro"
 
 mil:
   pi_floor: 0.02
@@ -129,13 +110,3 @@ mil:
 output:
   output_base: "results"
   include_experiment_name_in_output: true
-
-notes: |
-  - TSTR data-scaling probe: exp_608 TSTR uses a 20000/class synthetic pool;
-    this doubles it to 40000/class (80000 per fold) from the same decoders.
-  - No CVAE training. synth_gen (generate-only) -> tstr -> stats_eval.
-    Do not add the `cvae` stage here (it would retrain and overwrite exp_608's
-    decoder weights).
-  - TRTR reused from exp_501 as the stats_eval baseline.
-  - GPU-only Modal policy: CNN (within tstr) dispatches to Modal;
-    Apollo/RF/XGBoost stay local. Run after exp_707.

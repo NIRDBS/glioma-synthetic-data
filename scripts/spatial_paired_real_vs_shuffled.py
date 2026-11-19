@@ -33,15 +33,24 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.stage5_spatial_validation import _load_raw_side_tables  # noqa: E402
-from src.data.spatial import reproject  # noqa: E402
+from src.data.spatial import reproject, slide_shape_lookup  # noqa: E402
 from src.evaluation.spatial import morans_i_by_lag, variogram_by_lag  # noqa: E402
 from src.mil.store import merge_out_of_sample_posterior  # noqa: E402
 
 LAG = 3
 N_BOOT = 10000
 SEED = 42
-MIN_COVERED = 20   # same eligibility as scripts/stage5_spatial_validation.py
+MIN_COVERED = 20   # a slide needs at least this many out-of-sample instances to enter the statistic
+
+
+def _load_slide_coordinates(h5_path):
+    """(sample_ids, coords, {slide: (rows, cols)}) of the processed dataset."""
+    def decode(a):
+        return np.char.decode(a.astype('S'), 'utf-8') if a.dtype.kind != 'U' else a.astype(str)
+    with h5py.File(h5_path, 'r') as f:
+        sample_ids, coords = decode(f['sample_ids'][:]), f['coords'][:]
+        slide_names, slide_shapes = decode(f['slide_names'][:]), f['slide_shapes'][:]
+    return sample_ids, coords, slide_shape_lookup(slide_names, slide_shapes)
 
 
 def _groups(store_path):
@@ -103,11 +112,11 @@ def main():
     config = ConfigManager.load_config(args.config).to_dict()
     root = Path(config['paths'].get('experiment_root', f'results/{args.config}'))
     latent = root / 'latent'
-    sample_ids, coords, _viable, shapes = _load_raw_side_tables(config['paths']['processed_file'])
+    sample_ids, coords, shapes = _load_slide_coordinates(config['paths']['processed_file'])
     folds = [f'fold_{i}' for i in range(5)]
 
     coh = {}   # '<method>_<variant>' -> {'real'|'shuffled' -> {slide: (I, V)}}
-    for store in sorted(latent.glob('latent_labels*.h5')):   # later stores overwrite, as in standardized_variogram.py
+    for store in sorted(latent.glob('latent_labels*.h5')):   # a store with several fits of one method: the last wins
         suffix = store.stem[len('latent_labels'):].lstrip('_')
         fit = 'real' if suffix == '' else 'shuffled' if suffix.startswith('shuffled') else None
         if fit is None:

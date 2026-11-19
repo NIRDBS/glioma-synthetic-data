@@ -1,7 +1,7 @@
 """Regression tests for pipeline/modal_cvae.py's output-path suffixing
-(docs/MIL_REFRAME_PLAN.md backlog §13: Tier 4's shuffled-bag-label control
-needs a full CVAE retrain that must never overwrite the real weights Tier 3's
-frozen trunk and Tier 4's CbR both depend on). Pure function, no Modal/GPU
+(CVAE MIL's shuffled-bag-label control
+needs a full CVAE retrain that must never overwrite the real weights attention MIL's
+frozen trunk and CVAE MIL's CbR both depend on). Pure function, no Modal/GPU
 needed."""
 from pipeline.modal_cvae import _effective_output_dirs
 

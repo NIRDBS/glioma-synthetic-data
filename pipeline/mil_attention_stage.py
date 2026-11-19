@@ -1,22 +1,18 @@
 """
-Stage 6, Tier 3: gated-attention MIL, trained per fold on a frozen CVAE
-encoder trunk (docs/MIL_REFRAME_PLAN.md §4, backlog §13).
+Attention MIL: gated-attention MIL, trained per fold on a frozen CVAE encoder trunk.
 
-Unlike Tier 4 ('cbr', pure inference), this tier genuinely trains a small
+Unlike CVAE MIL ('cbr', pure inference), this tier genuinely trains a small
 instance head + attention branch per fold, on randomly-resampled sub-bags
 (fresh draw every epoch, matching the per-epoch resampling pattern already
 established in pipeline/cvae_stage.py) drawn only from that fold's own
 training bags. Early stopping uses an INNER validation split carved from
 those same training bags (pipeline/_common.py::_inner_validation_split,
-group-aware -- never the true CV test fold), the same leak-avoidance Stage 3
-put in place for the CNN. Scores both training (in-sample) and validation
+group-aware -- never the true CV test fold), the same leak-avoidance used for the CNN. Scores both training (in-sample) and validation
 (out-of-sample) instances with the fold's own trained model and writes both
-to the latent-label store, exactly like Tier 1/2/4.
+to the latent-label store, exactly like mi-SVM, attention and CVAE MIL.
 
-Per the agreed Stage 6 reordering ("Tier 3 attention MIL second with cheap
-smoke test"), do not launch a full 5-fold run without a cheap ``--folds``
-subset run first (see docs/stage6_generative_mil.md / backlog §13 for the
-two real, informative smoke-test failures this caught before a full run).
+Do not launch a full 5-fold run without a cheap ``--folds``
+subset run first (this caught two real smoke-test failures before a full run).
 """
 import json
 from pathlib import Path
@@ -62,10 +58,10 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
                            inner_val_fraction=0.15, seed=42, verbose=True,
                            attn_dim=32, dropout_rate=0.3, l2=1e-3, center_by_bag=True):
     """
-    Train Tier 3 on one fold and return its posteriors scattered onto the
+    Train attention MIL on one fold and return its posteriors scattered onto the
     full dataset's row order -- same per-fold contract as
     pipeline/mil_fit_stage.py's _fit_one_fold, so it slots into the same
-    store-writing machinery (docs/MIL_REFRAME_PLAN.md §3).
+    store-writing machinery.
 
     Returns (fold_name, posterior_full, in_sample_full, diagnostics) --
     diagnostics carries the epoch history, best inner-val bag accuracy, and
@@ -152,7 +148,7 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
     best_val_acc = _bag_accuracy(model, X_inner_val, bag_inner_val, y_inner_val)
 
     # The attention-weighted bag-level posterior for the TRUE held-out test
-    # fold -- what scripts/stage6_bag_eval.py's cross-tier comparison needs,
+    # fold -- what scripts/bag_level_eval.py's cross-tier comparison needs,
     # and NOT what instance_posterior/the latent store give it (that naive,
     # attention-free pooling is the exact thing _bag_accuracy's docstring
     # documents as misleading for this architecture). Computed here, while
@@ -182,10 +178,8 @@ def fit_one_fold_attention(fold_data, config, n_classes, full_bag_ids, full_coor
     posterior_full[val_mask_full] = val_posterior
     in_sample_full[val_mask_full] = False
 
-    # §4.1's named diagnostic, using this fold's OWN converged instance
-    # posterior on its training bags as the proxy for "which instances are
-    # diagnostic" (there is no ground truth -- see
-    # [[project_no_tumor_ground_truth]]).
+    # Sub-bag null rate (sub_bag_null_rate): uses this fold's own converged instance posterior on
+    # its training bags as the proxy for "which instances are diagnostic" (no instance labels exist).
     null_rate = sub_bag_null_rate(
         fd.X_train, fd.train_bag_ids, fd.y_train, train_posterior,
         sub_bag_size=sub_bag_size, n_per_bag=200, seed=seed)
@@ -210,12 +204,12 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
                         loader=None, store_path=None, bag_level_path=None):
     """
     Full run: every fold (or ``fold_names``, for a smoke test on a subset),
-    written to the same latent-label store Tier 1/2/4 use, method='attention',
+    written to the same latent-label store mi-SVM, attention and CVAE MIL use, method='attention',
     variant='attention'.
 
     ``loader``, ``store_path``, ``bag_level_path``: optional overrides, unused
     by the real fit (which builds its own loader and uses the default paths
-    below). scripts/stage6_shuffled_label_control.py passes all three
+    below). scripts/shuffled_label_control.py passes all three
     explicitly -- a loader with its y_class already permuted (built the same
     way _fit_one_formulation's caller does it, before any fold splitting) and
     a separate pair of output paths, so a shuffled run can never collide with
@@ -234,7 +228,7 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
     else:
         store_path = Path(store_path)
 
-    print(f"\n{'='*80}\nTIER 3 (ATTENTION MIL) FIT STAGE: {config['name']}\n{'='*80}")
+    print(f"\n{'='*80}\nATTENTION MIL FIT: {config['name']}\n{'='*80}")
     print(f"  pi_min={pi_min}  n_classes={n_classes}  cvae_weights_dir={cvae_weights_dir}")
     print(f"  attn_dim={attn_dim}  dropout_rate={dropout_rate}  l2={l2}  "
           f"center_by_bag={center_by_bag}")
@@ -277,12 +271,12 @@ def mil_attention_stage(config, output_dir=None, sub_bag_size=None, n_per_bag_pe
         # result survives even if a later fold crashes or the run is
         # stopped -- the per-instance store above already has this property
         # (write_posteriors runs per fold); this keeps the same guarantee
-        # for the bag-level artifact scripts/stage6_bag_eval.py needs.
+        # for the bag-level artifact scripts/bag_level_eval.py needs.
         bag_level_path.parent.mkdir(parents=True, exist_ok=True)
         with open(bag_level_path, 'w') as f:
             json.dump(bag_level_by_fold, f, indent=2)
 
-    print(f"\n  Tier 3 fit stage complete -> {store_path}")
+    print(f"\n  attention MIL fit stage complete -> {store_path}")
     print(f"  Attention-weighted bag-level results -> {bag_level_path}")
     return {'store_path': str(store_path), 'bag_level_path': str(bag_level_path), 'per_fold': results}
 
@@ -295,7 +289,7 @@ if __name__ == '__main__':
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
 
-    parser = argparse.ArgumentParser(description="Fit Tier 3 (attention MIL)")
+    parser = argparse.ArgumentParser(description="Fit attention MIL (attention MIL)")
     parser.add_argument('--config', required=True, help="experiment config name, e.g. exp_501")
     parser.add_argument('--folds', nargs='+', default=None,
                         help="subset of fold names to run, e.g. fold_0 (smoke-test use)")
@@ -311,7 +305,7 @@ if __name__ == '__main__':
                         help="disable per-bag feature centering (on by default)")
     args = parser.parse_args()
 
-    from src.notebooks.experiment_utils import setup_experiment
+    from src.utils.experiment_utils import setup_experiment
     cfg, out_dir = setup_experiment(args.config)
     mil_attention_stage(
         cfg, out_dir, sub_bag_size=args.sub_bag_size,

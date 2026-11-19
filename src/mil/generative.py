@@ -1,5 +1,5 @@
 """
-Tier 4: generative MIL (docs/MIL_REFRAME_PLAN.md §4) -- promotes the existing
+CVAE MIL: generative MIL -- promotes the existing
 CVAE into instance classifiers, reusing weights the CVAE stage already
 trained and saved per fold:
 
@@ -20,8 +20,7 @@ Platt margins are: non-diagnostic mass = 1 - max_k p_k, renormalised.
 
 Both score with the SAME per-fold CVAE weights the ``cvae`` pipeline stage
 already produced (results/{exp}/models/cvae/{encoder,decoder}_{fold}.weights.h5),
-with no new training -- what makes them "cheap" relative to Tier 1/3
-(docs/MIL_REFRAME_PLAN.md Stage 6 reordering).
+with no new training -- what makes them "cheap" relative to mi-SVM and attention MIL.
 """
 import numpy as np
 
@@ -46,7 +45,7 @@ def mse_to_posterior(mse, temperature=1.0):
     unit-testing directly against hand-built MSE arrays, independent of any
     CVAE weights.
 
-    ``temperature``: see docs/stage6_generative_mil.md §2 for how the default
+    ``temperature``: the default
     (0.001) was picked from a real smoke test on exp_501 fold_0 -- T=1 (a
     naive default) makes the posterior nearly uniform at this data's real MSE
     scale (mean top-class probability ~0.50 for K=2, i.e. no usable signal);
@@ -76,7 +75,7 @@ def class_probs_to_posterior(class_probs):
 def instance_posteriors_from_cvae(X, encoder, decoder, num_classes, temperature=1.0,
                                   batch_size=256):
     """
-    One encoder forward pass -> both Tier-4 variants' raw ingredients (the
+    One encoder forward pass -> both CVAE MIL variants' raw ingredients (the
     encoder's own output tuple is ``[z_mean, z_log_var, z, class_pred]`` --
     z_mean feeds 'reconstruction' via the decoder, class_pred IS
     'encoder_head' directly) -> both (n, K+1) posteriors, at the cost of one

@@ -1,17 +1,16 @@
 """
-Stage: MIL formulation fitting (docs/MIL_REFRAME_PLAN.md Stage 4; Stage 6 adds
-Tier 4, 'cbr', below).
+MIL formulation fitting (mi-SVM; CVAE MIL, 'cbr', below).
 
-Fits Tier 1 (mi-SVM) on each CV fold's TRAINING bags only, scores that same
+Fits mi-SVM on each CV fold's TRAINING bags only, scores that same
 fold's training AND validation instances with the fold's own model, and writes
 both to the latent-label store (results/{exp}/latent/latent_labels.h5) with the
-leakage-safe in_sample flag (docs/MIL_REFRAME_PLAN.md §3).
+leakage-safe in_sample flag.
 
-No patient_cap here -- Stage 4 retires it in favour of using every available
-instance for latent inference (bag-size-aware pooling is the model's own job,
+No patient_cap here -- every available
+instance is used for latent inference (bag-size-aware pooling is the model's own job,
 not a preprocessing-time cap).
 
-Tier 4 ('cbr') is not a *fit* at all -- it scores every fold's instances with
+CVAE MIL ('cbr') is not a *fit* at all -- it scores every fold's instances with
 that fold's own already-trained CVAE weights (src/mil/generative.py), so it
 slots into this same per-fold/store-writing machinery via
 ``_score_one_fold_cbr`` rather than ``_fit_one_fold``, but produces TWO
@@ -87,7 +86,7 @@ def _fit_one_fold(fold_data, config, method, n_classes, pi_min, max_iters, seed,
 def _score_one_fold_cbr(fold_data, config, n_classes, full_bag_ids, full_coords,
                         cvae_weights_dir, temperature):
     """
-    Tier 4 (docs/MIL_REFRAME_PLAN.md Stage 6): score one fold's full train+val
+    CVAE MIL: score one fold's full train+val
     instance set with that fold's own trained CVAE, producing BOTH
     'reconstruction' and 'encoder_head' variants. No training happens here --
     both variants score with the CVAE weights the ``cvae`` stage already
@@ -172,8 +171,7 @@ def mil_fit_stage(config, output_dir=None, methods=METHODS, pi_min=None, max_ite
     backend='modal': fit every (method, fold) pair in its own parallel Modal
                      container (pipeline/modal_mil_fit.py) -- each fold is an
                      independent fit (no shared state), so this is CPU-only
-                     parallelism across folds, not a GPU need; see
-                     docs/stage4_mil.md for why this was chosen over local
+                     parallelism across folds, not a GPU need; chosen over local
                      multiprocessing (this machine's free RAM does not cover
                      5 folds' worth of independent data copies at once).
     """
@@ -181,7 +179,7 @@ def mil_fit_stage(config, output_dir=None, methods=METHODS, pi_min=None, max_ite
         if 'cbr' in methods:
             raise ValueError(
                 "backend='modal' does not support cbr yet -- run it "
-                "with backend='local' (see docs/stage6_generative_mil.md)")
+                "with backend='local'")
         from pipeline.modal_mil_fit import run_mil_fit_parallel
         return run_mil_fit_parallel(config, methods=methods, pi_min=pi_min,
                                     max_iters=max_iters, seed=seed)
@@ -226,7 +224,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Fit MIL formulations (mi-SVM, cbr)")
     parser.add_argument('--config', required=True, help="experiment config name, e.g. exp_608")
     parser.add_argument('--methods', nargs='+', default=list(METHODS), choices=list(ALL_METHODS),
-                        help="default is mi-SVM only; 'cbr' (Tier 4, inference-only, no "
+                        help="default is mi-SVM only; 'cbr' (CVAE MIL, inference-only, no "
                              "training) must be requested explicitly")
     parser.add_argument('--pi-min', type=float, default=None)
     parser.add_argument('--max-iters', type=int, default=10)
@@ -235,7 +233,7 @@ if __name__ == '__main__':
                              "CPU container instead of one sequential local loop")
     args = parser.parse_args()
 
-    from src.notebooks.experiment_utils import setup_experiment
+    from src.utils.experiment_utils import setup_experiment
     cfg, out_dir = setup_experiment(args.config)
     mil_fit_stage(cfg, out_dir, methods=args.methods, pi_min=args.pi_min,
                  max_iters=args.max_iters, backend=args.backend)

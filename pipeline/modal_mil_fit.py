@@ -6,8 +6,8 @@ Unlike modal_classifiers.py (which parallelizes the SAME stage across several
 experiment configs), each (method, fold) pair here is an independent unit of
 work for ONE config: mi-SVM fits fold f's training bags only and never shares
 state across folds. This machine's free RAM does not cover 5 folds' worth of
-independent data copies running at once locally (see docs/stage4_mil.md /
-the RAM check that motivated this file) -- Modal gives each fold its own
+independent data copies running at once locally (the RAM check that
+motivated this file) -- Modal gives each fold its own
 isolated container instead, at the same CPU-only cost profile as
 modal_classifiers.py (this is sklearn/RF/SVM work throughout; no GPU need).
 
@@ -38,18 +38,15 @@ image = (
     .pip_install(
         # mil_fit_stage.py itself only needs numpy/scipy/h5py/sklearn, but
         # importing anything under pipeline.* eagerly runs pipeline/__init__.py,
-        # which unconditionally imports every stage module (preprocessing,
-        # trtr, cvae, tstr, tsrtr, evaluation) -- so this needs their combined
-        # transitive dependencies too. Matched to modal_classifiers.py's
-        # already-working list rather than trimmed, after a first attempt
-        # with a shorter list failed on a missing 'tqdm' inside
-        # src/data/preprocessing.py, pulled in via preprocessing_stage.
+        # which unconditionally imports every stage module (trtr, cvae, tstr,
+        # tsrtr, evaluation) -- so this needs their combined transitive
+        # dependencies too. Matched to modal_classifiers.py's working list.
         "tensorflow[and-cuda]==2.20.0",
         "numpy", "pandas", "scipy", "h5py", "PyYAML",
         "scikit-learn", "joblib",
         "xgboost",
-        "ramanspy", "natsort",
-        "tqdm", "matplotlib", "seaborn",
+        "ramanspy",
+        "tqdm", "matplotlib",
         "statsmodels", "shap", "hdbscan",
     )
     .add_local_dir(str(ROOT / "src"),      remote_path="/root/src")
@@ -103,7 +100,7 @@ def fit_fold_remote(config_name: str, method: str, fold_name: str, h5_name: str,
     in explicitly rather than recomputed remotely -- avoids any risk of
     local/remote RNG divergence producing a different permutation per
     container. When given, substitutes the loader's own y_class before fold
-    splitting, exactly mirroring scripts/stage6_shuffled_label_control.py's
+    splitting, exactly mirroring scripts/shuffled_label_control.py's
     local path (the only "shuffled" intervention; everything downstream is
     identical to a real fit) -- this is what lets the shuffled-label
     control run fold-parallel on Modal instead of ~4h sequential locally."""
@@ -159,7 +156,7 @@ def run_mil_fit_parallel(config, methods=('misvm',), pi_min=None, max_iters=10, 
     write every result into the local latent-label store.
 
     ``label_map`` / ``store_path`` (optional, both or neither): the same
-    shuffled-label-control override scripts/stage6_shuffled_label_control.py
+    shuffled-label-control override scripts/shuffled_label_control.py
     uses locally (see fit_fold_remote's docstring) -- lets the shuffled
     mi-SVM control run fold-parallel on Modal instead of ~4h sequential
     locally. ``store_path`` defaults to the real store

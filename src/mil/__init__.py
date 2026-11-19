@@ -1,3 +1,3 @@
-"""MIL formulations (docs/MIL_REFRAME_PLAN.md Stage 4+): mi-SVM/MI-SVM (Tier 1),
-attention MIL (Tier 3), generative MIL (Tier 4), and the shared latent-label
+"""MIL formulations: mi-SVM/MI-SVM (mi-SVM),
+attention MIL (attention MIL), generative MIL (CVAE MIL), and the shared latent-label
 store."""

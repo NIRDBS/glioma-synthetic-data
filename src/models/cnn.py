@@ -7,8 +7,8 @@ def build_1d_cnn(input_shape=(1738, 1), num_classes=6, learning_rate=0.001, drop
     1D-CNN Baseline for Raman Spectra.
     Detects spectral shapes rather than just peak heights.
 
-    Compiles exactly once, here, with every setting the caller actually wants
-    (docs/MIL_REFRAME_PLAN.md §7.2) -- callers must not compile() again
+    Compiles exactly once, here, with every setting the caller actually wants;
+    callers must not compile() again
     afterward, or dropout_rate/learning_rate/loss silently stop being the ones
     this model actually trains with.
     """

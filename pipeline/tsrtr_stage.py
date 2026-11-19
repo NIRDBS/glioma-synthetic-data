@@ -108,7 +108,7 @@ if __name__ == '__main__':
     project_root = Path(__file__).resolve().parents[1]
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
-    from src.notebooks.experiment_utils import setup_experiment
+    from src.utils.experiment_utils import setup_experiment
 
     cfg, out_dir = setup_experiment(args.config)
     tsrtr_stage(cfg, out_dir)

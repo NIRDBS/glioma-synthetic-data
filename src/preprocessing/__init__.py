@@ -1,6 +1,6 @@
 """Preprocessing primitives that are independent of the dataset layout.
 
-Kept separate from :mod:`src.data.preprocessing` (which owns the export pipeline)
+Kept separate from the dataset builders (``src/data/preprocessing_v2.py``, ``_v3.py``)
 so these routines can be unit-tested and reused without touching HDF5 or raw cubes.
 """
 

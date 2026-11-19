@@ -1,7 +1,7 @@
-"""Correctness tests for the per-spectrum baseline selector (Stage 0).
+"""Correctness tests for the per-spectrum baseline selector.
 
 The numerical machinery here is new, so each piece is checked against a dense
-reference implementation before the Stage 0 study relies on it.
+reference implementation before the baseline-correction study relies on it.
 """
 
 import numpy as np
@@ -135,7 +135,7 @@ def test_selectors_return_interior_lambda_on_realistic_input():
 
 
 def test_correct_is_pure_single_vs_batch():
-    """Stage 0 invariant: a spectrum's output cannot depend on its batch context."""
+    """Invariant: a spectrum's output cannot depend on its batch context."""
     rng = np.random.default_rng(6)
     n = 500
     x = np.linspace(0, 1, n)
@@ -177,7 +177,7 @@ def test_default_grid_brackets_the_inherited_constant():
 
 
 # --------------------------------------------------------------------------
-# IARPLS -- the Stage 0 recommended production path
+# IARPLS -- the recommended production path
 # --------------------------------------------------------------------------
 
 def _toy_spectrum(rng, n=800):
@@ -207,7 +207,7 @@ def test_iarpls_is_pure_batch_vs_alone():
 
 
 def test_iarpls_recovers_peak_heights_better_than_airpls_lambda_100():
-    """The Stage 0 headline, pinned as a regression test."""
+    """The headline result, pinned as a regression test."""
     pytest.importorskip("ramanspy")
     from src.preprocessing.baseline import correct_iarpls
 
@@ -232,11 +232,11 @@ def test_iarpls_recovers_peak_heights_better_than_airpls_lambda_100():
 def test_iarpls_lambda_is_stable_on_a_SMOOTH_baseline():
     """Regression guard for the *smooth* baseline case only -- NOT general insensitivity.
 
-    Stage 0 initially reported lambda inert over 1e2-1e4. The follow-up study
-    (scripts/stage0_generator_stress.py) withdrew that as a general claim: the inert
+    The baseline-correction study initially reported lambda inert over 1e2-1e4. The follow-up study
+    (scripts/baseline_generator_stress.py) withdrew that as a general claim: the inert
     window is ~2.5 decades for smooth baselines but only ~0.5 for high-curvature ones,
     and real baselines appear more curved than any synthetic family tested. See
-    docs/stage0_findings.md sections 2.3 and 7.1.
+    the paper, Appendix: Baseline Correction.
 
     `_toy_spectrum` uses a single broad Gaussian background, i.e. the smooth regime, so
     this asserts only that behaviour there has not drifted.

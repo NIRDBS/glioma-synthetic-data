@@ -30,7 +30,6 @@ class TestConfigManager:
                 'description': 'Test experiment',
                 'version': '1.0',
                 'preprocessing': {
-                    'airpls_lambda': 100,
                     'signal_length': 1738,
                     'crop_region': [700, 1800],
                 },
@@ -70,7 +69,7 @@ class TestConfigManager:
             
             assert config['name'] == 'test_exp_001'
             assert config['description'] == 'Test experiment'
-            assert config['preprocessing']['airpls_lambda'] == 100
+            assert config['preprocessing']['signal_length'] == 1738
         finally:
             os.chdir(original_cwd)
     
@@ -92,7 +91,7 @@ class TestConfigManager:
             import yaml
             invalid_config = {
                 'description': 'Missing name',
-                'preprocessing': {'airpls_lambda': 100},
+                'preprocessing': {'signal_length': 1738},
                 'cv_strategy': {'split_source': 'data/splits/strict_splits.json'},
                 'output': {'output_base': 'test'},
             }
@@ -120,7 +119,7 @@ class TestConfigManager:
             invalid_config = {
                 'name': 'bad_splits',
                 'description': 'Bad splits path',
-                'preprocessing': {'airpls_lambda': 100, 'signal_length': 1738, 'crop_region': [700, 1800]},
+                'preprocessing': {'signal_length': 1738, 'crop_region': [700, 1800]},
                 'cv_strategy': {'split_source': 'data/splits/NONEXISTENT.json'},
                 'output': {'output_base': 'test'},
             }
@@ -151,7 +150,7 @@ class TestConfigManager:
             assert config['models']['random_forest']['n_estimators'] == 300  # Default
             
             # Check provided value is preserved
-            assert config['preprocessing']['airpls_lambda'] == 100
+            assert config['preprocessing']['signal_length'] == 1738
         finally:
             os.chdir(original_cwd)
     
@@ -167,8 +166,8 @@ class TestConfigManager:
             config = ConfigManager.load_config('test_exp_001')
             
             # Test nested access
-            lambda_value = config.get_nested('preprocessing.airpls_lambda')
-            assert lambda_value == 100
+            length = config.get_nested('preprocessing.signal_length')
+            assert length == 1738
             
             rf_estimators = config.get_nested('models.random_forest.n_estimators')
             assert rf_estimators == 300
@@ -192,7 +191,7 @@ class TestConfigManager:
             
             # Test __getitem__
             preprocessing = config['preprocessing']
-            assert preprocessing['airpls_lambda'] == 100
+            assert preprocessing['signal_length'] == 1738
             
             # Test get()
             models = config.get('models')
@@ -233,7 +232,7 @@ class TestConfigValidation:
         return {
             'name': 'test_exp',
             'description': 'validation test',
-            'preprocessing': {'airpls_lambda': 1e5, 'signal_length': 1738,
+            'preprocessing': {'signal_length': 1738,
                               'crop_region': [700, 1800]},
             'cv_strategy': {'split_source': 'data/splits/manual_splits.json'},
             'output': {'output_base': 'results'},

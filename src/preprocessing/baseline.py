@@ -316,17 +316,17 @@ def select_lambda(
     raise ValueError(f"unknown selector {method!r}; expected 'gcv' or 'lcurve'")
 
 
-#: Wavenumber below which IARPLS does not model the Rayleigh wing (see Stage 0 findings).
+#: Wavenumber below which IARPLS does not model the Rayleigh wing (see baseline-correction study).
 #: Above this the corrector is accurate; below it the estimate is unusable.
 IARPLS_VALID_FROM_CM1 = 300.0
 
-#: PROVISIONAL. Stage 0 initially found lambda inert over 1e2-1e4; the follow-up study
-#: (scripts/stage0_generator_stress.py) withdrew that -- the inert window is 2.5 decades
+#: PROVISIONAL. The baseline-correction study initially found lambda inert over 1e2-1e4; the follow-up study
+#: (scripts/baseline_generator_stress.py) withdrew that -- the inert window is 2.5 decades
 #: for smooth baselines but only 0.5 for high-curvature ones, and real baselines appear
 #: *more* curved than any synthetic family tested. This value sits in the low-drift,
 #: reasonable-retention region on real spectra and matches the synthetic oracle, but it
-#: is a documented default awaiting a Stage 1 sensitivity analysis -- NOT a settled
-#: constant, and not evidence of insensitivity. See docs/stage0_findings.md sections 2.3 and 7.1.
+#: is a documented default awaiting a sensitivity analysis -- NOT a settled
+#: constant, and not evidence of insensitivity. See the paper, Appendix: Baseline Correction (lambda selection).
 IARPLS_LAMBDA = 1e4
 
 
@@ -336,7 +336,7 @@ def correct_iarpls(
     lam: float = IARPLS_LAMBDA,
     clip_negative: bool = True,
 ) -> dict:
-    """Baseline-correct one spectrum with IARPLS -- the Stage 0 recommended path.
+    """Baseline-correct one spectrum with IARPLS -- the recommended path.
 
     Chosen over a per-spectrum airPLS selector because it is markedly more accurate --
     10.7x lower fingerprint NRMSE than the inherited airPLS ``lambda = 100``, and it
@@ -380,7 +380,7 @@ def correct(
     """Baseline-correct one spectrum.
 
     ``lam`` overrides the selector entirely (used for the fixed-lambda arms of the
-    Stage 0 study). Otherwise ``method`` chooses lambda from ``grid``.
+    baseline-correction study). Otherwise ``method`` chooses lambda from ``grid``.
 
     Returns a dict with ``corrected``, ``baseline``, ``lambda`` and selector diagnostics.
     """

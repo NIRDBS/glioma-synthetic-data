@@ -1,17 +1,12 @@
 """Pixel <-> slide-grid reprojection.
 
-The modelling HDF5 stores each instance's pixel position (``coords``) but not the
-slide's full raster extent, so reconstructing a 2-D map needs the per-slide shape
-registry alongside it. This module is the single, tested implementation of that
-round-trip -- do not re-derive the indexing elsewhere (a transposed version exists
-in ``_archive/dev_scripts/consolidate_tumor_masks.py`` and is wrong for non-square
-slides; this one is verified against ``tumor_maps.npy`` for every slide in
-``tests/test_stage1_export.py``).
+The modelling HDF5 stores each instance's pixel position (``coords``) but not the slide's full
+raster extent, so reconstructing a 2-D map needs the per-slide shape registry alongside it. This
+module is the single implementation of that round-trip (tests: ``tests/test_data_layer.py``).
 
-Convention, fixed by ``src/data/preprocessing.py`` at export time and unchanged
-since Stage 0: ``coords[:, 0]`` is the column (raster axis 1), ``coords[:, 1]`` is
-the row (raster axis 0). A slide's shape is ``(n_rows, n_cols)``, matching
-``raw_cube.shape[:2]``.
+Convention, fixed by the dataset builders (``src/data/preprocessing_v2.py``, ``_v3.py``):
+``coords[:, 0]`` is the column (raster axis 1) and ``coords[:, 1]`` the row (raster axis 0). A
+slide's shape is ``(n_rows, n_cols)``, matching ``raw_cube.shape[:2]``.
 """
 
 from __future__ import annotations

@@ -1,11 +1,7 @@
-# Article S8.III ablation extension: synthetic/real ratio for TSRTR, 4th point.
-# exp_608 is ratio=1.0, exp_705 is 0.5, exp_706 is 2.0; this is ratio=3.0
-# (n_synth = round(3.0 * n_real), pipeline/tsrtr_stage.py; n_real is the
-# patient-capped real training set, so the mix stays well under 100k rows).
-# Same reuse pattern as exp_705/706 -- CVAE, TRTR and TSTR all reused
-# unchanged (no CVAE training anywhere); only tsrtr + stats_eval run fresh.
+# exp_707: TSR/TR at synthetic:real=3, reusing the CVAE of exp_608 (beta=0.5, latent_dim=32, reconstruction=MSE, synthetic:real=3, threshold 0.60)
+# See configs/README.md.
 name: exp_707
-description: "Synth/real ratio ablation (article S8.III): ratio=3.0, otherwise identical to exp_608 (beta=0.5, same CVAE/TRTR/TSTR reused, only TSRTR+stats_eval run fresh)"
+description: "TSR/TR at synthetic:real=3, reusing the CVAE of exp_608 (beta=0.5, latent_dim=32, reconstruction=MSE, synthetic:real=3, threshold 0.60)"
 version: "1.0"
 
 paths:
@@ -16,7 +12,6 @@ paths:
 
   results_root: "results"
   experiment_root: "results/exp_707"
-  data_output_dir: "results/exp_707/data"
   processed_file: "data/processed/glioma_mil.h5"
 
   models_baseline_dir: "results/exp_501/models/trtr"   # REUSED
@@ -24,7 +19,6 @@ paths:
   models_tsrtr_dir: "results/exp_707/models/tsrtr"     # OWN -- the ablated setting lives here
   models_cvae_dir: "results/exp_608/models/cvae"       # REUSED -- ratio never touches the CVAE
   synthetic_dir: "results/exp_608/synthetic"           # REUSED
-  quality_dir: "results/exp_707/data_quality"
   statistical_dir: "results/exp_707/statistical_eval"
 
 tsrtr:
@@ -35,15 +29,9 @@ pipeline:
   stages: [trtr, cvae, tstr, tsrtr, stats_eval]
 
 preprocessing:
-  spatial_median_filter: true
-  spatial_median_filter_size: 3
-  airpls_lambda: 10000
-  airpls_porder: 1
-  normalization: "minmax"
   signal_length: 1738
   crop_region: [700, 1800]
   y_tumor: false
-  ignore_samples: []
 
 augmentation:
   enabled: true
@@ -52,11 +40,8 @@ augmentation:
 
 cv_strategy:
   split_source: "data/splits/manual_splits.json"
-  use_group_aware_cv: true
-  holdout_test_set: true
   n_folds: 5
   patient_cap: 500
-  cap_strategy: "dynamic_per_epoch"
 
 training:
   random_seed: 42
@@ -120,7 +105,6 @@ statistics:
   bootstrap_samples: 1000
   alpha: 0.05
   random_seed: 42
-  primary_metric: "f1_macro"
 
 mil:
   pi_floor: 0.02
@@ -130,11 +114,3 @@ mil:
 output:
   output_base: "results"
   include_experiment_name_in_output: true
-
-notes: |
-  - Article S8.III ablation, continuing the synthetic/real ratio axis:
-    exp_705 = 0.5/1, exp_608 = 1/1, exp_706 = 2/1, this = 3/1.
-  - No CVAE retrain, no TSTR retrain -- only tsrtr + stats_eval run fresh;
-    the decoder weights are exp_608's.
-  - GPU-only Modal policy: CNN (within tsrtr) dispatches to Modal;
-    Apollo/RF/XGBoost stay local. Run sequentially, then exp_708.

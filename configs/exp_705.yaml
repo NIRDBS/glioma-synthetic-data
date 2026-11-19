@@ -1,16 +1,7 @@
-# Article S8.III ablation: synthetic/real ratio for TSRTR, 3 points.
-# exp_608 IS the ratio=1.0 point (already exists); this is ratio=0.5
-# (n_synth = round(0.5 * n_real), pipeline/tsrtr_stage.py). Ratio ONLY
-# affects TSRTR's mixing step -- it never touches the CVAE itself, so
-# exp_608's CVAE is reused unchanged (not retrained): same decoder, same
-# seed, so TSTR (100% synthetic, ratio-independent -- pipeline/tstr_stage.py
-# has no ratio parameter at all) is architecturally guaranteed identical to
-# exp_608's own TSTR and is reused directly too, not just for convenience.
-# Only tsrtr + stats_eval actually execute here; trtr/cvae/tstr are listed
-# so the skip-if-outputs-exist mechanism engages rather than being silently
-# relied on (same convention as exp_607.yaml's own TRTR-reuse note).
+# exp_705: TSR/TR at synthetic:real=0.5, reusing the CVAE of exp_608 (beta=0.5, latent_dim=32, reconstruction=MSE, synthetic:real=0.5, threshold 0.60)
+# See configs/README.md.
 name: exp_705
-description: "Synth/real ratio ablation (article S8.III): ratio=0.5, otherwise identical to exp_608 (beta=0.5, same CVAE/TRTR/TSTR reused, only TSRTR+stats_eval run fresh)"
+description: "TSR/TR at synthetic:real=0.5, reusing the CVAE of exp_608 (beta=0.5, latent_dim=32, reconstruction=MSE, synthetic:real=0.5, threshold 0.60)"
 version: "1.0"
 
 paths:
@@ -21,7 +12,6 @@ paths:
 
   results_root: "results"
   experiment_root: "results/exp_705"
-  data_output_dir: "results/exp_705/data"
   processed_file: "data/processed/glioma_mil.h5"
 
   models_baseline_dir: "results/exp_501/models/trtr"   # REUSED
@@ -29,7 +19,6 @@ paths:
   models_tsrtr_dir: "results/exp_705/models/tsrtr"     # OWN -- the ablated setting lives here
   models_cvae_dir: "results/exp_608/models/cvae"       # REUSED -- ratio never touches the CVAE
   synthetic_dir: "results/exp_608/synthetic"           # REUSED
-  quality_dir: "results/exp_705/data_quality"
   statistical_dir: "results/exp_705/statistical_eval"
 
 tsrtr:
@@ -40,15 +29,9 @@ pipeline:
   stages: [trtr, cvae, tstr, tsrtr, stats_eval]
 
 preprocessing:
-  spatial_median_filter: true
-  spatial_median_filter_size: 3
-  airpls_lambda: 10000
-  airpls_porder: 1
-  normalization: "minmax"
   signal_length: 1738
   crop_region: [700, 1800]
   y_tumor: false
-  ignore_samples: []
 
 augmentation:
   enabled: true
@@ -57,11 +40,8 @@ augmentation:
 
 cv_strategy:
   split_source: "data/splits/manual_splits.json"
-  use_group_aware_cv: true
-  holdout_test_set: true
   n_folds: 5
   patient_cap: 500
-  cap_strategy: "dynamic_per_epoch"
 
 training:
   random_seed: 42
@@ -125,7 +105,6 @@ statistics:
   bootstrap_samples: 1000
   alpha: 0.05
   random_seed: 42
-  primary_metric: "f1_macro"
 
 mil:
   pi_floor: 0.02
@@ -135,12 +114,3 @@ mil:
 output:
   output_base: "results"
   include_experiment_name_in_output: true
-
-notes: |
-  - Article S8.III ablation: "synthetic/real data ratio" -- exp_608 is the
-    1/1 point; this is 0.5/1; exp_706 is 2/1.
-  - Cheapest of the S8.III ablations: no CVAE retrain, no TSTR retrain --
-    only pipeline/tsrtr_stage.py's mixing step changes (n_synth =
-    round(synth_ratio * n_real)), so only tsrtr + stats_eval run fresh.
-  - GPU-only Modal policy: CNN (within tsrtr) dispatches to Modal;
-    Apollo/RF/XGBoost stay local. Run sequentially with exp_703/704/706.

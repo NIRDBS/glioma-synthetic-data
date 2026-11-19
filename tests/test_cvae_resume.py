@@ -1,13 +1,13 @@
 """
 Regression test for pipeline/cvae_stage.py's resume-from-checkpoint
 capability (_train_one_fold's resume_from_dir/epoch_offset, added to support
-continuing exp_501's stale 70-epoch CVAE to 100 epochs without retraining
-from scratch -- Suite 600's CVAE beta-tuning sweep).
+continuing a trained CVAE for more epochs without retraining from scratch, as
+exp_605 and exp_606 do from exp_601).
 
 Real (tiny, fast) CVAE on synthetic data, not fakes -- the thing under test
 is specifically Keras .load_weights() actually restoring a prior training
 state, which a mocked encoder/decoder (as used in
-tests/test_stage6_generative_mil.py) can't exercise meaningfully.
+tests/test_generative_mil.py) can't exercise meaningfully.
 """
 import numpy as np
 

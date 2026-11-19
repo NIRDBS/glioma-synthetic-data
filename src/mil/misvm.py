@@ -1,5 +1,5 @@
 """
-Tier 1: mi-SVM / MI-SVM (Andrews et al. 2002), one-vs-rest per diagnostic
+mi-SVM: mi-SVM / MI-SVM (Andrews et al. 2002), one-vs-rest per diagnostic
 class, over the constrained model (C) (the paper, Appendix: Multiple Instance Learning).
 
 Reuses Apollo (src/models/baselines.py: RF top-20 feature selection + RBF SVM)
@@ -21,7 +21,7 @@ def _subsample_for_svm(bag_ids, cap_per_bag, seed):
     Cap each bag's contribution to at most ``cap_per_bag`` instances, for the
     SVM *fitting* step only -- scoring (predict_proba) still runs on every
     instance in the fold. Apollo's RBF SVM scales badly with sample count,
-    and Stage 4 deliberately retired the old global `patient_cap` (mi-SVM
+    and mi-SVM does not use the global `patient_cap` (it
     needs every instance available for scoring/relabeling) -- so training set
     size grew roughly 10x versus any previous Apollo fit in this project
     (patient_cap=500/slide capped every prior TRTR/TSTR/TSRTR run to ~29k
@@ -67,7 +67,7 @@ def _fit_one_vs_rest(X, bag_ids, y_bag_per_instance, target_class, pi_min, varia
     bag_ids = np.asarray(bag_ids)
     is_positive_bag = (y_bag_per_instance == target_class)
 
-    # Naive init: every instance inherits its bag's label (Tier 0's own
+    # Naive init: every instance inherits its bag's label (naive MIL's own
     # assumption) -- exactly the starting point mi-SVM iterates away from.
     labels = is_positive_bag.astype(int)
 
@@ -116,7 +116,7 @@ def fit_misvm(X, bag_ids, y_bag_per_instance, n_classes, pi_min=0.02, variant='m
     ``svm_subsample_per_bag`` (default 500, matching the historical
     patient_cap value): caps each bag's contribution to the SVM's own
     training set at every iteration, since Apollo's RBF SVM scales badly with
-    sample count and Stage 4's folds are ~10x larger (uncapped) than any
+    sample count and mi-SVM's folds are ~10x larger (uncapped) than any
     prior Apollo fit in this project. Scoring (predict_proba, which drives
     both the relabeling and the returned posterior) always runs on every
     instance regardless -- see ``_fit_one_vs_rest``. Pass None to disable.

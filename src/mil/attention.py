@@ -1,5 +1,5 @@
 """
-Tier 3: gated-attention MIL (Ilse et al. 2018), over instance LOGITS rather
+attention MIL: gated-attention MIL (Ilse et al. 2018), over instance LOGITS rather
 than pooled embeddings, on a frozen per-fold CVAE encoder trunk
 (see the paper, Appendix: Multiple Instance Learning).
 
@@ -14,23 +14,23 @@ Architecture, per bag (here: per *sub-bag*, see below):
 
 "Attention over logits, not embeddings" is the plan's own instruction
 (§4): pooling embeddings first and classifying the pooled result gives only
-a bag score, with no interpretable per-instance posterior -- and Stage 7
-needs one. Pooling logits keeps every instance's own K-way opinion directly
+a bag score, with no interpretable per-instance posterior -- and the spatial and
+key-instance tests need one. Pooling logits keeps every instance's own K-way opinion directly
 readable (`instance_logits`), with attention only deciding how much each
 instance's opinion counts toward the bag decision.
 
 **Why the instance head is never masked to the bag's own class (Model (C)'s
-support restriction)**: Stage 6 found that a bag-classification
+support restriction)**: a bag-classification
 metric applied to a hard-masked posterior is circular -- it can only ever
 recover the label it was given, not one it inferred.
 This tier's whole point is a genuinely
-*learned* instance posterior, evaluable the same honest way Tier 4's is, so
+*learned* instance posterior, evaluable the same honest way CVAE MIL's is, so
 the instance head stays a free K-way softmax throughout; only the
 attention-pooled BAG score is supervised by Y_b (standard MIL attention
 training), never a per-instance hard state constraint.
 
 The (K+1)-way store posterior (non-diagnostic mass) uses the same
-`1 - max_k p_k` convention as Tier 4/mi-SVM (src/mil/generative.py,
+`1 - max_k p_k` convention as CVAE MIL/mi-SVM (src/mil/generative.py,
 src/mil/misvm.py) for cross-tier comparability -- and inherits the exact
 same K=2 boundedness caveat documented there: for K=2 it can never exceed 1/3.
 """
@@ -66,7 +66,7 @@ def sample_sub_bags(X, bag_ids, y_bag_per_instance, n_per_bag, sub_bag_size, see
     §4.1: "Sample uniformly at random across the whole bag -- never
     contiguous spatial patches", which is also what keeps this sampler from
     ever touching ``coords`` at all, preserving the withheld-coordinates
-    property Stage 5/6's validation depends on).
+    property the spatial-coherence test depends on).
 
     Sampling is without replacement when the bag has >= sub_bag_size
     instances (true for every exp_501 bag -- smallest bag is 1,878
@@ -101,18 +101,18 @@ def sample_sub_bags(X, bag_ids, y_bag_per_instance, n_per_bag, sub_bag_size, see
 def sub_bag_null_rate(X, bag_ids, y_bag_per_instance, instance_posterior, sub_bag_size,
                       n_per_bag=200, diagnostic_threshold=0.5, seed=None):
     """
-    Named diagnostic: the empirical fraction
+    The empirical fraction
     of sampled sub-bags that contain ZERO instances with own-class posterior
     mass above ``diagnostic_threshold``, using an already-fitted MIL
     formulation's instance posterior as the best available proxy for "which
-    instances are diagnostic" (there is no ground truth to check against --
-    see [[project_no_tumor_ground_truth]]). Compare the result against the
+    instances are diagnostic" (there are no instance labels to check against).
+    Compare the result against the
     epsilon `required_sub_bag_size` was calibrated to; materially above it
     means the sizing under-covers this bag's real diagnostic fraction and
-    Tier 3's numbers from it should not be trusted at face value.
+    attention MIL's numbers from it should not be trusted at face value.
 
     ``instance_posterior``: (n, K+1) aligned to X/bag_ids/y_bag_per_instance,
-    e.g. a Tier 1/2/4 store posterior's out-of-sample-merged rows, or this
+    e.g. a mi-SVM, attention and CVAE MIL store posterior's out-of-sample-merged rows, or this
     tier's own post-training instance_logits softmax (self-referential, but
     that is literally what the plan's "under the final model" means).
     """
@@ -311,14 +311,14 @@ class AttentionMIL(Model):
         frozen encoder + trainable instance head only (no attention --
         deliberately: this gives one value PER INSTANCE, independent of
         which other instances happen to be scored alongside it, which is
-        what Stage 5's spatial validation needs to reproject a per-pixel
+        what the spatial-coherence test needs to reproject a per-pixel
         map -- attention weights are relative to a specific bag's instance
         SET and are not a well-defined per-instance quantity outside one)
         -- softmax over K, then lifted to (n, K+1) via the same 1-max_p
-        convention as Tier 4 (src/mil/generative.py). This is what gets
+        convention as CVAE MIL (src/mil/generative.py). This is what gets
         written to the latent store per fold, for spatial validation.
 
-        For BAG-LEVEL classification (accuracy, the plan's "beats Tier 0"
+        For BAG-LEVEL classification (accuracy, the plan's "beats naive MIL"
         question), use ``bag_posterior`` instead -- see its docstring for
         why this attention-free posterior is a poor fit for that specific
         question, confirmed empirically, not just argued).

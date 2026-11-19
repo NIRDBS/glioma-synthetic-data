@@ -1,11 +1,9 @@
 """
-The shuffled-bag-label control. Permutes which label goes with
-which bag (exact
-permutation of the true label multiset -- src/mil/shuffle_control.py),
-holds everything else fixed, refits a MIL formulation under the permuted
-labels, and reports the same spatial statistics scripts/spatial_validation.py computes for the
-real fit -- so the two can be compared directly. If lag>=3 coherence
-survives this, the real result cannot be attributed to the true label.
+The shuffled-bag-label control: permute which label goes with which bag (an exact permutation of
+the true label multiset, src/mil/shuffle_control.py), hold everything else fixed and refit a MIL
+formulation under the permuted labels. scripts/spatial_paired_real_vs_shuffled.py then compares the
+spatial coherence of the real and the shuffled fit: if coherence survives the shuffle, it cannot be
+attributed to the true label.
 
 Reuses each formulation's own per-fold fitting code UNCHANGED (the
 permutation happens once, in the loader's own y_class array, before any
@@ -14,19 +12,19 @@ fit): pipeline/mil_fit_stage.py's _fit_one_formulation for misvm,
 pipeline/mil_attention_stage.py's mil_attention_stage for attention (its
 frozen CVAE trunk is untouched by this -- only the attention head refits,
 same as any other real attention fit), pipeline/modal_cvae.py's
-run_on_modal for Tier 4's cvae (a full CVAE retrain, GPU, since Tier 4
+run_on_modal for CVAE MIL's cvae (a full CVAE retrain, GPU, since CVAE MIL
 conditions on the CVAE's own weights rather than a separate frozen-trunk
 model -- the one tier whose control needs new training, not just a
 downstream head). Writes to a SEPARATE store path (and, for
 attention/cvae, separate bag-level/model output paths too) so a shuffled
 run can never collide with or corrupt the real latent-label store or
-artifacts that Tier 3/4's REAL results depend on.
+artifacts that attention and CVAE MIL's REAL results depend on.
 
-Two steps for Tier 4, not one: first --method cvae (retrains the CVAE
+Two steps for CVAE MIL, not one: first --method cvae (retrains the CVAE
 itself under permuted labels, on Modal GPU), THEN --method cbr (scores
 those already-shuffle-trained weights into 'reconstruction'/'encoder_head'
-posteriors -- cheap, local, pure inference, identical to how the real Tier
-4 fit works). --method cbr's own label permutation is a harmless no-op
+posteriors -- cheap, local, pure inference, identical to how the real CVAE MIL
+fit works). --method cbr's own label permutation is a harmless no-op
 (CbR's scoring never reads labels at all, only features and CVAE weights --
 see the comment at its call site) -- what makes its result "shuffled" is
 that --method cvae already trained the weights it loads.

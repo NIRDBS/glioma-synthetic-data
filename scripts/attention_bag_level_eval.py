@@ -1,15 +1,15 @@
 """
-Tier 3 (attention MIL): bag-level accuracy vs Tier 0, from the attention-weighted
+attention MIL (attention MIL): bag-level accuracy vs naive MIL, from the attention-weighted
 bag-level artifact (pipeline/mil_attention_stage.py writes
 results/{exp}/latent/attention_bag_level.json).
 
 Why this is a SEPARATE script from scripts/bag_level_eval.py rather than
 another --method choice there: that script reads the latent-label STORE's
 per-instance posterior and pools it (mean, across folds) -- correct for
-mi-SVM/Tier 4, whose evaluation doesn't depend on attention. For Tier 3,
+mi-SVM/CVAE MIL, whose evaluation doesn't depend on attention. For attention MIL,
 the store's per-instance posterior is deliberately attention-FREE (right
 for the spatial validation, wrong for bag classification -- see
-AttentionMIL.bag_posterior's docstring). Reusing bag_level_eval.py's pooling on Tier 3's store posterior
+AttentionMIL.bag_posterior's docstring). Reusing bag_level_eval.py's pooling on attention MIL's store posterior
 would reproduce the exact misleading, chance-level result the smoke tests
 already exposed and fixed. This script reads the ALREADY attention-weighted,
 already bag-level artifact instead -- no further pooling rule needed, since
@@ -29,7 +29,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.bag_level_eval import _tier0_reference
+from scripts.bag_level_eval import _naive_mil_reference
 from src.utils.statistical_evaluation import bag_level_bootstrap, summarize_bootstrap_diffs
 
 
@@ -78,7 +78,7 @@ def run(config_name, n_boot=1000, seed=42, regimen_label='TRTR', reference_model
     bag_level_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \
         / 'latent' / 'attention_bag_level.json'
 
-    print(f"\n{'='*80}\nTIER 3 BAG-LEVEL EVAL (attention-weighted)  ({config_name})\n{'='*80}")
+    print(f"\n{'='*80}\nATTENTION MIL BAG-LEVEL EVAL  ({config_name})\n{'='*80}")
     bag_ids, posterior, y_true = _load_bag_level_across_folds(bag_level_path)
     n_bags = len(bag_ids)
     bag_pred = posterior[:, 1:].argmax(axis=1)
@@ -118,7 +118,7 @@ def run(config_name, n_boot=1000, seed=42, regimen_label='TRTR', reference_model
           f"bag_F1={metrics['bag_f1_macro']:.4f}  bag_kappa={metrics['bag_kappa']:.4f}  "
           f"(n={n_bags} bags)")
 
-    ref_bag_ids, ref_pred_all, ref_true_all, ref_label = _tier0_reference(
+    ref_bag_ids, ref_pred_all, ref_true_all, ref_label = _naive_mil_reference(
         config, n_boot, seed, regimen_label=regimen_label, reference_model=reference_model)
     common = sorted(set(bag_ids.tolist()) & set(ref_bag_ids.tolist()))
     if len(common) < n_bags or len(common) < len(ref_bag_ids):
@@ -136,22 +136,22 @@ def run(config_name, n_boot=1000, seed=42, regimen_label='TRTR', reference_model
 
     _, _, diffs = bag_level_bootstrap(ref_pred_common, common_pred, common_true,
                                       n_boot=n_boot, seed=seed)
-    vs_tier0 = summarize_bootstrap_diffs(diffs)
+    vs_naive_mil = summarize_bootstrap_diffs(diffs)
     ref_acc = float(accuracy_score(common_true, ref_pred_common))
-    print(f"  Tier 0 reference ({ref_label}, {regimen_label}, majority vote): "
+    print(f"  naive MIL reference ({ref_label}, {regimen_label}, majority vote): "
           f"bag_acc={ref_acc:.4f}  (n={len(common)} bags)")
-    print(f"  delta (attention - Tier0) = {metrics['bag_accuracy'] - ref_acc:+.4f}  "
-          f"95%CI[{vs_tier0['ci_diff_lo']:+.4f},{vs_tier0['ci_diff_hi']:+.4f}]  "
-          f"p={vs_tier0['p_bootstrap']:.4f}  significant={vs_tier0['significant_95']}")
+    print(f"  delta (attention - naive MIL) = {metrics['bag_accuracy'] - ref_acc:+.4f}  "
+          f"95%CI[{vs_naive_mil['ci_diff_lo']:+.4f},{vs_naive_mil['ci_diff_hi']:+.4f}]  "
+          f"p={vs_naive_mil['p_bootstrap']:.4f}  significant={vs_naive_mil['significant_95']}")
 
     report = {
         'config': config_name, 'method': 'attention', 'variant': 'attention',
         'n_bootstrap': n_boot, 'metrics': metrics,
-        'tier0_reference': {
+        'naive_mil_reference': {
             'model': ref_label, 'regimen': regimen_label, 'rule': 'majority',
             'n_bags': len(common), 'bag_accuracy': ref_acc,
         },
-        'vs_tier0': vs_tier0,
+        'vs_naive_mil': vs_naive_mil,
     }
     if out_path is None:
         out_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \
@@ -165,7 +165,7 @@ def run(config_name, n_boot=1000, seed=42, regimen_label='TRTR', reference_model
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Tier 3 attention-weighted bag-level eval")
+    parser = argparse.ArgumentParser(description="Bag-level evaluation of attention MIL (attention-weighted)")
     parser.add_argument('--config', required=True)
     parser.add_argument('--n-boot', type=int, default=1000)
     parser.add_argument('--seed', type=int, default=42)

@@ -1,13 +1,7 @@
-# Suite 600: CVAE beta tuning, to fix the decoder-collapse failure mode found while
-# building a CVAE counterfactual analysis -- at beta=2.0,
-# the decoder reconstructs almost a constant per-class mean spectrum regardless of z
-# (reconstruction std measured at 0.1%-16% of real data's own within-class std; the
-# SAME collapse was confirmed in the TSTR/TSRTR synthetic pools too). This config is
-# IDENTICAL to exp_501.yaml except models.cvae.loss_weights.beta (2.0 -> 1.0) and the
-# paths/pipeline.stages needed to make it a standalone experiment that only runs the
-# cvae stage (no baseline classifiers needed for this sweep's diversity metric).
+# exp_601: beta=1.0, 100 epochs; the checkpoint that exp_605 and exp_606 resume from (beta=1, latent_dim=32, reconstruction=MSE, synthetic:real=1, threshold 0.60)
+# See configs/README.md.
 name: exp_601
-description: "Suite 600 CVAE beta tuning: beta=1.0 (exp_501's baseline is beta=2.0)"
+description: "beta=1.0, 100 epochs; the checkpoint that exp_605 and exp_606 resume from (beta=1, latent_dim=32, reconstruction=MSE, synthetic:real=1, threshold 0.60)"
 version: "1.0"
 
 paths:
@@ -18,7 +12,6 @@ paths:
 
   results_root: "results"
   experiment_root: "results/exp_601"
-  data_output_dir: "results/exp_601/data"
   processed_file: "data/processed/glioma_mil.h5"
 
   models_baseline_dir: "results/exp_501/models/trtr"   # REUSED, zero retrain cost -- see exp_607.yaml
@@ -26,7 +19,6 @@ paths:
   models_tsrtr_dir: "results/exp_601/models/tsrtr"
   models_cvae_dir: "results/exp_601/models/cvae"
   synthetic_dir: "results/exp_601/synthetic"
-  quality_dir: "results/exp_601/data_quality"
   statistical_dir: "results/exp_601/statistical_eval"
 
 tsrtr:
@@ -34,18 +26,12 @@ tsrtr:
   cvae_weights_dir: "results/exp_601/models/cvae"
 
 pipeline:
-  stages: [cvae]   # this sweep only needs the CVAE -- no baseline classifiers required
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]
 
 preprocessing:
-  spatial_median_filter: true
-  spatial_median_filter_size: 3
-  airpls_lambda: 10000
-  airpls_porder: 1
-  normalization: "minmax"
   signal_length: 1738
   crop_region: [700, 1800]
   y_tumor: false
-  ignore_samples: []
 
 augmentation:
   enabled: true
@@ -54,11 +40,8 @@ augmentation:
 
 cv_strategy:
   split_source: "data/splits/manual_splits.json"
-  use_group_aware_cv: true
-  holdout_test_set: true
   n_folds: 5
   patient_cap: 500
-  cap_strategy: "dynamic_per_epoch"
 
 training:
   random_seed: 42
@@ -122,7 +105,6 @@ statistics:
   bootstrap_samples: 1000
   alpha: 0.05
   random_seed: 42
-  primary_metric: "f1_macro"
 
 mil:
   pi_floor: 0.02
@@ -132,12 +114,3 @@ mil:
 output:
   output_base: "results"
   include_experiment_name_in_output: true
-
-notes: |
-  - Suite 600: CVAE beta tuning, to address decoder/posterior collapse found at
-    exp_501's beta=2.0. Every key here is identical
-    to configs/exp_501.yaml except beta, name/description, and the paths/pipeline
-    keys needed to make this a standalone experiment with its own output tree.
-  - Evaluate with a pairwise-distance synthetic/real diversity ratio plus a
-    direct reconstruction-std-vs-real-std ratio -- the same two checks that
-    confirmed exp_501's collapse.

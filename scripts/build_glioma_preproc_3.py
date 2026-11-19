@@ -1,18 +1,13 @@
-"""Build data/processed/glioma-preproc-3.h5 -- the fixed-threshold v3 dataset.
+"""Build a dataset with a fixed maximum-intensity threshold (src/data/preprocessing_v3.py).
 
-Same automated, no-NMF/GMM-clustering pipeline as
-scripts/build_glioma_preproc_2.py, with one difference: the strong-signal
-mask is a fixed max-intensity threshold (default 0.4) instead of v2's
-adaptive per-slide percentile rule. See src/data/preprocessing_v3.py for the
-full pipeline and why 0.4 specifically (an informal 0.6-vs-0.8 comparison on
-the current pipeline found looser cuts performing better; v1's own current
-default dataset turns out to already BE the fixed-0.6 case, confirmed
-directly against the archived batch-processing script that produced its
-strong_signal_mask.npy artifacts).
+    --threshold 0.6  ->  data/processed/glioma_mil.h5   (the paper's main dataset)
+    --threshold 0.4  ->  data/processed/glioma-preproc-3.h5   (exp_4.608; the default)
 
 Usage:
-    python scripts/build_glioma_preproc_3.py [--threshold 0.4] [--out data/processed/glioma-preproc-3.h5] [--workers N]
+    python scripts/build_glioma_preproc_3.py --threshold 0.6 --out data/processed/glioma_mil.h5 [--workers N]
+    python scripts/build_glioma_preproc_3.py --threshold 0.4 --out data/processed/glioma-preproc-3.h5
 """
+
 from __future__ import annotations
 
 import argparse

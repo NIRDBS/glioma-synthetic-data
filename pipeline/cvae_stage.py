@@ -34,7 +34,7 @@ def _make_epoch_dataset(X_epoch, y_epoch, aug_cfg, num_classes, batch_size):
     - Baseline wobble: a vectorised TF-native stand-in for
       src/data/augmentation.py's baseline_wobble (smooth random perturbation,
       amplitude scaled to each sample's own dynamic range) -- "the most valuable"
-      of §7.2's suggested augmentations, motivated by the Stage 0 baseline study.
+      of §7.2's suggested augmentations, motivated by the baseline-correction study.
       Not literally src/data/augmentation.py's cubic-spline-through-control-points
       version: that is a per-row scipy.interp1d call, and at ~22k rows x 70
       epochs x 5 folds (~7.7M calls) it would materially slow CVAE training,
@@ -284,17 +284,17 @@ def run_local(config, epochs=None, permutation_seed=None, model_out_dir=None,
 
     ``permutation_seed``: if given, substitutes the loader's own y_class with
     an exact permutation of the true label multiset (src/mil/shuffle_control.py
-    -- the same technique already used for Tiers 1-3's shuffled-bag-label
+    -- the same technique already used for mi-SVM and attention MIL's shuffled-bag-label
     controls) BEFORE any fold splitting,
-    then trains completely unchanged from there. This is what Tier 4's own
+    then trains completely unchanged from there. This is what CVAE MIL's own
     control needs: a full CVAE retrain under permuted labels, since (unlike
-    Tiers 1-3) Tier 4 conditions directly on the CVAE's own weights rather
+    mi-SVM and attention MIL) CVAE MIL conditions directly on the CVAE's own weights rather
     than on a separate, frozen-trunk-based model.
 
     ``model_out_dir``/``synthetic_out_dir``: override the config's own output
     paths -- unused by the real training run (unchanged behaviour), used by a
     shuffled-label run so it can never overwrite the real CVAE weights that
-    Tier 3's frozen trunk and Tier 4's CbR both depend on.
+    attention MIL's frozen trunk and CVAE MIL's CbR both depend on.
 
     ``resume_from_dir``/``epoch_offset``: see _train_one_fold's docstring --
     load an existing per-fold checkpoint and continue training ``epochs``
@@ -340,18 +340,27 @@ def run_local(config, epochs=None, permutation_seed=None, model_out_dir=None,
     print(f"\n CVAE stage complete. Weights: {model_out_dir} | Synthetic: {synthetic_out_dir}")
 
 
-def cvae_stage(config, output_dir=None, backend='local', epochs=None):
+def cvae_stage(config, output_dir=None, backend='local', epochs=None, resume_from=None, epoch_offset=0):
     """
     Run the CVAE stage.
 
     backend='local' (default): train on this machine.
     backend='modal': offload training to a Modal GPU, then download the weights +
                      synthetic pool back into the local results dirs.
+
+    ``resume_from``: directory of per-fold weights (e.g. results/exp_601/models/cvae) to continue
+    from for ``epochs`` more epochs instead of training from scratch (exp_605, exp_606);
+    ``epoch_offset`` is the number of epochs already trained, so the written history continues
+    its epoch numbering.
     """
     if backend == 'modal':
         from pipeline.modal_cvae import run_on_modal
-        return run_on_modal(config['name'], epochs=epochs)
-    return run_local(config, epochs=epochs)
+        if resume_from is None:
+            return run_on_modal(config['name'], epochs=epochs)
+        tag = f"{Path(resume_from).parts[-3]}_{epoch_offset}ep"   # e.g. exp_601_100ep
+        return run_on_modal(config['name'], epochs=epochs, resume_local_dir=resume_from,
+                            resume_tag=tag, epoch_offset=epoch_offset)
+    return run_local(config, epochs=epochs, resume_from_dir=resume_from, epoch_offset=epoch_offset)
 
 
 if __name__ == '__main__':
@@ -359,9 +368,13 @@ if __name__ == '__main__':
     import sys
 
     parser = argparse.ArgumentParser(description="CVAE training + synthetic generation")
-    parser.add_argument('--config', required=True, help="experiment config name, e.g. exp_201")
+    parser.add_argument('--config', required=True, help="experiment config name, e.g. exp_608")
     parser.add_argument('--backend', default='local', choices=['local', 'modal'])
     parser.add_argument('--epochs', type=int, default=None, help="override epochs (smoke tests)")
+    parser.add_argument('--resume-from', default=None,
+                        help="continue from this directory of per-fold weights, e.g. results/exp_601/models/cvae")
+    parser.add_argument('--epoch-offset', type=int, default=0,
+                        help="epochs already trained in --resume-from (history numbering continues from it)")
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[1]
@@ -370,4 +383,5 @@ if __name__ == '__main__':
     from src.utils.experiment_utils import setup_experiment
 
     cfg, out_dir = setup_experiment(args.config)
-    cvae_stage(cfg, out_dir, backend=args.backend, epochs=args.epochs)
+    cvae_stage(cfg, out_dir, backend=args.backend, epochs=args.epochs,
+               resume_from=args.resume_from, epoch_offset=args.epoch_offset)

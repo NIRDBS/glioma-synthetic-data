@@ -16,7 +16,7 @@ class CVAE(Model):
         """
         Dynamic CVAE that builds itself based on a config dictionary.
         Supports 'use_skip_gap' to toggle multi-scale feature aggregation.
-        Supports gamma/delta for reconstruction loss ablation (Suite 200).
+        Supports gamma/delta weights of the MSE and cosine reconstruction losses.
         """
         super(CVAE, self).__init__()
         # Handle both ExperimentConfig object or raw dict
@@ -28,7 +28,7 @@ class CVAE(Model):
         self.beta = self.cfg['loss_weights']['beta']
         self.alpha = self.cfg['loss_weights']['alpha']
         
-        # Suite 200 Ablation: Extract gamma/delta for reconstruction loss weighting
+        # gamma/delta: weights of the MSE and cosine reconstruction losses
         self.gamma = self.cfg['loss_weights'].get('gamma', None)  # Weight for MSE
         self.delta = self.cfg['loss_weights'].get('delta', None)  # Weight for Cosine
         self.use_combined_loss = (self.gamma is not None and self.delta is not None)

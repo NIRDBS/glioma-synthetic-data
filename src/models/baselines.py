@@ -8,11 +8,11 @@ from sklearn.preprocessing import StandardScaler
 
 class ApolloPipeline(BaseEstimator, ClassifierMixin):
     """
-    Exact reproduction of the 'Apollo' methodology for 6-Class Classification:
-    1. Random Forest for Feature Selection (Top 20 bands).
-    2. SVM (RBF Kernel) for Classification on those 20 bands.
-    
-    Source Parameters extracted from: '4 Six class methylation classifier RF+SVC.ipynb'
+    The RF+SVM classifier of Lita et al. (the 'Apollo' method; used here for the binary task too):
+    1. Random Forest for feature selection (top 20 bands).
+    2. SVM (RBF kernel) on those 20 bands.
+
+    Hyperparameters follow the authors' published notebook.
     """
     def __init__(self, n_features=20, random_state=42):
         self.n_features = n_features

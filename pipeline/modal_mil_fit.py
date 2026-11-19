@@ -38,18 +38,15 @@ image = (
     .pip_install(
         # mil_fit_stage.py itself only needs numpy/scipy/h5py/sklearn, but
         # importing anything under pipeline.* eagerly runs pipeline/__init__.py,
-        # which unconditionally imports every stage module (preprocessing,
-        # trtr, cvae, tstr, tsrtr, evaluation) -- so this needs their combined
-        # transitive dependencies too. Matched to modal_classifiers.py's
-        # already-working list rather than trimmed, after a first attempt
-        # with a shorter list failed on a missing 'tqdm' inside
-        # src/data/preprocessing.py, pulled in via preprocessing_stage.
+        # which unconditionally imports every stage module (trtr, cvae, tstr,
+        # tsrtr, evaluation) -- so this needs their combined transitive
+        # dependencies too. Matched to modal_classifiers.py's working list.
         "tensorflow[and-cuda]==2.20.0",
         "numpy", "pandas", "scipy", "h5py", "PyYAML",
         "scikit-learn", "joblib",
         "xgboost",
-        "ramanspy", "natsort",
-        "tqdm", "matplotlib", "seaborn",
+        "ramanspy",
+        "tqdm", "matplotlib",
         "statsmodels", "shap", "hdbscan",
     )
     .add_local_dir(str(ROOT / "src"),      remote_path="/root/src")

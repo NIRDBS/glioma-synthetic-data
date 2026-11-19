@@ -54,9 +54,8 @@ METRIC_COLUMNS = [
 ]
 
 # Per-experiment parameter values, read directly from each config's own
-# beta/latent_dim/gamma/delta/synth_ratio/processed_file (verified against
-# the actual YAML, not re-derived from the registry's free-text
-# description) -- these five numbers are what every table's caption states
+# beta/latent_dim/gamma/delta/synth_ratio/processed_file (taken from
+# the YAML itself, not from any description) -- these five numbers are what every table's caption states
 # directly, since they matter more to a paper reader than any file-path or
 # narrative cross-reference. Threshold is None for v2-preprocessing
 # experiments (exp_2.6xx): that preprocessing is adaptive, not a single
@@ -664,23 +663,23 @@ APPENDIX_CTRL = os.path.join(PAPER, 'appendix_controlled_experiments.tex')
 
 
 MIL_METRIC_KEYS = ('bag_accuracy', 'bag_balanced_accuracy', 'bag_sensitivity', 'bag_specificity', 'bag_auroc')
-# Tier labels of the earlier hand-authored appendix tables, kept for the main-text table.
+# Row labels of the main-text MIL table.
 MIL_LEGACY_LABEL = {'misvm_mi_svm': 'mi-SVM', 'attention_attention': 'Attention',
                     'cbr_reconstruction': 'CbR reconstruction', 'cbr_encoder_head': r'CbR encoder\_head'}
 
 
 def mil_metric_values(exp):
-    """[(label, stem, [acc, bal_acc, sens, spec, auc])] for the four MIL tiers of one
-    experiment, from scripts/bag_level_eval.py's per-tier output."""
+    """[(label, stem, [acc, bal_acc, sens, spec, auc])] for the four MIL models of one
+    experiment, from scripts/bag_level_eval.py's per-model output."""
     out = []
-    for label, stem, _ in MIL_TESTS_TIERS:
+    for label, stem, _ in MIL_MODELS:
         m = json.load(open(os.path.join(RESULTS, exp, 'mil_eval', f'stage6_bag_eval_{stem}.json')))['metrics']
         out.append((label, stem, [m[k] for k in MIL_METRIC_KEYS]))
     return out
 
 
 def _naive_mil_row(exp):
-    """Naive MIL benchmark: the Tier-0 RF trained on real data (TR/TR), one majority-vote
+    """Naive MIL benchmark: the naive MIL RF trained on real data (TR/TR), one majority-vote
     decision per bag, from the same stats-eval results as every other classifier table."""
     tstr, tsrtr = latest(exp, 'TSTR'), latest(exp, 'TSRTR')
     reg, acc, _dl, _ci, bal, sens, spec, auc = rows_for_model('RF_Standard', tstr, tsrtr)[0]
@@ -690,7 +689,7 @@ def _naive_mil_row(exp):
 
 def mil_table_latex(exp='exp_608'):
     """Main-text MIL table for the beta=0.5 / v1 (thr=0.6) configuration: the four MIL
-    tiers' rows (mil_metric_values) preceded by the naive-MIL benchmark row."""
+    models' rows (mil_metric_values) preceded by the naive-MIL benchmark row."""
     tier_rows = [f'{MIL_LEGACY_LABEL[stem]} & ' + ' & '.join(f'${v:.3f}$' for v in vals) + r' \\'
                  for _label, stem, vals in mil_metric_values(exp)]
     naive = _naive_mil_row(exp)
@@ -714,7 +713,7 @@ def mil_table_latex(exp='exp_608'):
 
 MIL_TESTS_TABLE_OUT = os.path.join(PAPER, 'results_mil_tests_table.tex')
 # (label, stage-5 method/variant file stem, key in key_instance_utility_summary.json)
-MIL_TESTS_TIERS = [
+MIL_MODELS = [
     ('mi-SVM',              'misvm_mi_svm',         'misvm'),
     ('CVAE-Attention',      'attention_attention',  'attention'),
     ('CVAE reconstruction', 'cbr_reconstruction',   'cbr_reconstruction'),
@@ -742,10 +741,10 @@ def _key_instance_paired_path(exp):
 def _key_instance_summary(exp):
     """Bag accuracies of the key-instance test, computed from the per-slide predictions that
     scripts/cvae_weighted_rf_vote.py writes: {'baseline_bag_acc': the naive MIL RF,
-    <tier key>: {'key_instance_train': selected instances, 'random_subsample': random subset}}."""
+    <model key>: {'key_instance_train': selected instances, 'random_subsample': random subset}}."""
     import numpy as np
     out = {}
-    for _label, stem, key in MIL_TESTS_TIERS:
+    for _label, stem, key in MIL_MODELS:
         path = os.path.join(RESULTS, exp, 'mil_eval', 'key_instance_per_slide', stem + '.json')
         if not os.path.exists(path):
             continue
@@ -755,7 +754,7 @@ def _key_instance_summary(exp):
         def acc(k):
             return round(float(np.mean(np.asarray(j[k]) == y)), 4)
         out.setdefault('baseline_bag_acc', acc('naive'))
-        assert out['baseline_bag_acc'] == acc('naive'), f'{exp}: tiers disagree on the naive MIL accuracy'
+        assert out['baseline_bag_acc'] == acc('naive'), f'{exp}: models disagree on the naive MIL accuracy'
         out[key] = {'key_instance_train': acc('selected'), 'random_subsample': acc('random')}
     return out
 
@@ -786,7 +785,7 @@ def mil_tests_table_latex(exp='exp_608'):
 
     sp_rows, ki_rows = [], []
     paired_boot = json.load(open(_spatial_paired_path(exp)))['n_boot'] if paired else 0
-    for label, stem, ki_key in MIL_TESTS_TIERS:
+    for label, stem, ki_key in MIL_MODELS:
         t = paired.get(stem) or {}
         t_i, t_v = t.get('morans_i'), t.get('one_minus_gamma_over_var')
         if t_i is None or t_v is None:
@@ -806,7 +805,7 @@ def mil_tests_table_latex(exp='exp_608'):
         ki_rows.append(f'{label} & {ki_cells} ' + r'\\')
 
     n_notes = '; '.join(f"{lab}: {paired[stem]['morans_i']['n_matched']}"
-                        for lab, stem, _ in MIL_TESTS_TIERS
+                        for lab, stem, _ in MIL_MODELS
                         if stem in paired and paired[stem]['morans_i']['n_matched'] != 59)
     sp = [r'\begin{table}[H]', r'\centering', r'\scriptsize', r'\setlength{\tabcolsep}{1.5pt}',
           r'\caption{Spatial coherence of the MIL posteriors for the $\beta=0.5$ configuration '
@@ -833,7 +832,7 @@ def mil_tests_table_latex(exp='exp_608'):
 
     ki_t = [r'\begin{table}[H]', r'\centering', r'\scriptsize',
             r'\caption{Key-instance utility for the $\beta=0.5$ configuration (\texttt{exp\_608}): bag accuracy '
-            r'of a random forest trained on the instances a tier selects (median split on non-diagnostic '
+            r'of a random forest trained on the instances a model selects (median split on non-diagnostic '
             r'mass), against (i) the na\"{\i}ve MIL benchmark, the same forest trained on all instances with '
             r'all of them voting, and (ii) a forest trained on a size-matched random subset of the training '
             r'instances.}',
@@ -872,7 +871,7 @@ def spatial_paired_table_latex(exps=MIL_APPENDIX_EXPS):
          r'\multicolumn{3}{c}{\emph{$1-\hat\gamma_3/\hat\sigma^2$}} & '
          r'\multirow{2}{*}{\shortstack{\emph{Real $>$}\\\emph{shuf.?}}} \\',
          r'\cmidrule(lr){2-4} \cmidrule(lr){5-7}',
-         r'\emph{Tier} & \emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & '
+         r'\emph{Model} & \emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & '
          r'\emph{real} & \emph{shuf.} & \emph{$\Delta$ [95\% CI]} & \\']
     short_n = []
     for exp in exps:
@@ -880,7 +879,7 @@ def spatial_paired_table_latex(exps=MIL_APPENDIX_EXPS):
         cfg = EXP_PARAMS.get(exp, {})
         L += [r'\midrule',
               rf'\multicolumn{{8}}{{l}}{{\texttt{{{exp.replace("_", r"\_")}}}}} \\']
-        for label, stem, _ in MIL_TESTS_TIERS:
+        for label, stem, _ in MIL_MODELS:
             t = paired.get(stem) or {}
             t_i, t_v = t.get('morans_i'), t.get('one_minus_gamma_over_var')
             if t_i is None or t_v is None:
@@ -940,7 +939,7 @@ def mil_experiment_tables_latex(exp):
          r'\emph{Model} & \emph{Accuracy} & \emph{Bal.\ Acc} & \emph{Sensitivity} & '
          r'\emph{Specificity} & \emph{AUC} \\',
          r'\midrule'] + cls_rows + [r'\bottomrule', r'\end{tabular*}'],
-        r'MIL tier bag-level results, ' + where + '. ' + _red(
+        r'MIL model bag-level results, ' + where + '. ' + _red(
             r'Binary IDH classification, $n=59$ slides, against the na\"{\i}ve MIL benchmark (a random '
             r"forest trained on real data, every instance inheriting its bag's label, one majority-vote "
             r'decision per bag).'),
@@ -949,7 +948,7 @@ def mil_experiment_tables_latex(exp):
     # 2. spatial coherence (paired real vs. shuffled-label refit)
     paired = _paired_spatial(exp)
     sp_rows, short_n = [], []
-    for label, stem, _ in MIL_TESTS_TIERS:
+    for label, stem, _ in MIL_MODELS:
         t = paired.get(stem) or {}
         t_i, t_v = t.get('morans_i'), t.get('one_minus_gamma_over_var')
         if t_i is None or t_v is None:
@@ -981,7 +980,7 @@ def mil_experiment_tables_latex(exp):
     paired_ki = json.load(open(p))['tiers'] if os.path.exists(p) else {}
     n_boot = json.load(open(p))['n_boot'] if os.path.exists(p) else 0
     ki_rows, fell_back, naive_acc = [], [], set()
-    for label, stem, _ in MIL_TESTS_TIERS:
+    for label, stem, _ in MIL_MODELS:
         r = paired_ki.get(stem)
         if r is None:
             ki_rows.append(f'{label} & ' + ' & '.join([PENDING] * 2) + r' \\')
@@ -998,7 +997,7 @@ def mil_experiment_tables_latex(exp):
     if fell_back:
         ki_note.append(_red(r'Slides with no selected validation instance, scored on all their instances '
                             r'instead: ' + '; '.join(fell_back) + '.'))
-    assert len(naive_acc) <= 1, f'{exp}: tiers disagree on the naive MIL accuracy {naive_acc}'
+    assert len(naive_acc) <= 1, f'{exp}: models disagree on the naive MIL accuracy {naive_acc}'
     naive_cell = f'${naive_acc.pop():.3f}$' if naive_acc else PENDING
     ki_t = _bottom_caption_table(
         [r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcc}', r'\toprule',
@@ -1007,10 +1006,10 @@ def mil_experiment_tables_latex(exp):
          rf'Na\"{{\i}}ve MIL (RF) & {naive_cell} & \\',
          r'\midrule'] + ki_rows + [r'\bottomrule', r'\end{tabular*}'],
         _red(r'Key-instance utility, ' + where + r': bag accuracy of a random forest trained only on the '
-             r'instances a tier selects (median split on non-diagnostic mass) and voting with the selected '
+             r'instances a model selects (median split on non-diagnostic mass) and voting with the selected '
              r'validation instances, against the na\"{\i}ve MIL benchmark. $\Delta$ is the paired per-slide '
-             r'accuracy difference (tier $-$ na\"{\i}ve) with its 95\% CI from a ' + _boot_desc() + ' '
-             r'(' + f'{n_boot:,}' + r' resamples); (*) marks a CI above zero, i.e.\ the tier is better than the na\"{\i}ve benchmark.'),
+             r'accuracy difference (model $-$ na\"{\i}ve) with its 95\% CI from a ' + _boot_desc() + ' '
+             r'(' + f'{n_boot:,}' + r' resamples); (*) marks a CI above zero, i.e.\ the model is better than the na\"{\i}ve benchmark.'),
         f'tab:ctrl_keyinst_{short}', notes=ki_note)
 
     head = [rf'\subsubsection*{{{where}}}', '']

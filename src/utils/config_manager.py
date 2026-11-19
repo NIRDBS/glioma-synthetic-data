@@ -21,17 +21,14 @@ class ConfigManager:
     
     Example:
         config = ConfigManager.load_config("exp_608")
-        lambda_param = config['preprocessing']['airpls_lambda']
+        crop_region = config['preprocessing']['crop_region']
     """
     
     # Default values for optional configuration parameters
     DEFAULTS = {
         'preprocessing': {
-            'airpls_lambda': 100,
-            'airpls_porder': 1,
             'signal_length': 1738,
             'crop_region': [700, 1800],
-            'ignore_samples': [],
         },
         'cv_strategy': {
             'use_group_aware_cv': True,
@@ -79,7 +76,6 @@ class ConfigManager:
     REQUIRED_FIELDS = [
         'name',
         'description',
-        'preprocessing.airpls_lambda',
         'preprocessing.signal_length',
         'preprocessing.crop_region',
         'cv_strategy.split_source',
@@ -262,8 +258,8 @@ class ConfigManager:
         Get a value from nested dictionary using dot notation.
         
         Example:
-            _get_nested(config, 'preprocessing.airpls_lambda')
-            -> config['preprocessing']['airpls_lambda']
+            _get_nested(config, 'preprocessing.crop_region')
+            -> config['preprocessing']['crop_region']
         
         Args:
             config: Dictionary to search

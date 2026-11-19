@@ -4,18 +4,18 @@ Suite orchestrator: run multiple experiments end-to-end from the command line.
 Each experiment's stage sequence is read from its config's ``pipeline.stages``
 (overridable with --stages). Stages run in order through a dispatch map; outputs
 are written to the per-experiment results directories so artifacts can be reused
-across experiments (e.g. exp_401/402/403 reuse exp_201's CVAE + TRTR).
+across experiments (e.g. exp_705/706/707 reuse exp_608's CVAE and exp_501's TR/TR models).
 
 Examples
 --------
-  # Full run for exp_201, then the three reuse-based ratio ablations
-  python -m pipeline.run_suite --configs exp_201 exp_401 exp_402 exp_403
+  # TR/TR baseline and the default configuration, then the reuse-based ratio experiments
+  python -m pipeline.run_suite --configs exp_501 exp_608 exp_705 exp_706 exp_707
 
-  # Only the ratio ablations (exp_201 already done), CVAE on Modal if needed
-  python -m pipeline.run_suite --configs exp_401 exp_402 exp_403 --cvae-backend local
+  # Only the ratio experiments (exp_501 and exp_608 already done), CVAE training on Modal
+  python -m pipeline.run_suite --configs exp_705 exp_706 exp_707 --cvae-backend modal
 
   # Smoke test: tiny CVAE, skip-if-exists disabled
-  python -m pipeline.run_suite --configs exp_201 --stages cvae --epochs 2 --force
+  python -m pipeline.run_suite --configs exp_608 --stages cvae --epochs 2 --force
 """
 
 import argparse
@@ -31,13 +31,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_STAGES     = ['trtr', 'cvae', 'tstr', 'tsrtr', 'stats_eval', 'mil_eval', 'mil_fit']
+DEFAULT_STAGES     = ['trtr', 'cvae', 'tstr', 'tsrtr', 'stats_eval']
 CLASSIFIER_STAGES  = {'trtr', 'tstr', 'tsrtr'}
 STAGE_ALIASES = {
-    'preprocess': 'preprocessing', 'preprocessing': 'preprocessing',
     'trtr': 'trtr', 'cvae': 'cvae', 'synth_gen': 'synth_gen', 'tstr': 'tstr', 'tsrtr': 'tsrtr',
     'eval': 'stats_eval', 'evaluation': 'stats_eval', 'stats_eval': 'stats_eval',
-    'mil_eval': 'mil_eval', 'mil': 'mil_eval', 'tier0': 'mil_eval',
     'mil_fit': 'mil_fit', 'misvm': 'mil_fit',
 }
 
@@ -83,13 +81,6 @@ def _stage_outputs_exist(stage, config):
         if stage == 'stats_eval':
             d = Path(paths['statistical_dir'])
             return d.exists() and any(d.glob('statistical_evaluation_*.json'))
-        if stage == 'mil_eval':
-            # Distinct filename prefix (mil_tier0_*) from stats_eval's
-            # (statistical_evaluation_*) in the same statistical_dir -- each
-            # stage's skip-check globs only its own prefix, so neither fires
-            # spuriously off the other's output.
-            d = Path(paths['statistical_dir'])
-            return d.exists() and any(d.glob('mil_tier0_*.json'))
         if stage == 'mil_fit':
             store_path = Path(paths.get('experiment_root', '')) / 'latent' / 'latent_labels.h5'
             if not store_path.exists():
@@ -110,9 +101,6 @@ def _run_stage(stage, config, output_dir, cvae_backend, epochs):
     from pipeline.cvae_stage import cvae_stage
     from pipeline.evaluation_stage import evaluation_stage
 
-    if stage == 'preprocessing':
-        from pipeline.preprocessing_stage import preprocessing_stage
-        return preprocessing_stage(config, output_dir)
     if stage == 'trtr':
         return trtr_stage(config, output_dir)
     if stage == 'cvae':
@@ -158,28 +146,6 @@ def _run_stage(stage, config, output_dir, cvae_backend, epochs):
         if not results:
             print("  [stats_eval] No candidate model dirs found — skipping.")
         return results
-    if stage == 'mil_eval':
-        from pipeline.mil_eval_stage import mil_eval_stage
-
-        paths = config['paths']
-        n_folds = _n_folds(config)
-        fold_names = [f"fold_{i}" for i in range(n_folds)]
-
-        def _has_models(d):
-            if not d:
-                return False
-            p = Path(d)
-            return p.exists() and any((p / f"apollo_{fn}.joblib").exists() for fn in fold_names)
-
-        results = {}
-        for label, key in (('TRTR', 'models_baseline_dir'), ('TSTR', 'models_tstr_dir'),
-                           ('TSRTR', 'models_tsrtr_dir')):
-            d = paths.get(key) or (paths.get('models_trtr_dir') if label == 'TRTR' else None)
-            if _has_models(d):
-                results[label] = mil_eval_stage(config, output_dir, regimen_dir=d, regimen_label=label)
-        if not results:
-            print("  [mil_eval] No regimen model dirs found — skipping.")
-        return results
     if stage == 'mil_fit':
         from pipeline.mil_fit_stage import mil_fit_stage
         return mil_fit_stage(config, output_dir)
@@ -203,14 +169,9 @@ def _log_suite(config, record):
 
 def _record(summary, config, stage, status, secs):
     """Append to summary list and write to suite_log.json."""
-    from src.utils.experiment_utils import log_stage_completion
     summary.append((config['name'], stage, status, secs))
     _log_suite(config, {'stage': stage, 'status': status, 'seconds': round(secs, 1),
                         'timestamp': datetime.now().isoformat()})
-    try:
-        log_stage_completion(config['name'], stage, success=(status == 'ok'))
-    except Exception:
-        pass
 
 
 def _run_one_stage(stage, config, output_dir, cvae_backend, epochs, summary, continue_on_error):
@@ -343,7 +304,7 @@ def _print_summary(summary):
 def main():
     parser = argparse.ArgumentParser(description="Run a suite of experiments end-to-end")
     parser.add_argument('--configs', nargs='+', required=True,
-                        help="experiment config names, e.g. exp_201 exp_401 exp_402 exp_403")
+                        help="experiment config names, e.g. exp_608 exp_705")
     parser.add_argument('--stages', nargs='+', default=None,
                         help="override the stages to run (default: each config's pipeline.stages)")
     parser.add_argument('--cvae-backend', default='local', choices=['local', 'modal'],

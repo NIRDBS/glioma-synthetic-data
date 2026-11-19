@@ -2,13 +2,12 @@
 The shuffled-bag-label control:
 permute which label goes with which bag, holding every instance's features,
 bag membership, and the CV split completely fixed, then refit and re-run
-Stage 5's spatial validation. If lag>=3 coherence survives a permutation
+the spatial-coherence test. If lag>=3 coherence survives a permutation
 that has severed the label-bag link entirely, the original result cannot be
 attributed to the true label -- it must come from something else (real
 spatial autocorrelation in the raw features, an acquisition artifact, etc).
-This is the only available way to validate the spatial claim now that no
-tumor-size ground truth exists to check a variogram range against
-(see [[project_no_tumor_ground_truth]]).
+This is the available way to validate the spatial claim, since the dataset has no tissue
+annotations to check coherence against.
 
 The permutation is EXACT -- a random reassignment of the true label
 multiset across bags, not independent resampling -- so class balance stays

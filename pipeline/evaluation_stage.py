@@ -110,8 +110,8 @@ def _cbr_predictions(folds, config, n_features, cvae_weights_dir, return_scores=
 
     Returns (preds, y_true, slide_ids) concatenated across folds, or None if any
     fold's CVAE weights are missing. This is the single source of truth for CbR
-    predictions, shared by the bootstrap evaluation (``_compute_cbr``) and the
-    offline AUROC-patching script (``scripts/patch_cbr_auroc.py``).
+    predictions, shared by the bootstrap evaluation (``_compute_cbr``) and
+    ``scripts/patient_bootstrap.py``.
 
     ``return_scores=True`` (binary tasks only) appends a fourth array: the per-
     spectrum normalised MSE margin ``(mse_0 - mse_1) / (mse_0 + mse_1)``. It is
@@ -222,8 +222,8 @@ def _compute_cbr(folds, config, n_features, cvae_weights_dir, n_boot, seed):
     }
     # Flat metric keys read by scripts/paper/gen_appendix_controlled_experiments.py (CbR row). _slide_
     # level_metrics no longer returns bare accuracy/f1_macro/precision_macro/
-    # recall_macro/balanced_accuracy/kappa at all (Stage 2 retired the
-    # degenerate within-bag-instance versions of these); only the bag_* and
+    # recall_macro/balanced_accuracy/kappa at all (the
+    # degenerate within-bag-instance versions of these were retired); only the bag_* and
     # within_bag_instance_recall/f1_weighted names exist now.
     for k in ('bag_f1_macro', 'bag_precision_macro', 'bag_recall_macro',
              'bag_balanced_accuracy', 'bag_kappa', 'within_bag_instance_recall',

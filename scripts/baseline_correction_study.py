@@ -287,7 +287,8 @@ def make_figure(wn, df_syn, df_lamsens, out_path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--n-spectra", type=int, default=60, help="per arm, per fluorescence level")
+    ap.add_argument("--n-spectra", type=int, default=40,
+                    help="per arm, per fluorescence level (40 for the paper; the lambda sweep uses n_spectra // 4 spectra, at least 6)")
     ap.add_argument("--out-dir", default="results/stage0_baseline")
     ap.add_argument("--n-probe", type=int, default=48)
     ap.add_argument("--seed", type=int, default=0)

@@ -52,12 +52,12 @@ class FoldArrays:
 
     Iterates as the historical 4-tuple ``(X_train, y_train, X_val, y_val)`` so every
     existing call site's ``X_train, y_train, X_val, y_val = prepare_fold(...)`` keeps
-    working unchanged. New code (Stage 4+ MIL fitting) reaches the per-instance
+    working unchanged. The MIL code reaches the per-instance
     coords/bag-ids by attribute instead of threading more positional returns:
     ``fd = prepare_fold(...); fd.train_coords, fd.train_bag_ids``.
 
-    Coords/bag-ids are ``None`` when the source HDF5 predates Stage 1 (no
-    ``coords`` dataset) -- callers that need them should check, not assume.
+    Coords/bag-ids are ``None`` when the source HDF5 has no ``coords``
+    dataset -- callers that need them should check, not assume.
     """
     X_train: np.ndarray
     y_train: np.ndarray

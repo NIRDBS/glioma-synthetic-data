@@ -1,17 +1,16 @@
 """
-Stage: MIL formulation fitting (Stage 6 adds
-Tier 4, 'cbr', below).
+MIL formulation fitting (mi-SVM; CVAE MIL, 'cbr', below).
 
-Fits Tier 1 (mi-SVM) on each CV fold's TRAINING bags only, scores that same
+Fits mi-SVM on each CV fold's TRAINING bags only, scores that same
 fold's training AND validation instances with the fold's own model, and writes
 both to the latent-label store (results/{exp}/latent/latent_labels.h5) with the
 leakage-safe in_sample flag.
 
-No patient_cap here -- Stage 4 retires it in favour of using every available
-instance for latent inference (bag-size-aware pooling is the model's own job,
+No patient_cap here -- every available
+instance is used for latent inference (bag-size-aware pooling is the model's own job,
 not a preprocessing-time cap).
 
-Tier 4 ('cbr') is not a *fit* at all -- it scores every fold's instances with
+CVAE MIL ('cbr') is not a *fit* at all -- it scores every fold's instances with
 that fold's own already-trained CVAE weights (src/mil/generative.py), so it
 slots into this same per-fold/store-writing machinery via
 ``_score_one_fold_cbr`` rather than ``_fit_one_fold``, but produces TWO
@@ -87,7 +86,7 @@ def _fit_one_fold(fold_data, config, method, n_classes, pi_min, max_iters, seed,
 def _score_one_fold_cbr(fold_data, config, n_classes, full_bag_ids, full_coords,
                         cvae_weights_dir, temperature):
     """
-    Tier 4: score one fold's full train+val
+    CVAE MIL: score one fold's full train+val
     instance set with that fold's own trained CVAE, producing BOTH
     'reconstruction' and 'encoder_head' variants. No training happens here --
     both variants score with the CVAE weights the ``cvae`` stage already
@@ -225,7 +224,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Fit MIL formulations (mi-SVM, cbr)")
     parser.add_argument('--config', required=True, help="experiment config name, e.g. exp_608")
     parser.add_argument('--methods', nargs='+', default=list(METHODS), choices=list(ALL_METHODS),
-                        help="default is mi-SVM only; 'cbr' (Tier 4, inference-only, no "
+                        help="default is mi-SVM only; 'cbr' (CVAE MIL, inference-only, no "
                              "training) must be requested explicitly")
     parser.add_argument('--pi-min', type=float, default=None)
     parser.add_argument('--max-iters', type=int, default=10)

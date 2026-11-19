@@ -38,7 +38,7 @@ def compute_cosine_loss(x, x_recon):
 def compute_combined_reconstruction_loss(x, x_recon, gamma=0.5, delta=0.5):
     """
     Computes combined reconstruction loss: gamma*MSE + delta*Cosine.
-    Used for Suite 200 ablation study to isolate reconstruction loss effects.
+    Used to compare reconstruction losses (MSE, MSE + cosine, cosine).
     
     Args:
         x: Input spectra (batch, bands, 1)

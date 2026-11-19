@@ -1,6 +1,6 @@
 """
 The key-instance utility test: keep
-Tier 0's existing RF (raw 571-band spectrum, unchanged, the same trained
+naive MIL's existing RF (raw 571-band spectrum, unchanged, the same trained
 model everywhere else in this project) but replace its naive "1 instance = 1
 vote" majority-vote pooling with alternatives informed by a given MIL tier's
 own per-instance posterior (any (method, variant) stored in a config's
@@ -23,7 +23,7 @@ exp_607's stored CbR posterior -- no new training:
   ``_key_instance_vote_bag_decision`` for why not an absolute 0.5 threshold).
   Only key instances' RF votes enter a plain majority vote; a bag with zero
   key instances falls back to all of its instances (flagged, not silently
-  dropped). This RF is the SAME already-trained Tier 0 model -- key-instance
+  dropped). This RF is the SAME already-trained naive MIL model -- key-instance
   selection only changes which of its existing votes get counted.
 
 A third, genuinely different variant -- a NEW classifier, not a
@@ -32,14 +32,14 @@ re-aggregation of an old one:
 - 'key_instance_train': per fold, the median-split threshold is fit from
   TRAINING instances' own non-diagnostic mass only (never from validation --
   that would leak), then a FRESH RandomForestClassifier (same hyperparameters
-  as Tier 0's RF) is fit on ONLY the training instances the CVAE calls "key"
+  as naive MIL's RF) is fit on ONLY the training instances the CVAE calls "key"
   under that threshold. At inference, the same threshold decides which
   validation instances are "key"; only those are ever shown to this new RF.
   This is the two-stage pipeline the user described: the CVAE decides which
   instances matter, then a classifier trained only on what it considers
-  informative does the classifying -- not Tier 0's RF with a different vote,
+  informative does the classifying -- not naive MIL's RF with a different vote,
   a different RF with different training data. Honest confound to flag: this
-  RF sees roughly half the training instances Tier 0's RF does, so any
+  RF sees roughly half the training instances naive MIL's RF does, so any
   difference conflates "does key-instance filtering help" with "does less
   training data hurt."
 
@@ -53,7 +53,7 @@ A fourth variant, the confound-(i) control for 'key_instance_train':
   'key_instance_train' does no better than this, the apparent effect is
   attributable to training-set size, not CVAE selection.
 
-All four are compared against the plain majority-vote RF baseline (Tier 0's
+All four are compared against the plain majority-vote RF baseline (naive MIL's
 own rule, same already-trained model) via the same bag-level bootstrap used
 everywhere else in this project.
 
@@ -370,7 +370,7 @@ def main():
         config, args.cvae_config, method=args.method, variant=args.variant)
     print(f"  pooled: {len(rf_p1)} out-of-sample instances, {len(np.unique(bag_ids))} unique bags")
 
-    # Baseline: plain majority vote (Tier 0's own rule), same already-trained RF.
+    # Baseline: plain majority vote (naive MIL's own rule), same already-trained RF.
     # Uses rf_pred_hard (.predict()), NOT (rf_p1 >= 0.5) -- see _collect_per_fold's
     # docstring: these can genuinely disagree, and only .predict() matches the
     # project-wide convention (load_and_predict) this baseline must stay comparable to.

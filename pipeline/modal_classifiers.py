@@ -34,8 +34,8 @@ image = (
         "numpy", "pandas", "scipy", "h5py", "PyYAML",
         "scikit-learn", "joblib",
         "xgboost",
-        "ramanspy", "natsort",
-        "tqdm", "matplotlib", "seaborn",
+        "ramanspy",
+        "tqdm", "matplotlib",
         "statsmodels", "shap", "hdbscan",
     )
     .add_local_dir(str(ROOT / "src"),      remote_path="/root/src")

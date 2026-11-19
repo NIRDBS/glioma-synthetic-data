@@ -6,22 +6,16 @@ numpy==2.3.3
 pandas==2.3.2
 scipy==1.16.2
 h5py==3.15.1
-hdbscan==0.8.41
 joblib>=1.3.0
 PyYAML==6.0.3
-natsort==8.4.0
-# umap-learn>=0.5  # blocked by AppControl on Windows — install manually if available
 
 # Machine Learning & Modeling
 scikit-learn==1.7.2
 tensorflow==2.20.0
 xgboost==3.2.0
-statsmodels==0.14.6
-shap==0.51.0
 
 # Visualization
 matplotlib==3.10.6
-seaborn==0.13.2
 
 # Raman Spectroscopy
 ramanspy==0.2.10

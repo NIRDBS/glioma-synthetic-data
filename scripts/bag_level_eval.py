@@ -1,13 +1,13 @@
 """
 Bag-level classification accuracy for a stored MIL posterior, vs the
-Tier 0 reference (exit criterion: "Beats Tier 0 at bag level").
+naive MIL reference (exit criterion: "Beats naive MIL at bag level").
 
-Generic over (method, variant) -- works for Tier 4's 'cbr' variants and
-Tier 1 ('misvm') alike, since it reads directly from the latent-label store
+Generic over (method, variant) -- works for CVAE MIL's 'cbr' variants and
+mi-SVM ('misvm') alike, since it reads directly from the latent-label store
 rather than any tier-specific code. This closes a real gap: the earlier mi-SVM
 evaluation never computed a bag-accuracy number -- its story stayed at
 degeneracy diagnostics and the spatial checks. This script is what
-"beats Tier 0" actually needs.
+"beats naive MIL" actually needs.
 
 The store's posterior is (n, K+1): column 0 is non-diagnostic mass (the spatial
 analysis's concern, mapped spatially), columns 1..K are the K diagnostic classes.
@@ -24,7 +24,7 @@ posterior has *zero* instances with both diagnostic columns simultaneously
 nonzero, giving a trivial, always-correct bag_accuracy of 1.0000 that
 reflects the model's known-by-construction bag label, not anything it
 learned. mi-SVM (independent one-vs-rest scores,
-no hard mask) and Tier 4's cbr variants (plain softmax, no notion of
+no hard mask) and CVAE MIL's cbr variants (plain softmax, no notion of
 "allowed states" at all) do NOT have this property (16.5% and ~100% of
 instances respectively show real competition between the two diagnostic
 columns) -- their numbers from this script are genuine. `run()` computes and
@@ -51,11 +51,22 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from pipeline._common import num_classes_of
 from pipeline.evaluation_stage import MODEL_LABELS, MODEL_SPECS, _binary_map, _build_fold_val_sets
-from pipeline.mil_eval_stage import _fold_proba
 from src.mil.store import read_posteriors
 from src.utils.statistical_evaluation import (
-    aggregate_bag_scores_across_folds, bag_level_bootstrap, summarize_bootstrap_diffs,
+    aggregate_bag_scores_across_folds, bag_level_bootstrap, find_model_path, load_and_predict_proba,
+    summarize_bootstrap_diffs,
 )
+
+
+def _fold_proba(folds, model_dir, prefix, ext, model_type):
+    """Per-fold (proba, y_true, bag_ids) triples, as aggregate_bag_scores_across_folds needs them. Folds are
+    not concatenated, so the fold boundary survives for the duplicate-bag averaging rule."""
+    out = []
+    for fd in folds:
+        path = find_model_path(str(model_dir), prefix, ext, fd['fold_idx'])
+        proba = load_and_predict_proba(path, model_type, fd['X'])
+        out.append({'proba': proba, 'y_true': fd['y'], 'bag_ids': fd['slide_ids']})
+    return out
 
 
 def diagnostic_column_competition_frac(fold_data):
@@ -70,7 +81,7 @@ def diagnostic_column_competition_frac(fold_data):
     Near 0.0: this method hard-restricts every instance to its own bag's
     known class throughout scoring (Model (C)) -- the
     bag_accuracy this script computes is then trivially 1.0 and
-    UNINFORMATIVE, not a genuine result. Near 1.0 (mi-SVM, Tier 4's cbr
+    UNINFORMATIVE, not a genuine result. Near 1.0 (mi-SVM, CVAE MIL's cbr
     variants): genuine per-instance competition between classes; the
     resulting bag_accuracy is a real measurement.
     """
@@ -88,7 +99,7 @@ def _load_y_bag_and_sample_ids(h5_path, config):
     y>=3 -> 1) -- the SAME mapping evaluation_stage.py's own reference
     pipeline applies (_binary_map). Reusing that function here, rather than
     reimplementing it, is what keeps this script's labels comparable to the
-    Tier 0 reference at all.
+    naive MIL reference at all.
     """
     with h5py.File(h5_path, 'r') as f:
         sample_ids = f['sample_ids'][:]
@@ -124,11 +135,10 @@ def _store_fold_data(store_path, method, variant, fold_names, sample_ids, y_bag)
     return fold_data
 
 
-def _tier0_reference(config, n_boot, seed, regimen_label='TRTR', reference_model='cnn'):
-    """Majority-vote Tier 0 pooling of one classifier's per-instance
+def _naive_mil_reference(config, n_boot, seed, regimen_label='TRTR', reference_model='cnn'):
+    """Majority-vote naive MIL pooling of one classifier's per-instance
     predictions (default: the 1D-CNN, the model this MIL programme is meant
-    to improve on) -- the same reference
-    pipeline/mil_eval_stage.py itself compares its own pooling rules against."""
+    to improve on)."""
     folds = _build_fold_val_sets(config)
     regimen_dir = {
         'TRTR': config['paths'].get('models_baseline_dir') or config['paths'].get('models_trtr_dir'),
@@ -195,7 +205,7 @@ def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
     # Binary-only (K=2 throughout this project): sensitivity/specificity as
     # per-class recall (class 1 / class 0), same convention as
     # src/utils/statistical_evaluation.py's _slide_level_metrics, so these
-    # are directly comparable to the Tier 0 classifiers' own numbers.
+    # are directly comparable to the naive MIL classifiers' own numbers.
     # bag_auroc/bag_auprc from the CONTINUOUS pooled score (`scores`, already
     # computed above for the argmax) against class 1 -- never available from
     # bag_accuracy/kappa alone, hence computed here rather than derived.
@@ -213,7 +223,7 @@ def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
           f"bag_F1={metrics['bag_f1_macro']:.4f}  bag_kappa={metrics['bag_kappa']:.4f}  "
           f"(n={n_bags} bags)")
 
-    ref_bag_ids, ref_pred_all, ref_true_all, ref_label = _tier0_reference(
+    ref_bag_ids, ref_pred_all, ref_true_all, ref_label = _naive_mil_reference(
         config, n_boot, seed, regimen_label=regimen_label, reference_model=reference_model)
     # Align to the SAME bag set (store's out-of-sample coverage need not be
     # identical to the reference classifier's -- e.g. a slide with zero
@@ -235,24 +245,24 @@ def run(config_name, method, variant, n_folds=5, n_boot=1000, seed=42,
 
     _, _, diffs = bag_level_bootstrap(ref_pred_common, common_pred, common_true,
                                       n_boot=n_boot, seed=seed)
-    vs_tier0 = summarize_bootstrap_diffs(diffs)
+    vs_naive_mil = summarize_bootstrap_diffs(diffs)
     ref_acc = float(accuracy_score(common_true, ref_pred_common))
-    print(f"  Tier 0 reference ({ref_label}, {regimen_label}, majority vote): "
+    print(f"  naive MIL reference ({ref_label}, {regimen_label}, majority vote): "
           f"bag_acc={ref_acc:.4f}  (n={len(common)} bags)")
-    print(f"  delta ({method}/{variant} - Tier0) = {metrics['bag_accuracy'] - ref_acc:+.4f}  "
-          f"95%CI[{vs_tier0['ci_diff_lo']:+.4f},{vs_tier0['ci_diff_hi']:+.4f}]  "
-          f"p={vs_tier0['p_bootstrap']:.4f}  significant={vs_tier0['significant_95']}")
+    print(f"  delta ({method}/{variant} - naive MIL) = {metrics['bag_accuracy'] - ref_acc:+.4f}  "
+          f"95%CI[{vs_naive_mil['ci_diff_lo']:+.4f},{vs_naive_mil['ci_diff_hi']:+.4f}]  "
+          f"p={vs_naive_mil['p_bootstrap']:.4f}  significant={vs_naive_mil['significant_95']}")
 
     report = {
         'config': config_name, 'method': method, 'variant': variant,
         'n_bootstrap': n_boot, 'n_oos_instances': int(n_oos),
         'k_diagnostic_columns_competition_frac': competition_frac,
         'metrics': metrics,
-        'tier0_reference': {
+        'naive_mil_reference': {
             'model': ref_label, 'regimen': regimen_label, 'rule': 'majority',
             'n_bags': len(common), 'bag_accuracy': ref_acc,
         },
-        'vs_tier0': vs_tier0,
+        'vs_naive_mil': vs_naive_mil,
     }
     if out_path is None:
         out_path = Path(config['paths'].get('experiment_root', f"results/{config_name}")) \

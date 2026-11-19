@@ -1,35 +1,18 @@
-"""Raman spectrum preprocessing, v2: raw cube -> modelling HDF5, fully automated.
-
-Replaces ``src/data/preprocessing.py``'s two-phase design (a one-time, human-in-
-the-loop NMF+GMM clustering pass in the v1 pipeline, producing per-slide artifacts a
-separate automated export script then reads) with a single automated pass with
-**no manual step and no clustering at all**:
+"""Raman preprocessing with a per-slide adaptive mask: raw cube -> modelling HDF5 (exp_2.607-2.609).
 
     1. Load the raw cube.
-    2. 3x3 spatial median filter (unchanged from v1).
-    3. Normalise the filtered cube (unchanged formula from v1's NMF-input
-       normalisation: shift to non-negative, scale by the 99.9th percentile, clip
-       to [0, 1]) -- used HERE only to compute the strong-signal threshold below,
-       never passed to baseline correction (see ``process_slide_v2``'s docstring
-       for why that distinction matters).
-    4. Strong-signal mask -- an adaptive, per-slide percentile threshold on
-       per-pixel max intensity, replacing the old fixed ``WEAK_SIGNAL_THRESH``
-       constant and the NMF/GMM clustering entirely (``compute_strong_signal_mask``).
-    5. IARPLS baseline-correct the masked pixels' spectra (moved here from the old
-       "Phase B" -- the old two-phase split existed only because clustering needed
-       a human in the loop between the phases; with no clustering, there is no
-       reason to split the run at all).
-    6. Persist the per-slide mask (for inspectability -- cheap now that there is no
-       expensive clustering step to avoid re-running) and continue straight into
-       the old "Phase B" remainder: per-spectrum min-max normalisation and writing
-       to the output HDF5 (``RamanPreprocessorV2.run``).
+    2. 3x3 spatial median filter.
+    3. Normalise the filtered cube (shift to non-negative, scale by the 99.9th percentile, clip to
+       [0, 1]). The result only feeds the strong-signal mask; it never reaches baseline correction
+       (see ``cube_normalize``).
+    4. Strong-signal mask: an adaptive, per-slide percentile rule on the per-pixel maximum
+       intensity (``compute_strong_signal_mask``).
+    5. IARPLS baseline correction of the kept spectra on the raw, median-filtered scale, then
+       per-spectrum min-max normalisation.
+    6. Optionally persist each slide's mask, and write the HDF5 (``RamanPreprocessorV2.run``).
 
-This module does **not** modify or replace ``src/data/preprocessing.py`` -- the
-v1 HDF5 (``tissue_cluster``/``viable_legacy`` columns included) stays exactly as
-it is and is still what every existing config/experiment reads. This produces a
-**separate** file (conventionally ``glioma-preproc-2.h5``) with a narrower
-schema: no ``tissue_cluster``/``viable_legacy`` columns exist at all, since
-nothing upstream produces them any more.
+No manual step and no clustering. The output (conventionally ``glioma-preproc-2.h5``) has the
+columns of ``preprocessing_v3`` and none of the v1 clustering columns.
 """
 
 from __future__ import annotations
@@ -37,14 +20,26 @@ from __future__ import annotations
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+import re
+
 import h5py
 import numpy as np
 import pandas as pd
 from scipy.ndimage import median_filter
 from tqdm import tqdm
 
-from src.data.preprocessing import _extract_ids
 from src.preprocessing.baseline import IARPLS_LAMBDA, correct_iarpls
+
+_FILENAME_RE = re.compile(r"LGm-(?P<class_id>\d)[/\\]HF-(?P<patient_id>\d+)_")
+
+
+def _extract_ids(path) -> tuple[int, str]:
+    """(0-indexed class id, 'HF-<N>' patient id string) from a raw file's path."""
+    match = _FILENAME_RE.search(str(path))
+    if not match:
+        raise ValueError(f"path does not match LGm-<k>/HF-<n>_...: {path}")
+    return int(match.group("class_id")) - 1, f"HF-{match.group('patient_id')}"
+
 
 __all__ = [
     "RamanPreprocessorV2", "SlideResultV2", "cube_normalize",
@@ -76,7 +71,7 @@ def cube_normalize(cube: np.ndarray) -> np.ndarray:
     ``cube`` is 3-D (rows, cols, wavelengths) or already flattened). Used here
     ONLY to compute the strong-signal mask threshold -- never fed to baseline
     correction, which stays on the raw (median-filtered) intensity scale IARPLS's
-    Stage 0-validated lambda=1e4 was tuned against.
+    validated lambda=1e4 was tuned against.
     Feeding a [0, 1]-clipped spectrum into IARPLS instead would silently
     invalidate that tuning, since the penalty strength is scale-dependent.
     """
@@ -212,7 +207,7 @@ def process_slide_v2(
 class RamanPreprocessorV2:
     """Builds the v2 modelling HDF5 directly from raw cubes -- no precomputed
     clustering artifacts, no manual curation step. See module docstring for the
-    full pipeline and what differs from ``src.data.preprocessing.RamanPreprocessor``.
+    full pipeline.
     """
 
     def __init__(

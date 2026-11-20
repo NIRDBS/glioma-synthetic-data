@@ -134,3 +134,7 @@ Utilities: `scripts/train_cnn_modal_parallel.py` trains the 1D-CNNs of several f
 hyperspectral cube; 288,678 spectra are retained at the 0.60 threshold. Labels LGm1–LGm3 are IDH-mutant,
 LGm4–LGm6 IDH-wildtype. The dataset has no tissue annotations: the mask selects spectra by signal strength,
 not by tumour content.
+
+## Acknowledgements
+
+This work was supported by the project PNRR-I8 no. 842027778, contract no. 760096.

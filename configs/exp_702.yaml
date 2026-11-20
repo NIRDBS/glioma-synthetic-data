@@ -1,0 +1,116 @@
+# exp_702: beta=0.5, latent_dim=64, reconstruction=MSE, synthetic:real=1, threshold 0.60
+# See configs/README.md.
+name: exp_702
+description: "beta=0.5, latent_dim=64, reconstruction=MSE, synthetic:real=1, threshold 0.60"
+version: "1.0"
+
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  results_root: "results"
+  experiment_root: "results/exp_702"
+  processed_file: "data/processed/glioma_mil.h5"
+
+  models_baseline_dir: "results/exp_501/models/trtr"   # REUSED -- see exp_607.yaml's note
+  models_tstr_dir: "results/exp_702/models/tstr"
+  models_tsrtr_dir: "results/exp_702/models/tsrtr"
+  models_cvae_dir: "results/exp_702/models/cvae"
+  synthetic_dir: "results/exp_702/synthetic"
+  statistical_dir: "results/exp_702/statistical_eval"
+
+tsrtr:
+  synth_ratio: 1.0
+  cvae_weights_dir: "results/exp_702/models/cvae"
+
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]
+
+preprocessing:
+  signal_length: 1738
+  crop_region: [700, 1800]
+  y_tumor: false
+
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  n_folds: 5
+  patient_cap: 500
+
+training:
+  random_seed: 42
+  verbose: 1
+
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # GPU job -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 120
+    learning_rate: 0.001
+    latent_dim: 64   # <-- THE ABLATED SETTING (exp_608 has 32)
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 0.5   # matches exp_608 exactly
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+
+mil:
+  pi_floor: 0.02
+  svm_subsample_per_bag: 500
+  cbr_temperature: 0.001
+
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true

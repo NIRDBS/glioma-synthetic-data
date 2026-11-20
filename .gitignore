@@ -1,0 +1,36 @@
+# Data, models and results are not versioned: the README says where to get the data and
+# which scripts regenerate everything else.
+/data/*
+!/data/splits/
+!/data/RamanFreqTable.csv
+/models/
+/results/
+
+# Python and editors
+.vscode/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Large artifacts
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.joblib
+*.keras
+*.pkl
+*.zip
+
+# Local files that live beside the repository (manuscript, earlier versions, LaTeX output)
+/paper/
+/_archive/
+/Presentation/
+/Thesis/
+/Raman*/
+/main.*
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.synctex.gz

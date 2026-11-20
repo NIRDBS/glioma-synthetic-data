@@ -1,0 +1,166 @@
+# exp_501: TR/TR baseline of every experiment (its CVAE has beta=2) (beta=2, latent_dim=32, reconstruction=MSE, synthetic:real=1, threshold 0.60)
+# See configs/README.md.
+name: exp_501
+description: "TR/TR baseline of every experiment (its CVAE has beta=2) (beta=2, latent_dim=32, reconstruction=MSE, synthetic:real=1, threshold 0.60)"
+version: "1.0"
+
+# ============================================================================
+# DATA PATHS
+# ============================================================================
+paths:
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  calib_file: "data/RamanFreqTable.csv"
+  splits_file: "data/splits/manual_splits.json"
+
+  # The dataset is built once (README, step 1) and shared by all experiments.
+  results_root: "results"
+  experiment_root: "results/exp_501"
+  processed_file: "data/processed/glioma_mil.h5"
+
+# Model outputs
+  models_baseline_dir: "results/exp_501/models/trtr"
+  models_tstr_dir: "results/exp_501/models/tstr"
+  models_tsrtr_dir: "results/exp_501/models/tsrtr"
+  models_cvae_dir: "results/exp_501/models/cvae"
+  synthetic_dir: "results/exp_501/synthetic"
+  statistical_dir: "results/exp_501/statistical_eval"
+
+# ============================================================================
+# REAL+SYNTH (TSRTR) MIXING
+# ============================================================================
+tsrtr:
+  synth_ratio: 1.0
+  cvae_weights_dir: "results/exp_501/models/cvae"
+
+# ============================================================================
+# PIPELINE
+# ============================================================================
+pipeline:
+  stages: [trtr, cvae, tstr, tsrtr, stats_eval]
+
+# ============================================================================
+# PREPROCESSING CONFIGURATION
+# ============================================================================
+preprocessing:
+  # Median filter, baseline correction and the intensity mask are fixed when the dataset is
+  # built (README, step 1); only crop_region is applied at load time.
+  signal_length: 1738
+  crop_region: [700, 1800]
+
+  y_tumor: false
+
+# ============================================================================
+# DYNAMIC AUGMENTATION
+# ============================================================================
+augmentation:
+  enabled: true
+  max_shift: 3
+  mixup_alpha: 0.5
+
+# ============================================================================
+# CROSS-VALIDATION STRATEGY
+# ============================================================================
+cv_strategy:
+  split_source: "data/splits/manual_splits.json"
+  n_folds: 5
+  patient_cap: 500
+
+# ============================================================================
+# TRAINING EXECUTION PARAMETERS
+# ============================================================================
+training:
+  random_seed: 42
+  verbose: 1
+
+# ============================================================================
+# MODEL HYPERPARAMETERS (shared by all experiments)
+# ============================================================================
+models:
+  apollo:
+    n_features: 20
+    random_state: 42
+
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+
+  xgboost:
+    objective: "binary:logistic"
+    random_state: 42
+    n_jobs: -1
+    tree_method: "hist"
+    num_classes: 2
+
+  cnn:
+    input_shape: [null, 1]
+    num_classes: 2
+    optimizer: "adam"
+    loss: "categorical_crossentropy"
+    batch_size: 256
+    # Early stopping monitors an inner split (inner_val_fraction) of the training slides,
+    # never the test fold (pipeline/_common.py::_inner_validation_split).
+    epochs: 200
+    early_stopping_patience: 20
+    inner_val_fraction: 0.15
+    random_state: 42
+    dropout_rate: 0.6
+    backend: "modal"   # CNN only -- Apollo/RF/XGBoost still train locally (fast on CPU)
+
+  cvae:
+    num_classes: 2
+    batch_size: 256
+    epochs: 100
+    learning_rate: 0.001
+    latent_dim: 32
+    random_state: 42
+    reconstruction_loss_mode: "combined"
+    loss_weights:
+      alpha: 0.2
+      beta: 2.0
+      gamma: 1.0
+      delta: 0.0
+
+    encoder:
+      filters: [32, 64, 128]
+      kernels: [11, 5, 3]
+      strides: [2, 2, 2]
+    decoder:
+      initial_filters: 128
+      filters: [128, 64, 32]
+      kernels: [3, 5, 11]
+      strides: [2, 2, 2]
+
+    samples_per_class: 20000
+
+statistics:
+  bootstrap_samples: 1000
+  alpha: 0.05
+  random_seed: 42
+
+# ============================================================================
+# MIL
+# ============================================================================
+mil:
+  pi_floor: 0.02
+  # The SVM of mi-SVM is fitted on at most this many instances per bag (scoring uses all
+  # instances), because its cost grows quickly with the number of instances.
+  svm_subsample_per_bag: 500
+
+  # CVAE MIL (reconstruction): scores = softmax(-MSE / T). T is a provisional choice: at T = 1 the
+  # posterior is almost uniform at this data's MSE scale (median gap between the classes' MSE
+  # about 0.0008); T = 0.001 gives a graded posterior (src/mil/generative.py).
+  cbr_temperature: 0.001
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+output:
+  output_base: "results"
+  include_experiment_name_in_output: true
+
+# ============================================================================
+# Notes
+# ============================================================================

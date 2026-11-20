@@ -1,0 +1,31 @@
+# glioma-synthetic-data requirements
+# Generated from analysis of src/, pipeline/ and scripts/ imports
+
+# Data Processing & Storage
+numpy==2.3.3
+pandas==2.3.2
+scipy==1.16.2
+h5py==3.15.1
+joblib>=1.3.0
+PyYAML==6.0.3
+
+# Machine Learning & Modeling
+scikit-learn==1.7.2
+tensorflow==2.20.0
+xgboost==3.2.0
+
+# Visualization
+matplotlib==3.10.6
+
+# Raman Spectroscopy
+ramanspy==0.2.10
+
+# Progress bars
+tqdm==4.67.1
+
+# Cloud GPU (CVAE offload via pipeline/modal_cvae.py — only needed for --cvae-backend modal)
+modal>=0.64
+
+# Testing
+pytest>=7.0
+

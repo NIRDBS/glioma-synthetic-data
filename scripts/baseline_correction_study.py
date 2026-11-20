@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +43,12 @@ from src.preprocessing.baseline import (  # noqa: E402
     RAMAN_REFERENCE_BANDS,
     correct,
 )
+
+
+def stable_seed(*key) -> int:
+    """32-bit RNG seed derived from ``key``, identical in every process. Python's ``hash()`` of a
+    string is salted per process, so seeding from it draws different spectra on every run."""
+    return zlib.crc32(repr(key).encode())
 
 # Band positions (cm^-1) and relative heights loosely following brain-tissue Raman.
 SYNTHETIC_BANDS = [
@@ -323,7 +330,7 @@ def main():
     rows = []
     for level_name, amp_mult in FLUORESCENCE_LEVELS.items():
         for k in range(args.n_spectra):
-            srng = np.random.default_rng(abs(hash(("syn", level_name, k, args.seed))) % (2**32))
+            srng = np.random.default_rng(stable_seed("syn", level_name, k, args.seed))
             sig = synthetic_signal(wn, srng)
             sig_scale = max(float(np.ptp(sig)), 1e-12)
             base = synthetic_baseline(wn, srng, amplitude=amp_mult * sig_scale)
@@ -344,7 +351,7 @@ def main():
     inv_rows = []
     for level_name, amp_mult in FLUORESCENCE_LEVELS.items():
         for k, y_real in enumerate(real_pool):
-            srng = np.random.default_rng(abs(hash(("inv", level_name, k, args.seed))) % (2**32))
+            srng = np.random.default_rng(stable_seed("inv", level_name, k, args.seed))
             m_fp = (wn >= 700) & (wn < 1800)
             scale = max(float(np.ptp(y_real[m_fp])), 1e-12)
             extra = synthetic_baseline(wn, srng, amplitude=amp_mult * scale)

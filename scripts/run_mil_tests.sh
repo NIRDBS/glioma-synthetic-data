@@ -20,7 +20,8 @@ PY=${PY:-python}
 BACKEND=${MISVM_BACKEND:-local}
 
 echo "=== MIL fits"
-"$PY" -m pipeline.mil_fit_stage --config "$EXP" --methods misvm cbr --backend "$BACKEND"
+"$PY" -m pipeline.mil_fit_stage --config "$EXP" --methods misvm --backend "$BACKEND"
+"$PY" -m pipeline.mil_fit_stage --config "$EXP" --methods cbr   # CbR scoring runs locally only
 "$PY" -m pipeline.mil_attention_stage --config "$EXP"
 
 echo "=== Bag-level metrics"

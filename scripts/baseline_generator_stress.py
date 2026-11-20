@@ -44,6 +44,7 @@ from baseline_correction_study import (  # noqa: E402
     SYNTHETIC_BANDS,
     load_wavenumbers,
     run_iarpls,
+    stable_seed,
 )
 from src.preprocessing.baseline import correct  # noqa: E402
 
@@ -142,9 +143,7 @@ def main():
         for shape in LINESHAPES:
             for noise in NOISE_MODELS:
                 for k in range(args.n_rep):
-                    rng = np.random.default_rng(
-                        abs(hash((family, shape, noise, k))) % (2**32)
-                    )
+                    rng = np.random.default_rng(stable_seed(family, shape, noise, k))
                     sig = signal(wn, rng, lineshape=shape)
                     sc = float(np.ptp(sig))
                     base = baseline(wn, rng, amplitude=args.amp_mult * sc, family=family)

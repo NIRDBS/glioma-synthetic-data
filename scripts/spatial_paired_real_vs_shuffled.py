@@ -147,6 +147,7 @@ def main():
         out['fits'][key] = res
 
     path = root / 'spatial_validation' / 'spatial_paired_real_vs_shuffled.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out, indent=2), encoding='utf-8')
     print(f'\nWrote {path}')
 
